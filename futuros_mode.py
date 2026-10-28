@@ -422,7 +422,7 @@ df_resumen = generar_df_resumen(df_diario, capital_inicial, tamano_contrato, pre
 
 # --- GUARDAR TRAYECTORIA ACTUAL EN EL HISTORIAL ---
 trayectoria_actual = {
-    "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} \vert{} Cap=${capital_inicial:,.0f}",
+    "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | Cap=${capital_inicial:,.0f}",
     "fechas": fechas,
     "precio_futuro": df_diario["Precio_Futuro"].copy(),
     "margen": df_diario["Margen"].copy()
@@ -449,7 +449,7 @@ df_excel, df_estadisticos, df_cut_var_valor, etiqueta = ejecutar_monte_carlo(
 )
 
 mc_actual = {
-    "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} \vert{} Margen=${margen_llamada:,.0f}",
+    "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | Margen=${margen_llamada:,.0f}",
     "df_excel": df_excel.copy()
 }
 
@@ -503,3 +503,59 @@ st.markdown("### 📋 Vista Previa de Simulaciones Monte Carlo (Primeras 10)")
 st.dataframe(df_excel.head(10), use_container_width=True)
 
 col_est, col_var = st.columns([3, 2])
+
+with col_est:
+    st.markdown("### 📊 Tabla de Estadísticos")
+    st.dataframe(df_estadisticos, use_container_width=True)
+
+with col_var:
+    st.markdown(f"### 🛡️ Tabla de Cutoff y VaR (Alpha = {etiqueta} | Base: 190,000)")
+    st.dataframe(df_cut_var_valor, use_container_width=True)
+
+# --- F. HISTOGRAMAS 2X2 ACUMULATIVOS Y SOBREPUESTOS (CON COLORES DINÁMICOS) ---
+st.markdown("### 📊 Histogramas Dinámicos de Distribución (Monte Carlo Superpuestos)")
+
+fig_mc, axs = plt.subplots(2, 2, figsize=(12, 8))
+
+metricas_mc = [
+    ("Efectivo total retirable", "Efectivo Total Retirable"),
+    ("Ganancia bruta del mercado", "Ganancia Bruta del Mercado"),
+    ("Total de capital inyectado", "Capital Inyectado Total"),
+    ("Llamada máxima", "Llamada Máxima")
+]
+
+paleta_colores = ["#3498db", "#e74c3c", "#2ecc71", "#9b59b6", "#e67e22", "#1abc9c", "#34495e", "#d35400"]
+
+for idx, (col_name, titulo_base) in enumerate(metricas_mc):
+    ax = axs[idx // 2, idx % 2]
+    
+    for i, item in enumerate(st.session_state["historial_mc"]):
+        df_sim = item["df_excel"]
+        es_ultimo = (i == len(st.session_state["historial_mc"]) - 1)
+        
+        color_actual = paleta_colores[i % len(paleta_colores)]
+        
+        alpha_val = 0.7 if es_ultimo else 0.4
+        tipo_hist = 'stepfilled' if es_ultimo else 'step'
+        
+        ax.hist(
+            df_sim[col_name], 
+            bins=40, 
+            color=color_actual, 
+            alpha=alpha_val, 
+            edgecolor=color_actual, 
+            histtype=tipo_hist,
+            linewidth=1.8 if es_ultimo else 1.2,
+            label=item["etiqueta"] if idx == 0 else ""
+        )
+        
+    ax.set_title(titulo_base, fontweight="bold")
+    ax.set_xlabel("Monto ($)")
+    ax.set_ylabel("Frecuencia")
+    ax.grid(True, linestyle="--", alpha=0.5)
+
+if len(st.session_state["historial_mc"]) > 0:
+    axs[0, 0].legend(fontsize=8, loc="upper right", framealpha=0.8)
+
+plt.tight_layout()
+st.pyplot(fig_mc)

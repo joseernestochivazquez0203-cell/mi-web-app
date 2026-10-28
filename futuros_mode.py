@@ -12,12 +12,15 @@ st.set_page_config(
 # Título Principal
 st.title("📊 Simulador Financiero Completo de Futuros USD/MXN")
 st.write(
-    "Selecciona el modelo para analizar tanto la **trayectoria diaria detallada** como el **análisis de riesgo por Monte Carlo**."
+    "Selecciona el modelo para analizar tanto la **trayectoria diaria detallada** como el **análisis de riesgo por Monte Carlo** con historial superpuesto."
 )
 
-# --- INICIALIZACIÓN DE SESSION STATE PARA SOBREPONER TRAYECTORIAS ---
+# --- INICIALIZACIÓN DE SESSION STATE PARA HISTORIALES ---
 if "historial_trayectorias" not in st.session_state:
     st.session_state["historial_trayectorias"] = []
+
+if "historial_mc" not in st.session_state:
+    st.session_state["historial_mc"] = []
 
 # --- 1. SELECCIÓN DE MODELO EN LA BARRA LATERAL ---
 st.sidebar.header("🛠️ Seleccionar Modelo")
@@ -425,7 +428,6 @@ trayectoria_actual = {
     "margen": df_diario["Margen"].copy()
 }
 
-# Evitar duplicados exactos seguidos si el usuario no ha movido nada
 if not st.session_state["historial_trayectorias"] or st.session_state["historial_trayectorias"][-1]["etiqueta"] != trayectoria_actual["etiqueta"]:
     st.session_state["historial_trayectorias"].append(trayectoria_actual)
 
@@ -441,7 +443,21 @@ with col_der:
     st.markdown("### 📊 Resumen de Inversión y Resultados")
     st.table(df_resumen)
 
-# --- C. GRAFICA DE TRAYECTORIAS SOBREPUESTAS CON BOTÓN DE LIMPIAR ---
+# --- C. EJECUTAR MONTE CARLO ACTUAL Y GUARDAR EN HISTORIAL ---
+df_excel, df_estadisticos, df_cut_var_valor, etiqueta = ejecutar_monte_carlo(
+    tipo_mc, precio_futuro_inicial, margen_llamada, capital_inicial, tamano_contrato, alpha_seleccionado, num_simulaciones
+)
+
+mc_actual = {
+    "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | Margen=${margen_llamada:,.0f}",
+    "df_excel": df_excel.copy()
+}
+
+if not st.session_state["historial_mc"] or st.session_state["historial_mc"][-1]["etiqueta"] != mc_actual["etiqueta"]:
+    st.session_state["historial_mc"].append(mc_actual)
+
+
+# --- D. GRAFICA DE TRAYECTORIAS SOBREPUESTAS CON BOTÓN DE LIMPIAR ---
 st.markdown("---")
 col_tit, col_btn = st.columns([3, 1])
 
@@ -451,6 +467,7 @@ with col_tit:
 with col_btn:
     if st.button("🧹 Limpiar Historial de Gráficas", use_container_width=True):
         st.session_state["historial_trayectorias"] = [trayectoria_actual]
+        st.session_state["historial_mc"] = [mc_actual]
         st.rerun()
 
 fig, ax1 = plt.subplots(figsize=(12, 5))
@@ -460,11 +477,9 @@ ax1.set_xlabel("Fecha", fontsize=11)
 ax1.set_ylabel("Precio Dólar ($)", fontsize=11)
 ax1.grid(True, linestyle="--", alpha=0.4)
 
-# Graficar todas las ejecuciones acumuladas
 for i, tray in enumerate(st.session_state["historial_trayectorias"]):
-    # La última trayectoria tiene mayor grosor y opacidad para destacar
     es_ultima = (i == len(st.session_state["historial_trayectorias"]) - 1)
-    alpha_val = 1.0 if es_ultima else 0.4
+    alpha_val = 1.0 if es_ultima else 0.35
     linewidth_val = 2.5 if es_ultima else 1.2
     
     ax1.plot(
@@ -481,12 +496,8 @@ st.pyplot(fig)
 
 st.markdown("---")
 
-# --- D. SIMULACION DE MONTE CARLO (JUSTO DEBAJO) ---
+# --- E. MONTE CARLO Y TABLAS ---
 st.header("🎲 ANÁLISIS DE MONTE CARLO Y VAR (Múltiples Corridas)")
-
-df_excel, df_estadisticos, df_cut_var_valor, etiqueta = ejecutar_monte_carlo(
-    tipo_mc, precio_futuro_inicial, margen_llamada, capital_inicial, tamano_contrato, alpha_seleccionado, num_simulaciones
-)
 
 st.markdown("### 📋 Vista Previa de Simulaciones Monte Carlo (Primeras 10)")
 st.dataframe(df_excel.head(10), use_container_width=True)
@@ -501,34 +512,48 @@ with col_var:
     st.markdown(f"### 🛡️ Tabla de Cutoff y VaR (Alpha = {etiqueta} | Base: 190,000)")
     st.dataframe(df_cut_var_valor, use_container_width=True)
 
-# --- E. HISTOGRAMAS 2X2 DE MONTE CARLO ---
-st.markdown("### 📊 Histogramas Dinámicos de Distribución (Monte Carlo)")
+# --- F. HISTOGRAMAS 2X2 ACUMULATIVOS Y SOBREPUESTOS ---
+st.markdown("### 📊 Histogramas Dinámicos de Distribución (Monte Carlo Superpuestos)")
 
 fig_mc, axs = plt.subplots(2, 2, figsize=(12, 8))
 
-axs[0, 0].hist(df_excel["Efectivo total retirable"], bins=50, color="#3498db", edgecolor="#2980b9", alpha=0.85)
-axs[0, 0].set_title(f"Efectivo Total Retirable (Margen: ${margen_llamada:,.0f})", fontweight="bold")
-axs[0, 0].set_xlabel("Monto ($)")
-axs[0, 0].set_ylabel("Frecuencia")
-axs[0, 0].grid(True, linestyle="--", alpha=0.5)
+metricas_mc = [
+    ("Efectivo total retirable", f"Efectivo Total Retirable", "#3498db"),
+    ("Ganancia bruta del mercado", f"Ganancia Bruta del Mercado", "#2ecc71"),
+    ("Total de capital inyectado", "Capital Inyectado Total", "#e67e22"),
+    ("Llamada máxima", "Llamada Máxima", "#e74c3c")
+]
 
-axs[0, 1].hist(df_excel["Ganancia bruta del mercado"], bins=50, color="#2ecc71", edgecolor="#27ae60", alpha=0.85)
-axs[0, 1].set_title(f"Ganancia Bruta del Mercado (Futuro: {precio_futuro_inicial})", fontweight="bold")
-axs[0, 1].set_xlabel("Monto ($)")
-axs[0, 1].set_ylabel("Frecuencia")
-axs[0, 1].grid(True, linestyle="--", alpha=0.5)
+for idx, (col_name, titulo_base, color_base) in enumerate(metricas_mc):
+    ax = axs[idx // 2, idx % 2]
+    
+    for i, item in enumerate(st.session_state["historial_mc"]):
+        df_sim = item["df_excel"]
+        es_ultimo = (i == len(st.session_state["historial_mc"]) - 1)
+        
+        # Opacidad y estilo: la simulación actual es sólida, las anteriores son tipo línea/escalón traslúcidas
+        alpha_val = 0.85 if es_ultimo else 0.25
+        tipo_hist = 'stepfilled' if es_ultimo else 'step'
+        
+        ax.hist(
+            df_sim[col_name], 
+            bins=40, 
+            color=color_base, 
+            alpha=alpha_val, 
+            edgecolor=color_base, 
+            histtype=tipo_hist,
+            linewidth=1.5 if es_ultimo else 1.0,
+            label=item["etiqueta"] if idx == 0 else ""
+        )
+        
+    ax.set_title(titulo_base, fontweight="bold")
+    ax.set_xlabel("Monto ($)")
+    ax.set_ylabel("Frecuencia")
+    ax.grid(True, linestyle="--", alpha=0.5)
 
-axs[1, 0].hist(df_excel["Total de capital inyectado"], bins=50, color="#e67e22", edgecolor="#d35400", alpha=0.85)
-axs[1, 0].set_title("Capital Inyectado Total", fontweight="bold")
-axs[1, 0].set_xlabel("Monto ($)")
-axs[1, 0].set_ylabel("Frecuencia")
-axs[1, 0].grid(True, linestyle="--", alpha=0.5)
-
-axs[1, 1].hist(df_excel["Llamada máxima"], bins=50, color="#e74c3c", edgecolor="#c0392b", alpha=0.85)
-axs[1, 1].set_title(f"Llamada Máxima (Margen: ${margen_llamada:,.0f})", fontweight="bold")
-axs[1, 1].set_xlabel("Monto ($)")
-axs[1, 1].set_ylabel("Frecuencia")
-axs[1, 1].grid(True, linestyle="--", alpha=0.5)
+# Leyenda unificada en el primer histograma si hay más de una corrida
+if len(st.session_state["historial_mc"]) > 1:
+    axs[0, 0].legend(fontsize=8, loc="upper right", framealpha=0.8)
 
 plt.tight_layout()
 st.pyplot(fig_mc)

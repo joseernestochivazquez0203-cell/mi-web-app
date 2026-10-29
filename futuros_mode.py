@@ -518,18 +518,16 @@ with col_var:
     st.dataframe(df_cut_var_valor, use_container_width=True)
 
 
-# --- NUEVA SECCIÓN: GRÁFICA DE ABANICO DE MONTE CARLO (MUESTRA DE TRAYECTORIAS Y CUANTILES) ---
+# --- NUEVA SECCIÓN: GRÁFICA DE ABANICO DE MONTE CARLO ---
 st.markdown("### 🌪️ Gráfica de Abanico y Cuantiles de Monte Carlo (Trayectorias Simuladas)")
 
 fig_fan, ax_fan = plt.subplots(figsize=(12, 5))
 matriz_actual_precios = mc_actual["matriz_precios"]
 num_muestras = min(100, matriz_actual_precios.shape[0])
 
-# Graficar hasta 100 trayectorias con baja opacidad
 for s in range(num_muestras):
     ax_fan.plot(fechas_mc, matriz_actual_precios[s, :], color='gray', alpha=0.15, linewidth=0.8)
 
-# Calcular mediana y cuantiles (Q1, Q3 o P5, P95) a lo largo del tiempo
 mediana_tray = np.median(matriz_actual_precios, axis=0)
 q25_tray = np.percentile(matriz_actual_precios, 25, axis=0)
 q75_tray = np.percentile(matriz_actual_precios, 75, axis=0)
@@ -550,7 +548,7 @@ fig_fan.tight_layout()
 st.pyplot(fig_fan)
 
 
-# --- F. HISTOGRAMAS 2X2 ACUMULATIVOS Y SOBREPUESTOS (CON ESTADÍSTICOS Y CUANTILES) ---
+# --- F. HISTOGRAMAS 2X2 CON LÍNEAS DE REFERENCIA ---
 st.markdown("### 📊 Histogramas Dinámicos de Distribución (Con Mediana, Media, Moda y Cuantiles)")
 
 fig_mc, axs = plt.subplots(2, 2, figsize=(14, 9))
@@ -586,7 +584,6 @@ for idx, (col_name, titulo_base) in enumerate(metricas_mc):
             label=item["etiqueta"] if idx == 0 else ""
         )
         
-        # Calcular estadísticos para el último modelo activo para mostrar líneas de referencia claras
         if es_ultimo:
             serie = df_sim[col_name]
             media_val = serie.mean()
@@ -613,3 +610,34 @@ if len(st.session_state["historial_mc"]) > 0:
 
 plt.tight_layout()
 st.pyplot(fig_mc)
+
+
+# --- G. TABLA DE VALORES NUMÉRICOS EXACTOS (MODA, MEDIA, MEDIANA, CUANTILES) ---
+st.markdown("### 📋 Valores Estadísticos Exactos (Última Corrida Activa)")
+
+for i, item in enumerate(st.session_state["historial_mc"]):
+    if i == len(st.session_state["historial_mc"]) - 1:
+        df_sim = item["df_excel"]
+        resumen_stats = []
+        
+        for col_name, titulo_base in metricas_mc:
+            serie = df_sim[col_name]
+            media_val = serie.mean()
+            mediana_val = serie.median()
+            q1_val = serie.quantile(0.25)
+            q3_val = serie.quantile(0.75)
+            
+            moda_res = stats.mode(np.round(serie, 2), keepdims=True)
+            moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else serie.iloc[0]
+            
+            resumen_stats.append({
+                "Métrica": titulo_base,
+                "Moda ($)": f"${moda_val:,.2f}",
+                "Media ($)": f"${media_val:,.2f}",
+                "Mediana (50%) ($)": f"${mediana_val:,.2f}",
+                "Q1 (25%) ($)": f"${q1_val:,.2f}",
+                "Q3 (75%) ($)": f"${q3_val:,.2f}"
+            })
+        
+        st.subheader(f"Modelo: {item['etiqueta']}")
+        st.dataframe(pd.DataFrame(resumen_stats), use_container_width=True)

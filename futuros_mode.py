@@ -514,7 +514,7 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
         "Métrica / Indicador": [
             "Prob. de llamada de margen",
             "Llamadas promedio",
-            "Aportación media",
+            "Capital inyectado medio",
             "Aportación VaR 95%",
             "Llamada máxima observada",
             "Saldo final medio",
@@ -599,7 +599,6 @@ elif "Comparación de los Tres Modelos" in modelo_seleccionado:
     st.markdown("## 📊 Comparación de los tres modelos")
     st.write("Mismos parámetros, misma media y volatilidad por paso; solo cambia la forma de la distribución.")
     
-    # Parámetros estándar para la comparativa automática
     p_ini_comp = 19.0
     cap_ini_comp = 15000.0
     t_cont_comp = 10000

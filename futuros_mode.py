@@ -4,16 +4,67 @@ import pandas as pd
 from scipy import stats
 import streamlit as st
 
-# Configuración de la página
+# Configuración de la página y diseño estético global
 st.set_page_config(
     page_title="Simulador Financiero Integral USD/MXN", page_icon="📈", layout="wide"
 )
 
-# Título Principal
-st.title("📊 Simulador Financiero Completo: Futuros, Opciones (Binomial) y Monte Carlo")
-st.write(
-    "Selecciona el enfoque en la barra lateral para alternar entre el **análisis de futuros (con historial superpuesto y Monte Carlo)** y el **Modelo Binomial de Opciones**."
+# --- CSS PERSONALIZADO PARA MEJORAR LA INTERFAZ Y DISEÑO ---
+st.markdown(
+    """
+    <style>
+    /* Estilo general y tipografía */
+    .main {
+        background-color: #f8f9fa;
+    }
+    h1, h2, h3 {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        color: #1e293b;
+    }
+    /* Tarjetas personalizadas para métricas */
+    .metric-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border-left: 5px solid #3b82f6;
+        margin-bottom: 15px;
+    }
+    /* Contenedores de gráficos */
+    .stPlotlyChart, .stDataFrame {
+        background: #ffffff;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    /* Botones modernos */
+    .stButton>button {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        border: none;
+        padding: 0.5rem 1rem;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    }
+    .stButton>button:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
+
+# Título Principal con estilo
+st.markdown(
+    "<h1 style='text-align: center; color: #1e3a8a;'>📊 Simulador Financiero Avanzado USD/MXN</h1>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<p style='text-align: center; color: #64748b; font-size: 1.1rem;'>Plataforma interactiva para Futuros, Opciones (Modelo Binomial) y Análisis de Riesgo por Monte Carlo.</p>",
+    unsafe_allow_html=True,
+)
+st.markdown("---")
 
 # --- INICIALIZACIÓN DE SESSION STATE PARA HISTORIALES ---
 if "historial_trayectorias" not in st.session_state:
@@ -23,7 +74,10 @@ if "historial_mc" not in st.session_state:
     st.session_state["historial_mc"] = []
 
 # --- 1. SELECCIÓN DE MODELO EN LA BARRA LATERAL ---
-st.sidebar.header("🛠️ Seleccionar Enfoque")
+st.sidebar.markdown(
+    "<h2 style='color: #1e3a8a; font-size: 1.3rem;'>🛠️ Panel de Control</h2>",
+    unsafe_allow_html=True,
+)
 modelo_seleccionado = st.sidebar.selectbox(
     "Elige el modelo de análisis:",
     [
@@ -37,7 +91,7 @@ st.sidebar.markdown("---")
 
 # Parámetros específicos según el modelo elegido
 if "Binomial" in modelo_seleccionado:
-    st.sidebar.header("🌳 Parámetros del Modelo Binomial")
+    st.sidebar.markdown("### 🌳 Parámetros del Modelo Binomial")
     s0_binomial = st.sidebar.number_input("Precio Inicial de la acción ($)", min_value=1.0, max_value=1000.0, value=100.0, step=1.0)
     strike_k = st.sidebar.number_input("Precio de ejercicio K ($)", min_value=1.0, max_value=1000.0, value=100.0, step=1.0)
     tasa_r = st.sidebar.number_input("Tasa libre de riesgo (r)", min_value=0.0, max_value=1.0, value=0.065, step=0.005)
@@ -49,7 +103,7 @@ if "Binomial" in modelo_seleccionado:
     tipo_op = st.sidebar.selectbox("Tipo de Opción", ["CALL", "PUT"])
     estilo_op = st.sidebar.selectbox("Estilo de Opción", ["EUROPEA", "AMERICANA"])
 else:
-    st.sidebar.header("⚙️ Parámetros de Futuros")
+    st.sidebar.markdown("### ⚙️ Parámetros de Futuros")
     precio_futuro_inicial = st.sidebar.slider(
         "Precio Futuro Inicial ($)", min_value=10.0, max_value=30.0, value=19.0, step=0.1
     )
@@ -61,7 +115,7 @@ else:
     )
 
     st.sidebar.markdown("---")
-    st.sidebar.header("🎲 Parámetros de Monte Carlo y Riesgo")
+    st.sidebar.markdown("### 🎲 Parámetros de Monte Carlo")
     margen_llamada = st.sidebar.slider(
         "Margen de Llamada ($)", min_value=5000.0, max_value=15000.0, value=12000.0, step=500.0
     )
@@ -448,14 +502,13 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
 # ==============================================================================
 
 if "Binomial" in modelo_seleccionado:
-    st.header("🌳 MODELO BINOMIAL (Árbol CRR para Opciones)")
+    st.markdown("## 🌳 MODELO BINOMIAL (Árbol CRR para Opciones)")
     st.write(f"Evaluando opción tipo **{tipo_op}** con estilo **{estilo_op}** a **{int(num_pasos_n)} pasos**.")
 
     df_resumen_pasos, df_arbol_S, df_arbol_f, p_val, u_val, d_val, dt_val, df_esc_val, precio_opcion = simular_modelo_binomial(
         s0_binomial, strike_k, tasa_r, volatilidad_sigma, tiempo_t, int(num_pasos_n), tipo_op, estilo_op
     )
 
-    # Tarjetas de factores intermedios (equivalente a B8:B12 de tu excel)
     col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns(5)
     col_f1.metric("Precio Teórico (f0)", f"${precio_opcion:,.4f}")
     col_f2.metric("Tamaño del Paso (dt)", f"{dt_val:,.4f}")
@@ -478,12 +531,12 @@ if "Binomial" in modelo_seleccionado:
 
 else:
     if "Log-logístico" in modelo_seleccionado:
-        st.header("📌 MODELO 1: LOG-LOGÍSTICO")
+        st.markdown("## 📌 MODELO 1: LOG-LOGÍSTICO")
         df_diario, fechas = simular_diario_log_logistico(precio_futuro_inicial, capital_inicial, tamano_contrato)
         nombre_mod = "Log-Logístico"
         tipo_mc = "log_logistico"
     else:
-        st.header("📌 MODELO 2: MÉTODO DE FISHER (MBG)")
+        st.markdown("## 📌 MODELO 2: MÉTODO DE FISHER (MBG)")
         df_diario, fechas = simular_diario_fisher(precio_futuro_inicial, capital_inicial, tamano_contrato)
         nombre_mod = "Fisher (MBG)"
         tipo_mc = "fisher"
@@ -528,7 +581,7 @@ else:
     with col_tit:
         st.markdown("### 📈 Gráfica de Trayectorias Comparativas (Sobrepuestas)")
     with col_btn:
-        if st.button("🧹 Limpiar Historial de Gráficas", use_container_width=True):
+        if st.button("🧹 Limpiar Historial", use_container_width=True):
             st.session_state["historial_trayectorias"] = [trayectoria_actual]
             st.session_state["historial_mc"] = [mc_actual]
             st.rerun()
@@ -552,7 +605,7 @@ else:
     st.pyplot(fig)
 
     st.markdown("---")
-    st.header("🎲 ANÁLISIS DE MONTE CARLO Y VAR (Múltiples Corridas)")
+    st.markdown("## 🎲 ANÁLISIS DE MONTE CARLO Y VAR")
 
     st.markdown("### 📋 Vista Previa de Simulaciones Monte Carlo (Primeras 10)")
     st.dataframe(df_excel.head(10), use_container_width=True)
@@ -566,7 +619,7 @@ else:
         st.dataframe(df_cut_var_valor, use_container_width=True)
 
     # Gráfica de Abanico
-    st.markdown("### 🌪️ Gráfica de Abanico y Cuantiles de Monte Carlo (Trayectorias Simuladas)")
+    st.markdown("### 🌪️ Gráfica de Abanico y Cuantiles de Monte Carlo")
     fig_fan, ax_fan = plt.subplots(figsize=(12, 5))
     num_muestras = min(100, matriz_precios.shape[0])
     for s in range(num_muestras):
@@ -583,7 +636,7 @@ else:
     ax_fan.plot(fechas_mc, q75_tray, color='#2980b9', linestyle='--', linewidth=1.5, label='Cuantil 75% (Q3)')
     ax_fan.fill_between(fechas_mc, p5_tray, p95_tray, color='#3498db', alpha=0.15, label='Rango P5 - P95')
 
-    ax_fan.set_title(f"Abanico de Trayectorias Monte Carlo ({num_muestras} muestras visualizadas) - {mc_actual['etiqueta']}", fontsize=12, fontweight="bold", pad=15)
+    ax_fan.set_title(f"Abanico de Trayectorias Monte Carlo ({num_muestras} muestras) - {mc_actual['etiqueta']}", fontsize=12, fontweight="bold", pad=15)
     ax_fan.set_xlabel("Fecha", fontsize=11)
     ax_fan.set_ylabel("Precio Futuro ($)", fontsize=11)
     ax_fan.grid(True, linestyle="--", alpha=0.4)
@@ -591,18 +644,56 @@ else:
     fig_fan.tight_layout()
     st.pyplot(fig_fan)
 
-    # Histogramas Superpuestos con `loc="best"`
-    st.markdown("### 📊 Histogramas Dinámicos de Distribución (Monte Carlo Superpuestos con Estadísticos)")
-    fig_mc, axs = plt.subplots(2, 2, figsize=(14, 9))
-    metricas_mc = [
+    # --- NUEVA INTERACTIVIDAD: SELECTOR PARA VER ESTADÍSTICOS AL PULSAR / SELECCIONAR ---
+    st.markdown("---")
+    st.markdown("### 📊 Explorador Interactivo de Estadísticos por Métrica")
+    st.write("Selecciona una métrica y haz clic en los selectores para consultar los valores exactos correspondientes a las líneas de referencia del histograma.")
+
+    metricas_nombres = [
         ("Efectivo total retirable", "Efectivo Total Retirable"),
         ("Ganancia bruta del mercado", "Ganancia Bruta del Mercado"),
         ("Total de capital inyectado", "Capital Inyectado Total"),
         ("Llamada máxima", "Llamada Máxima")
     ]
+
+    # Selector interactivo para reemplazar la tabla estática grande
+    col_sel1, col_sel2 = st.columns([2, 3])
+    with col_sel1:
+        metrica_elegida_key = st.selectbox(
+            "Elige la métrica a analizar:",
+            options=[m[0] for m in metricas_nombres],
+            format_func=lambda x: dict(metricas_nombres)[x]
+        )
+    
+    # Obtener valores de la última corrida activa para la métrica seleccionada
+    for i, item in enumerate(st.session_state["historial_mc"]):
+        if i == len(st.session_state["historial_mc"]) - 1:
+            df_sim = item["df_excel"]
+            serie = df_sim[metrica_elegida_key]
+            media_val = serie.mean()
+            mediana_val = serie.median()
+            q1_val = serie.quantile(0.25)
+            q3_val = serie.quantile(0.75)
+            moda_res = stats.mode(np.round(serie, 2), keepdims=True)
+            moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else serie.iloc[0]
+
+            with col_sel2:
+                st.markdown(f"**Modelo Activo:** `{item['etiqueta']}`")
+            
+            # Tarjetas interactivas con los valores de las líneas
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("🔴 Media", f"${media_val:,.2f}")
+            c2.metric("🟢 Mediana", f"${mediana_val:,.2f}")
+            c3.metric("🟣 Q1 (25%)", f"${q1_val:,.2f}")
+            c4.metric("🟣 Q3 (75%)", f"${q3_val:,.2f}")
+            c5.metric("🟠 Moda", f"${moda_val:,.2f}")
+
+    # Histogramas Superpuestos limpios con `loc="best"`
+    st.markdown("### 📊 Histogramas Dinámicos de Distribución con Líneas de Referencia")
+    fig_mc, axs = plt.subplots(2, 2, figsize=(14, 9))
     paleta_colores = ["#3498db", "#e74c3c", "#2ecc71", "#9b59b6", "#e67e22", "#1abc9c", "#34495e", "#d35400"]
 
-    for idx, (col_name, titulo_base) in enumerate(metricas_mc):
+    for idx, (col_name, titulo_base) in enumerate(metricas_nombres):
         ax = axs[idx // 2, idx % 2]
         for i, item in enumerate(st.session_state["historial_mc"]):
             df_sim = item["df_excel"]
@@ -624,7 +715,6 @@ else:
                 mediana_val = serie.median()
                 q1_val = serie.quantile(0.25)
                 q3_val = serie.quantile(0.75)
-                
                 moda_res = stats.mode(np.round(serie, 2), keepdims=True)
                 moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else serie.iloc[0]
 
@@ -634,39 +724,11 @@ else:
                 ax.axvline(q3_val, color='#8e44ad', linestyle=':', linewidth=1.5, label='Q3')
                 ax.axvline(moda_val, color='#f39c12', linestyle='-.', linewidth=1.5, label='Moda')
 
-        ax.set_title(titulo_base, fontweight="bold")
-        ax.set_xlabel("Monto ($)")
-        ax.set_ylabel("Frecuencia")
+        ax.set_title(titulo_base, fontweight="bold", fontsize=11)
+        ax.set_xlabel("Monto ($)", fontsize=9)
+        ax.set_ylabel("Frecuencia", fontsize=9)
         ax.grid(True, linestyle="--", alpha=0.5)
-        
         ax.legend(fontsize=7, loc="best", framealpha=0.8)
 
     plt.tight_layout()
     st.pyplot(fig_mc)
-
-    # Tabla de Estadísticos Exactos
-    st.markdown("### 📋 Valores Estadísticos Exactos (Última Corrida Activa)")
-    for i, item in enumerate(st.session_state["historial_mc"]):
-        if i == len(st.session_state["historial_mc"]) - 1:
-            df_sim = item["df_excel"]
-            resumen_stats = []
-            for col_name, titulo_base in metricas_mc:
-                serie = df_sim[col_name]
-                media_val = serie.mean()
-                mediana_val = serie.median()
-                q1_val = serie.quantile(0.25)
-                q3_val = serie.quantile(0.75)
-                
-                moda_res = stats.mode(np.round(serie, 2), keepdims=True)
-                moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else serie.iloc[0]
-                
-                resumen_stats.append({
-                    "Métrica": titulo_base,
-                    "Moda ($)": f"${moda_val:,.2f}",
-                    "Media ($)": f"${media_val:,.2f}",
-                    "Mediana (50%) ($)": f"${mediana_val:,.2f}",
-                    "Q1 (25%) ($)": f"${q1_val:,.2f}",
-                    "Q3 (75%) ($)": f"${q3_val:,.2f}"
-                })
-            st.subheader(f"Modelo: {item['etiqueta']}")
-            st.dataframe(pd.DataFrame(resumen_stats), use_container_width=True)

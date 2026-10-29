@@ -34,32 +34,32 @@ modelo_seleccionado = st.sidebar.selectbox(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.header("⚙️ Parámetros Generales")
-
-precio_futuro_inicial = st.sidebar.slider(
-    "Precio Inicial / Subyacente ($)", min_value=10.0, max_value=30.0, value=19.0, step=0.1
-)
-
-capital_inicial = st.sidebar.number_input(
-    "Capital Inicial ($)", min_value=10000.0, max_value=100000.0, value=15000.0, step=1000.0
-)
-
-tamano_contrato = st.sidebar.number_input(
-    "Tamaño del Contrato", min_value=1000, max_value=100000, value=10000, step=1000
-)
 
 # Parámetros específicos según el modelo elegido
 if "Binomial" in modelo_seleccionado:
+    st.sidebar.header("🌳 Parámetros del Modelo Binomial")
+    s0_binomial = st.sidebar.number_input("Precio Inicial de la acción ($)", min_value=1.0, max_value=1000.0, value=100.0, step=1.0)
+    strike_k = st.sidebar.number_input("Precio de ejercicio K ($)", min_value=1.0, max_value=1000.0, value=100.0, step=1.0)
+    tasa_r = st.sidebar.number_input("Tasa libre de riesgo (r)", min_value=0.0, max_value=1.0, value=0.065, step=0.005)
+    volatilidad_sigma = st.sidebar.number_input("Volatilidad (σ)", min_value=0.01, max_value=2.0, value=0.2, step=0.01)
+    tiempo_t = st.sidebar.number_input("Tiempo al vencimiento (en años)", min_value=0.01, max_value=10.0, value=1.0, step=0.1)
+    num_pasos_n = st.sidebar.number_input("Número de pasos (N)", min_value=1, max_value=50, value=9, step=1)
+    
     st.sidebar.markdown("---")
-    st.sidebar.header("🌳 Parámetros del Árbol Binomial")
-    strike_k = st.sidebar.slider("Precio de Ejercicio (K) ($)", min_value=10.0, max_value=30.0, value=19.0, step=0.1)
-    tasa_r = st.sidebar.slider("Tasa Libre de Riesgo (r)", min_value=0.01, max_value=0.20, value=0.065, step=0.005)
-    volatilidad_sigma = st.sidebar.slider("Volatilidad (σ)", min_value=0.05, max_value=0.80, value=0.20, step=0.01)
-    tiempo_t = st.sidebar.slider("Tiempo al Vencimiento (T en años)", min_value=0.1, max_value=2.0, value=1.0, step=0.1)
-    num_pasos_n = st.sidebar.slider("Número de Pasos (N)", min_value=2, max_value=20, value=5, step=1)
     tipo_op = st.sidebar.selectbox("Tipo de Opción", ["CALL", "PUT"])
     estilo_op = st.sidebar.selectbox("Estilo de Opción", ["EUROPEA", "AMERICANA"])
 else:
+    st.sidebar.header("⚙️ Parámetros de Futuros")
+    precio_futuro_inicial = st.sidebar.slider(
+        "Precio Futuro Inicial ($)", min_value=10.0, max_value=30.0, value=19.0, step=0.1
+    )
+    capital_inicial = st.sidebar.number_input(
+        "Capital Inicial ($)", min_value=10000.0, max_value=100000.0, value=15000.0, step=1000.0
+    )
+    tamano_contrato = st.sidebar.number_input(
+        "Tamaño del Contrato", min_value=1000, max_value=100000, value=10000, step=1000
+    )
+
     st.sidebar.markdown("---")
     st.sidebar.header("🎲 Parámetros de Monte Carlo y Riesgo")
     margen_llamada = st.sidebar.slider(
@@ -207,7 +207,7 @@ def simular_modelo_binomial(S0, K, r, sigma, T, N, op_tipo, op_estilo):
     dt = T / N
     u = np.exp(sigma * np.sqrt(dt))
     d = 1.0 / u
-    df = np.exp(-r * dt)
+    df_esc = np.exp(-r * dt)
     p = (np.exp(r * dt) - d) / (u - d)
 
     S = np.zeros((N + 1, N + 1))
@@ -225,7 +225,7 @@ def simular_modelo_binomial(S0, K, r, sigma, T, N, op_tipo, op_estilo):
 
     for j in range(N - 1, -1, -1):
         for i in range(j + 1):
-            f_hold = df * (p * f[i, j + 1] + (1 - p) * f[i + 1, j + 1])
+            f_hold = df_esc * (p * f[i, j + 1] + (1 - p) * f[i + 1, j + 1])
             if op_estilo == "AMERICANA":
                 if op_tipo == "CALL":
                     f_exec = max(S[i, j] - K, 0)
@@ -259,7 +259,7 @@ def simular_modelo_binomial(S0, K, r, sigma, T, N, op_tipo, op_estilo):
             S_display[i, j] = round(S[i, j], 4)
             f_display[i, j] = round(f[i, j], 4)
 
-    return df_resumen, pd.DataFrame(S_display, columns=cols), pd.DataFrame(f_display, columns=cols), p, u, d, dt, f[0, 0]
+    return df_resumen, pd.DataFrame(S_display, columns=cols), pd.DataFrame(f_display, columns=cols), p, u, d, dt, df_esc, f[0, 0]
 
 
 def generar_df_resumen(df, cap_inicial, t_contrato, p_inicial):
@@ -449,17 +449,19 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
 
 if "Binomial" in modelo_seleccionado:
     st.header("🌳 MODELO BINOMIAL (Árbol CRR para Opciones)")
-    st.write(f"Evaluando opción tipo **{tipo_op}** con estilo **{estilo_op}** a **{num_pasos_n} pasos**.")
+    st.write(f"Evaluando opción tipo **{tipo_op}** con estilo **{estilo_op}** a **{int(num_pasos_n)} pasos**.")
 
-    df_resumen_pasos, df_arbol_S, df_arbol_f, p_val, u_val, d_val, dt_val, precio_opcion = simular_modelo_binomial(
-        precio_futuro_inicial, strike_k, tasa_r, volatilidad_sigma, tiempo_t, num_pasos_n, tipo_op, estilo_op
+    df_resumen_pasos, df_arbol_S, df_arbol_f, p_val, u_val, d_val, dt_val, df_esc_val, precio_opcion = simular_modelo_binomial(
+        s0_binomial, strike_k, tasa_r, volatilidad_sigma, tiempo_t, int(num_pasos_n), tipo_op, estilo_op
     )
 
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    col_m1.metric("Precio Teórico Opción", f"${precio_opcion:,.4f}")
-    col_m2.metric("Probabilidad Risk-Neutral (p)", f"{p_val:,.4f}")
-    col_m3.metric("Factor de Subida (u)", f"{u_val:,.4f}")
-    col_m4.metric("Factor de Bajada (d)", f"{d_val:,.4f}")
+    # Tarjetas de factores intermedios (equivalente a B8:B12 de tu excel)
+    col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns(5)
+    col_f1.metric("Precio Teórico (f0)", f"${precio_opcion:,.4f}")
+    col_f2.metric("Tamaño del Paso (dt)", f"{dt_val:,.4f}")
+    col_f3.metric("Factor Subida (u)", f"{u_val:,.4f}")
+    col_f4.metric("Factor Bajada (d)", f"{d_val:,.4f}")
+    col_f5.metric("Prob. Risk-Neutral (p)", f"{p_val:,.4f}")
 
     st.markdown("---")
     st.markdown("### 📋 Tabla Resumen por Paso del Árbol Binomial")
@@ -589,7 +591,7 @@ else:
     fig_fan.tight_layout()
     st.pyplot(fig_fan)
 
-    # Histogramas Superpuestos con sus Leyendas Corregidas (`loc="best"`)
+    # Histogramas Superpuestos con `loc="best"`
     st.markdown("### 📊 Histogramas Dinámicos de Distribución (Monte Carlo Superpuestos con Estadísticos)")
     fig_mc, axs = plt.subplots(2, 2, figsize=(14, 9))
     metricas_mc = [
@@ -637,8 +639,6 @@ else:
         ax.set_ylabel("Frecuencia")
         ax.grid(True, linestyle="--", alpha=0.5)
         
-        # CAMBIO CLAVE: Usamos `loc="best"` para que la leyenda se ubique automáticamente 
-        # donde menos datos tape en cada subgráfico.
         ax.legend(fontsize=7, loc="best", framealpha=0.8)
 
     plt.tight_layout()

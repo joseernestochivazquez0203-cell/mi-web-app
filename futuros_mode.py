@@ -13,55 +13,63 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Estilo general y tipografía */
+    /* Estilo general y tipografía de alto rendimiento */
     .main {
-        background-color: #f8f9fa;
+        background-color: #f1f5f9;
     }
     h1, h2, h3 {
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        color: #1e293b;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: #0f172a;
     }
-    /* Tarjetas personalizadas para métricas */
+    /* Tarjetas personalizadas de métricas con efecto flotante */
     .metric-card {
-        background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+        background: #ffffff;
         padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        border-left: 5px solid #3b82f6;
+        border-radius: 16px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+        border: 1px solid #e2e8f0;
+        border-left: 6px solid #2563eb;
         margin-bottom: 15px;
     }
-    /* Contenedores de gráficos */
-    .stPlotlyChart, .stDataFrame {
+    /* Contenedores de gráficos y tablas */
+    .stPlotlyChart, .stDataFrame, div[data-testid="stTable"] {
         background: #ffffff;
-        padding: 15px;
-        border-radius: 12px;
+        padding: 20px;
+        border-radius: 16px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e2e8f0;
     }
-    /* Botones modernos */
+    /* Botones modernos de acción */
     .stButton>button {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
         color: white;
-        border-radius: 8px;
+        border-radius: 10px;
         font-weight: 600;
         border: none;
-        padding: 0.5rem 1rem;
-        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        padding: 0.6rem 1.2rem;
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+        transition: all 0.3s ease;
     }
     .stButton>button:hover {
-        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+        box-shadow: 0 6px 8px rgba(37, 99, 235, 0.3);
+    }
+    /* Estilo de fuentes tabulares */
+    table {
+        font-variant-numeric: tabular-nums;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Título Principal con estilo
+# Título Principal con estilo refinado
 st.markdown(
-    "<h1 style='text-align: center; color: #1e3a8a;'>📊 Simulador Financiero Avanzado USD/MXN</h1>",
+    "<h1 style='text-align: center; color: #1e3a8a; font-weight: 800;'>📊 Simulador Financiero Avanzado USD/MXN</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
-    "<p style='text-align: center; color: #64748b; font-size: 1.1rem;'>Plataforma interactiva para Futuros, Opciones (Modelo Binomial) y Análisis de Riesgo por Monte Carlo.</p>",
+    "<p style='text-align: center; color: #64748b; font-size: 1.15rem;'>Plataforma interactiva para Futuros, Opciones (Modelo Binomial) y Análisis de Riesgo por Monte Carlo.</p>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
@@ -84,6 +92,7 @@ modelo_seleccionado = st.sidebar.selectbox(
         "1. Modelo Log-logístico (Distribución Base)",
         "2. Método de Fisher (Movimiento Geométrico Browniano)",
         "3. Modelo Binomial (Árbol CRR para Opciones)",
+        "4. 📊 Matriz de Resumen Comparativo de los 3 Modelos",
     ],
 )
 
@@ -102,7 +111,7 @@ if "Binomial" in modelo_seleccionado:
     st.sidebar.markdown("---")
     tipo_op = st.sidebar.selectbox("Tipo de Opción", ["CALL", "PUT"])
     estilo_op = st.sidebar.selectbox("Estilo de Opción", ["EUROPEA", "AMERICANA"])
-else:
+elif "Matriz de Resumen" not in modelo_seleccionado:
     st.sidebar.markdown("### ⚙️ Parámetros de Futuros")
     precio_futuro_inicial = st.sidebar.slider(
         "Precio Futuro Inicial ($)", min_value=10.0, max_value=30.0, value=19.0, step=0.1
@@ -529,6 +538,65 @@ if "Binomial" in modelo_seleccionado:
         st.markdown(f"### 📉 2. Árbol de Valor de la Opción ({tipo_op} {estilo_op})")
         st.dataframe(df_arbol_f, use_container_width=True)
 
+elif "Matriz de Resumen" in modelo_seleccionado:
+    st.markdown("## 📊 Matriz de Resumen y Comparativa Integral de Modelos")
+    st.write("Vista consolidada que contrasta el comportamiento y los resultados clave obtenidos a través de los tres enfoques de modelado implementados.")
+
+    # Generación de datos sintéticos o consolidados para la tabla resumen de los 3 modelos
+    # Ejecutamos corridas estándar por defecto para llenar la comparativa
+    df_log, _ = simular_diario_log_logistico(19.0, 15000.0, 10000)
+    df_fish, _ = simular_diario_fisher(19.0, 15000.0, 10000)
+    _, _, _, _, _, _, _, _, precio_opt_binom = simular_modelo_binomial(100.0, 100.0, 0.065, 0.2, 1.0, 9, "CALL", "EUROPEA")
+
+    resumen_global_data = {
+        "Parámetro / Métrica": [
+            "Tipo de Enfoque Teórico",
+            "Activo / Subyacente Base",
+            "Volatilidad / Parámetro Clave",
+            "Resultado / Valor Principal",
+            "Horizonte de Tiempo Evaluado",
+            "Propósito Financiero Principal"
+        ],
+        "1. Modelo Log-logístico": [
+            "Distribución de probabilidad empírica/ajustada",
+            "Dólar Futuro USD/MXN",
+            "Parámetros B3=28.53, B4=18.32",
+            f"${df_log['Margen'].iloc[-1]:,.2f} (Margen Final)",
+            "63 Días (Oct - Dic 2026)",
+            "Simulación de llamadas de margen diarias"
+        ],
+        "2. Método de Fisher (MBG)": [
+            "Movimiento Geométrico Browniano (Estocástico)",
+            "Dólar Futuro USD/MXN",
+            "Desviación Estándar = 17.69%",
+            f"${df_fish['Margen'].iloc[-1]:,.2f} (Margen Final)",
+            "63 Días (Oct - Dic 2026)",
+            "Análisis de riesgo y VaR con Monte Carlo"
+        ],
+        "3. Modelo Binomial (CRR)": [
+            "Árbol Binomial de Rejas Recombinantes",
+            "Acción / Opción Financiera",
+            "Tasa r=6.5%, Volatilidad σ=20%",
+            f"${precio_opt_binom:,.4f} (Precio Teórico f0)",
+            "1 Año (N = 9 Pasos)",
+            "Valuación de Opciones Americanas/Europeas"
+        ]
+    }
+
+    df_matriz_comparativa = pd.DataFrame(resumen_global_data)
+    
+    st.markdown("### 📋 Tabla Comparativa Consolidada")
+    st.dataframe(df_matriz_comparativa, use_container_width=True)
+
+    st.markdown("---")
+    col_c1, col_c2, col_c3 = st.columns(3)
+    with col_c1:
+        st.info("**Modelo Log-logístico**\n\nIdeal para capturar colas pesadas y distribuciones estadísticas reales de tipo cambiario en el corto plazo.")
+    with col_c2:
+        st.success("**Método de Fisher (MBG)**\n\nEstándar de la industria para modelar trayectorias continuas basadas en un proceso de Wiener estocástico.")
+    with col_c3:
+        st.warning("**Modelo Binomial CRR**\n\nExcelente para contratos de opciones donde la flexibilidad de ejercicio temprano (americana) es crucial.")
+
 else:
     if "Log-logístico" in modelo_seleccionado:
         st.markdown("## 📌 MODELO 1: LOG-LOGÍSTICO")
@@ -644,7 +712,6 @@ else:
     fig_fan.tight_layout()
     st.pyplot(fig_fan)
 
-    # --- NUEVA INTERACTIVIDAD: SELECTOR PARA VER ESTADÍSTICOS AL PULSAR / SELECCIONAR ---
     st.markdown("---")
     st.markdown("### 📊 Explorador Interactivo de Estadísticos por Métrica")
     st.write("Selecciona una métrica y haz clic en los selectores para consultar los valores exactos correspondientes a las líneas de referencia del histograma.")
@@ -656,7 +723,6 @@ else:
         ("Llamada máxima", "Llamada Máxima")
     ]
 
-    # Selector interactivo para reemplazar la tabla estática grande
     col_sel1, col_sel2 = st.columns([2, 3])
     with col_sel1:
         metrica_elegida_key = st.selectbox(
@@ -665,7 +731,6 @@ else:
             format_func=lambda x: dict(metricas_nombres)[x]
         )
     
-    # Obtener valores de la última corrida activa para la métrica seleccionada
     for i, item in enumerate(st.session_state["historial_mc"]):
         if i == len(st.session_state["historial_mc"]) - 1:
             df_sim = item["df_excel"]
@@ -680,7 +745,6 @@ else:
             with col_sel2:
                 st.markdown(f"**Modelo Activo:** `{item['etiqueta']}`")
             
-            # Tarjetas interactivas con los valores de las líneas
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("🔴 Media", f"${media_val:,.2f}")
             c2.metric("🟢 Mediana", f"${mediana_val:,.2f}")
@@ -688,7 +752,6 @@ else:
             c4.metric("🟣 Q3 (75%)", f"${q3_val:,.2f}")
             c5.metric("🟠 Moda", f"${moda_val:,.2f}")
 
-    # Histogramas Superpuestos limpios con `loc="best"`
     st.markdown("### 📊 Histogramas Dinámicos de Distribución con Líneas de Referencia")
     fig_mc, axs = plt.subplots(2, 2, figsize=(14, 9))
     paleta_colores = ["#3498db", "#e74c3c", "#2ecc71", "#9b59b6", "#e67e22", "#1abc9c", "#34495e", "#d35400"]

@@ -271,6 +271,7 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
     dt = 1 / 252.0
 
     resultados_simulaciones = []
+    matriz_precios_futuros = np.zeros((num_sims, n))
 
     for sim in range(num_sims):
         if tipo_modelo == "log_logistico":
@@ -292,6 +293,8 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
         precio_futuro[0] = precio_inicial
         for i in range(1, n):
             precio_futuro[i] = precio_futuro[i - 1] * (1 + variacion_diaria.iloc[i])
+
+        matriz_precios_futuros[sim, :] = precio_futuro
 
         valuacion_contrato = precio_futuro * t_contrato
         gp_diaria = np.diff(valuacion_contrato, prepend=valuacion_contrato[0])
@@ -398,7 +401,7 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
         "Nivel Alpha (%)": etiqueta,
     }])
 
-    return df_excel, df_estadisticos, df_cut_var_valor, etiqueta
+    return df_excel, df_estadisticos, df_cut_var_valor, etiqueta, matriz_precios_futuros, fechas
 
 
 # ==============================================================================
@@ -444,13 +447,15 @@ with col_der:
     st.table(df_resumen)
 
 # --- C. EJECUTAR MONTE CARLO ACTUAL Y GUARDAR EN HISTORIAL ---
-df_excel, df_estadisticos, df_cut_var_valor, etiqueta = ejecutar_monte_carlo(
+df_excel, df_estadisticos, df_cut_var_valor, etiqueta, matriz_precios, fechas_mc = ejecutar_monte_carlo(
     tipo_mc, precio_futuro_inicial, margen_llamada, capital_inicial, tamano_contrato, alpha_seleccionado, num_simulaciones
 )
 
 mc_actual = {
     "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | Margen=${margen_llamada:,.0f}",
-    "df_excel": df_excel.copy()
+    "df_excel": df_excel.copy(),
+    "matriz_precios": matriz_precios.copy(),
+    "fechas": fechas_mc.copy()
 }
 
 if not st.session_state["historial_mc"] or st.session_state["historial_mc"][-1]["etiqueta"] != mc_actual["etiqueta"]:
@@ -512,10 +517,43 @@ with col_var:
     st.markdown(f"### 🛡️ Tabla de Cutoff y VaR (Alpha = {etiqueta} | Base: 190,000)")
     st.dataframe(df_cut_var_valor, use_container_width=True)
 
-# --- F. HISTOGRAMAS 2X2 ACUMULATIVOS Y SOBREPUESTOS (CON COLORES DINÁMICOS) ---
-st.markdown("### 📊 Histogramas Dinámicos de Distribución (Monte Carlo Superpuestos)")
 
-fig_mc, axs = plt.subplots(2, 2, figsize=(12, 8))
+# --- NUEVA SECCIÓN: GRÁFICA DE ABANICO DE MONTE CARLO (MUESTRA DE TRAYECTORIAS Y CUANTILES) ---
+st.markdown("### 🌪️ Gráfica de Abanico y Cuantiles de Monte Carlo (Trayectorias Simuladas)")
+
+fig_fan, ax_fan = plt.subplots(figsize=(12, 5))
+matriz_actual_precios = mc_actual["matriz_precios"]
+num_muestras = min(100, matriz_actual_precios.shape[0])
+
+# Graficar hasta 100 trayectorias con baja opacidad
+for s in range(num_muestras):
+    ax_fan.plot(fechas_mc, matriz_actual_precios[s, :], color='gray', alpha=0.15, linewidth=0.8)
+
+# Calcular mediana y cuantiles (Q1, Q3 o P5, P95) a lo largo del tiempo
+mediana_tray = np.median(matriz_actual_precios, axis=0)
+q25_tray = np.percentile(matriz_actual_precios, 25, axis=0)
+q75_tray = np.percentile(matriz_actual_precios, 75, axis=0)
+p5_tray = np.percentile(matriz_actual_precios, 5, axis=0)
+p95_tray = np.percentile(matriz_actual_precios, 95, axis=0)
+
+ax_fan.plot(fechas_mc, mediana_tray, color='#2c3e50', linewidth=2.5, label='Mediana (50%)')
+ax_fan.plot(fechas_mc, q25_tray, color='#2980b9', linestyle='--', linewidth=1.5, label='Cuantil 25% (Q1)')
+ax_fan.plot(fechas_mc, q75_tray, color='#2980b9', linestyle='--', linewidth=1.5, label='Cuantil 75% (Q3)')
+ax_fan.fill_between(fechas_mc, p5_tray, p95_tray, color='#3498db', alpha=0.15, label='Rango P5 - P95')
+
+ax_fan.set_title(f"Abanico de Trayectorias Monte Carlo ({num_muestras} muestras visualizadas) - {mc_actual['etiqueta']}", fontsize=12, fontweight="bold", pad=15)
+ax_fan.set_xlabel("Fecha", fontsize=11)
+ax_fan.set_ylabel("Precio Futuro ($)", fontsize=11)
+ax_fan.grid(True, linestyle="--", alpha=0.4)
+ax_fan.legend(loc="upper left", fontsize=9, framealpha=0.8)
+fig_fan.tight_layout()
+st.pyplot(fig_fan)
+
+
+# --- F. HISTOGRAMAS 2X2 ACUMULATIVOS Y SOBREPUESTOS (CON ESTADÍSTICOS Y CUANTILES) ---
+st.markdown("### 📊 Histogramas Dinámicos de Distribución (Con Mediana, Media, Moda y Cuantiles)")
+
+fig_mc, axs = plt.subplots(2, 2, figsize=(14, 9))
 
 metricas_mc = [
     ("Efectivo total retirable", "Efectivo Total Retirable"),
@@ -534,7 +572,6 @@ for idx, (col_name, titulo_base) in enumerate(metricas_mc):
         es_ultimo = (i == len(st.session_state["historial_mc"]) - 1)
         
         color_actual = paleta_colores[i % len(paleta_colores)]
-        
         alpha_val = 0.7 if es_ultimo else 0.4
         tipo_hist = 'stepfilled' if es_ultimo else 'step'
         
@@ -549,6 +586,23 @@ for idx, (col_name, titulo_base) in enumerate(metricas_mc):
             label=item["etiqueta"] if idx == 0 else ""
         )
         
+        # Calcular estadísticos para el último modelo activo para mostrar líneas de referencia claras
+        if es_ultimo:
+            serie = df_sim[col_name]
+            media_val = serie.mean()
+            mediana_val = serie.median()
+            q1_val = serie.quantile(0.25)
+            q3_val = serie.quantile(0.75)
+            
+            moda_res = stats.mode(np.round(serie, 2), keepdims=True)
+            moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else serie.iloc[0]
+
+            ax.axvline(media_val, color='#e74c3c', linestyle='-', linewidth=1.5, label='Media' if idx == 0 else "")
+            ax.axvline(mediana_val, color='#2ecc71', linestyle='--', linewidth=1.5, label='Mediana' if idx == 0 else "")
+            ax.axvline(q1_val, color='#9b59b6', linestyle=':', linewidth=1.5, label='Q1 / Q3' if idx == 0 else "")
+            ax.axvline(q3_val, color='#9b59b6', linestyle=':', linewidth=1.5)
+            ax.axvline(moda_val, color='#f39c12', linestyle='-.', linewidth=1.5, label='Moda' if idx == 0 else "")
+
     ax.set_title(titulo_base, fontweight="bold")
     ax.set_xlabel("Monto ($)")
     ax.set_ylabel("Frecuencia")

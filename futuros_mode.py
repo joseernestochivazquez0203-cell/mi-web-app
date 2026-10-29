@@ -548,8 +548,8 @@ fig_fan.tight_layout()
 st.pyplot(fig_fan)
 
 
-# --- F. HISTOGRAMAS 2X2 SUPERPUESTOS CON LÍNEAS ESTADÍSTICAS ---
-st.markdown("### 📊 Histogramas Dinámicos de Distribución (Monte Carlo Superpuestos con Estadísticos)")
+# --- F. HISTOGRAMAS 2X2 SUPERPUESTOS CON LÍNEAS Y LEYENDAS INDEPENDIENTES ---
+st.markdown("### 📊 Histogramas Dinámicos de Distribución (Superpuestos con Estadísticos en Cada Uno)")
 
 fig_mc, axs = plt.subplots(2, 2, figsize=(14, 9))
 
@@ -565,6 +565,7 @@ paleta_colores = ["#3498db", "#e74c3c", "#2ecc71", "#9b59b6", "#e67e22", "#1abc9
 for idx, (col_name, titulo_base) in enumerate(metricas_mc):
     ax = axs[idx // 2, idx % 2]
     
+    # 1. Dibujar el historial superpuesto de las corridas de Monte Carlo
     for i, item in enumerate(st.session_state["historial_mc"]):
         df_sim = item["df_excel"]
         es_ultimo = (i == len(st.session_state["historial_mc"]) - 1)
@@ -584,7 +585,7 @@ for idx, (col_name, titulo_base) in enumerate(metricas_mc):
             label=item["etiqueta"] if idx == 0 else ""
         )
         
-        # Si es la última corrida activa, dibujamos sus líneas estadísticas correspondientes
+        # 2. Dibujar las líneas verticales y asignar su etiqueta específica por cada subgráfico
         if es_ultimo:
             serie = df_sim[col_name]
             media_val = serie.mean()
@@ -595,25 +596,29 @@ for idx, (col_name, titulo_base) in enumerate(metricas_mc):
             moda_res = stats.mode(np.round(serie, 2), keepdims=True)
             moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else serie.iloc[0]
 
-            ax.axvline(media_val, color='#e74c3c', linestyle='-', linewidth=1.5, label='Media' if idx == 0 else "")
-            ax.axvline(mediana_val, color='#2ecc71', linestyle='--', linewidth=1.5, label='Mediana' if idx == 0 else "")
-            ax.axvline(q1_val, color='#9b59b6', linestyle=':', linewidth=1.5, label='Q1 / Q3' if idx == 0 else "")
-            ax.axvline(q3_val, color='#9b59b6', linestyle=':', linewidth=1.5)
-            ax.axvline(moda_val, color='#f39c12', linestyle='-.', linewidth=1.5, label='Moda' if idx == 0 else "")
+            ax.axvline(media_val, color='#e74c3c', linestyle='-', linewidth=1.5, label='Media')
+            ax.axvline(mediana_val, color='#2ecc71', linestyle='--', linewidth=1.5, label='Mediana')
+            ax.axvline(q1_val, color='#9b59b6', linestyle=':', linewidth=1.5, label='Q1')
+            ax.axvline(q3_val, color='#8e44ad', linestyle=':', linewidth=1.5, label='Q3')
+            ax.axvline(moda_val, color='#f39c12', linestyle='-.', linewidth=1.5, label='Moda')
 
     ax.set_title(titulo_base, fontweight="bold")
     ax.set_xlabel("Monto ($)")
     ax.set_ylabel("Frecuencia")
     ax.grid(True, linestyle="--", alpha=0.5)
+    
+    # Leyenda independiente para cada uno de los 4 ejes
+    ax.legend(fontsize=8, loc="upper right", framealpha=0.8)
 
+# Leyenda global de los modelos en el primer cuadro (opcional, integrada limpio arriba)
 if len(st.session_state["historial_mc"]) > 0:
-    axs[0, 0].legend(fontsize=8, loc="upper right", framealpha=0.8)
+    axs[0, 0].legend(fontsize=7, loc="upper left", framealpha=0.8)
 
 plt.tight_layout()
 st.pyplot(fig_mc)
 
 
-# --- G. TABLA DE VALORES NUMÉRICOS EXACTOS (MODA, MEDIA, MEDIANA, CUANTILES) ---
+# --- G. TABLA DE VALORES NUMÉRICOS EXACTOS ---
 st.markdown("### 📋 Valores Estadísticos Exactos (Última Corrida Activa)")
 
 for i, item in enumerate(st.session_state["historial_mc"]):

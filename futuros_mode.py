@@ -82,7 +82,7 @@ def simular_diario_log_logistico(precio_inicial, cap_inicial, t_contrato):
     fechas = pd.date_range(start="2026-10-15", end="2026-12-17", freq="D")
     n = len(fechas)
 
-    np.random.seed(42)  # Para estabilidad en la curva diaria
+    np.random.seed(42)  
     U = np.random.uniform(0.0001, 0.9999, n)
     precios = B4 * (U / (1 - U)) ** (1 / B3)
     precios[0] = 18.44
@@ -147,7 +147,7 @@ def simular_diario_fisher(precio_inicial, cap_inicial, t_contrato):
     sigma = B5_desv / 100.0
     dt = 1 / 252.0
 
-    np.random.seed(42)  # Para estabilidad en la curva diaria
+    np.random.seed(42)  
     Z = np.random.standard_normal(n)
 
     precios = np.zeros(n)
@@ -548,8 +548,8 @@ fig_fan.tight_layout()
 st.pyplot(fig_fan)
 
 
-# --- F. HISTOGRAMAS 2X2 CON LÍNEAS DE REFERENCIA ---
-st.markdown("### 📊 Histogramas Dinámicos de Distribución (Con Mediana, Media, Moda y Cuantiles)")
+# --- F. HISTOGRAMAS 2X2 SUPERPUESTOS CON LÍNEAS ESTADÍSTICAS ---
+st.markdown("### 📊 Histogramas Dinámicos de Distribución (Monte Carlo Superpuestos con Estadísticos)")
 
 fig_mc, axs = plt.subplots(2, 2, figsize=(14, 9))
 
@@ -584,6 +584,7 @@ for idx, (col_name, titulo_base) in enumerate(metricas_mc):
             label=item["etiqueta"] if idx == 0 else ""
         )
         
+        # Si es la última corrida activa, dibujamos sus líneas estadísticas correspondientes
         if es_ultimo:
             serie = df_sim[col_name]
             media_val = serie.mean()

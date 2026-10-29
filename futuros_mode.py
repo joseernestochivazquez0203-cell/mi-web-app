@@ -393,6 +393,7 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
             "Total de capital inyectado": total_capital_inyectado,
             "Efectivo total retirable": efectivo_retirable,
             "Llamada máxima": max_deposito,
+            "Día de llamada máxima": dia_llamada_max
         })
 
     df_excel = pd.DataFrame(resultados_simulaciones)
@@ -550,6 +551,10 @@ else:
 
     st.markdown("---")
     st.header("🎲 ANÁLISIS DE MONTE CARLO Y VAR (Múltiples Corridas)")
+
+    # --- AQUÍ ESTÁ DE VUELTA LA VISTA PREVIA DE LAS PRIMERAS 10 SIMULACIONES ---
+    st.markdown("### 📋 Vista Previa de Simulaciones Monte Carlo (Primeras 10)")
+    st.dataframe(df_excel.head(10), use_container_width=True)
 
     col_est, col_var = st.columns([3, 2])
     with col_est:

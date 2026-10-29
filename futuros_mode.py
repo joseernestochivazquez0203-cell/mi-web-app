@@ -552,7 +552,6 @@ else:
     st.markdown("---")
     st.header("🎲 ANÁLISIS DE MONTE CARLO Y VAR (Múltiples Corridas)")
 
-    # --- AQUÍ ESTÁ DE VUELTA LA VISTA PREVIA DE LAS PRIMERAS 10 SIMULACIONES ---
     st.markdown("### 📋 Vista Previa de Simulaciones Monte Carlo (Primeras 10)")
     st.dataframe(df_excel.head(10), use_container_width=True)
 
@@ -590,7 +589,7 @@ else:
     fig_fan.tight_layout()
     st.pyplot(fig_fan)
 
-    # Histogramas Superpuestos con sus Leyendas Independientes en cada Subgráfico
+    # Histogramas Superpuestos con sus Leyendas Corregidas (`loc="best"`)
     st.markdown("### 📊 Histogramas Dinámicos de Distribución (Monte Carlo Superpuestos con Estadísticos)")
     fig_mc, axs = plt.subplots(2, 2, figsize=(14, 9))
     metricas_mc = [
@@ -637,10 +636,10 @@ else:
         ax.set_xlabel("Monto ($)")
         ax.set_ylabel("Frecuencia")
         ax.grid(True, linestyle="--", alpha=0.5)
-        ax.legend(fontsize=8, loc="upper right", framealpha=0.8)
-
-    if len(st.session_state["historial_mc"]) > 0:
-        axs[0, 0].legend(fontsize=7, loc="upper left", framealpha=0.8)
+        
+        # CAMBIO CLAVE: Usamos `loc="best"` para que la leyenda se ubique automáticamente 
+        # donde menos datos tape en cada subgráfico.
+        ax.legend(fontsize=7, loc="best", framealpha=0.8)
 
     plt.tight_layout()
     st.pyplot(fig_mc)

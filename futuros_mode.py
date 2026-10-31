@@ -665,7 +665,6 @@ else:
     col_izq, col_der = st.columns([3, 2])
     with col_izq:
         st.markdown("### 📋 Tabla de Simulación Diaria")
-        # Configuración avanzada de columnas para formatear números de forma limpia sin tocar el DataFrame
         st.dataframe(
             df_diario, 
             use_container_width=True, 
@@ -849,5 +848,6 @@ else:
         ax.grid(True, linestyle="--", alpha=0.3)
         ax.legend(loc="upper right", fontsize=7.5, framealpha=0.9)
 
-    fig_mc.tight_layout()
+    # Ajuste seguro de subplots para evitar errores de layout en Matplotlib
+    fig_mc.subplots_adjust(hspace=0.35, wspace=0.25)
     st.pyplot(fig_mc)

@@ -861,7 +861,8 @@ else:
     col_izq, col_der = st.columns([3, 2])
     with col_izq:
         st.markdown("### 📋 Tabla de Simulación Diaria")
-        df_diario_config = df_diario.style.format(
+        # Corrección: Aplicamos primero el estilo oscuro y luego el format sobre el Styler
+        df_diario_estilizado = aplicar_estilo_oscuro(df_diario).format(
             {
                 "Precio_Simulado": "${:.4f}",
                 "Variacion_Diaria": "{:.2%}",
@@ -874,15 +875,13 @@ else:
             }
         )
         st.dataframe(
-            aplicar_estilo_oscuro(df_diario_config),
-            use_container_width=True,
-            height=420,
+            df_diario_estilizado, use_container_width=True, height=420
         )
 
     with col_der:
         st.markdown("### 📊 Resumen de Inversión y Resultados")
         st.dataframe(
-            aplicar_estilo_oscuro(df_resumen.style),
+            aplicar_estilo_oscuro(df_resumen),
             use_container_width=True,
             hide_index=True,
         )
@@ -965,24 +964,21 @@ else:
 
     st.markdown("### 📋 Vista Previa de Simulaciones Monte Carlo (Primeras 10)")
     st.dataframe(
-        aplicar_estilo_oscuro(df_excel.head(10).style),
-        use_container_width=True,
+        aplicar_estilo_oscuro(df_excel.head(10)), use_container_width=True
     )
 
     col_est, col_var = st.columns([3, 2])
     with col_est:
         st.markdown("### 📊 Tabla de Estadísticos")
         st.dataframe(
-            aplicar_estilo_oscuro(df_estadisticos.style),
-            use_container_width=True,
+            aplicar_estilo_oscuro(df_estadisticos), use_container_width=True
         )
     with col_var:
         st.markdown(
             f"### 🛡️ Tabla de Cutoff y VaR (Alpha = {etiqueta} | Base: 190,000)"
         )
         st.dataframe(
-            aplicar_estilo_oscuro(df_cut_var_valor.style),
-            use_container_width=True,
+            aplicar_estilo_oscuro(df_cut_var_valor), use_container_width=True
         )
 
     # Gráfica de Abanico

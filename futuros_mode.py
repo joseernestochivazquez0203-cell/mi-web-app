@@ -9,86 +9,79 @@ st.set_page_config(
     page_title="Simulador Financiero Integral USD/MXN", page_icon="📈", layout="wide"
 )
 
-# --- CSS PERSONALIZADO: TEMA FINTECH / TERMINAL FINANCIERA OSCURA ---
+# --- CSS PERSONALIZADO MEJORADO PARA INTERFAZ LIMPIA ---
 st.markdown(
     """
     <style>
-    /* Fondo general de la aplicación */
-    .stApp {
-        background-color: #0b0f19;
-        color: #f8fafc;
-    }
+    /* Estilo general del fondo */
     .main {
-        background-color: #0b0f19;
+        background-color: #f8fafc;
     }
-    
-    /* Barra lateral estilizada */
-    [data-testid="stSidebar"] {
-        background-color: #111827;
-        border-right: 1px solid #1f2937;
-    }
-
-    /* Tipografía y encabezados */
     h1, h2, h3 {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        color: #f8fafc !important;
+        color: #0f172a;
+    }
+    
+    /* Corrección de padding en contenedores para evitar solapamientos */
+    div[data-testid="column"] {
+        padding: 0 8px;
     }
 
-    /* Contenedores de tablas y DataFrames con diseño de tarjeta moderna */
+    /* Estilo refinado para DataFrames y Tablas en Streamlit */
     div[data-testid="stDataFrame"], div[data-testid="stTable"] {
-        background: #111827 !important;
-        padding: 16px;
-        border-radius: 14px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-        border: 1px solid #1f2937;
+        background: #ffffff;
+        padding: 14px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+        border: 1px solid #e2e8f0;
         margin-bottom: 20px;
     }
 
-    /* Tarjetas de métricas (st.metric) */
+    /* Estilo para las métricas superiores (st.metric) */
     div[data-testid="stMetric"] {
-        background-color: #111827;
-        border: 1px solid #1f2937;
-        border-left: 4px solid #3b82f6;
-        padding: 14px 18px;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-left: 5px solid #2563eb;
+        padding: 12px 16px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.03);
     }
     div[data-testid="stMetricLabel"] {
-        color: #94a3b8 !important;
+        color: #64748b;
         font-weight: 600;
         font-size: 0.85rem;
     }
     div[data-testid="stMetricValue"] {
-        color: #f8fafc !important;
+        color: #0f172a;
         font-weight: 700;
     }
 
-    /* Botones modernos con gradiente azul ejecutivo */
+    /* Botones modernos con efecto elevación suave */
     .stButton>button {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
         color: white;
-        border-radius: 10px;
+        border-radius: 8px;
         font-weight: 600;
         border: none;
-        padding: 0.6rem 1.2rem;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        padding: 0.5rem 1rem;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
         transition: all 0.2s ease-in-out;
     }
     .stButton>button:hover {
-        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+        box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
         transform: translateY(-1px);
     }
 
-    /* Estilo tabular avanzado para los números */
+    /* Tablas HTML personalizadas */
     table {
         font-variant-numeric: tabular-nums;
         width: 100% !important;
         border-collapse: collapse;
     }
     th {
-        background-color: #1f2937 !important;
-        color: #f8fafc !important;
+        background-color: #f1f5f9 !important;
+        color: #334155 !important;
         font-weight: 700 !important;
     }
     </style>
@@ -98,11 +91,11 @@ st.markdown(
 
 # Título Principal con estilo refinado
 st.markdown(
-    "<h1 style='text-align: center; color: #38bdf8; font-weight: 800;'>📊 Simulador Financiero Avanzado USD/MXN</h1>",
+    "<h1 style='text-align: center; color: #1e3a8a; font-weight: 800;'>📊 Simulador Financiero Avanzado USD/MXN</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
-    "<p style='text-align: center; color: #94a3b8; font-size: 1.1rem;'>Plataforma interactiva para Futuros, Opciones (Modelo Binomial) y Análisis de Riesgo por Monte Carlo.</p>",
+    "<p style='text-align: center; color: #64748b; font-size: 1.1rem;'>Plataforma interactiva para Futuros, Opciones (Modelo Binomial) y Análisis de Riesgo por Monte Carlo.</p>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
@@ -116,7 +109,7 @@ if "historial_mc" not in st.session_state:
 
 # --- 1. SELECCIÓN DE MODELO EN LA BARRA LATERAL ---
 st.sidebar.markdown(
-    "<h2 style='color: #38bdf8; font-size: 1.2rem;'>🛠️ Panel de Control</h2>",
+    "<h2 style='color: #1e3a8a; font-size: 1.2rem;'>🛠️ Panel de Control</h2>",
     unsafe_allow_html=True,
 )
 modelo_seleccionado = st.sidebar.selectbox(
@@ -717,27 +710,20 @@ else:
             st.rerun()
 
     fig, ax1 = plt.subplots(figsize=(12, 4.5))
-    fig.patch.set_facecolor('#0b0f19')
-    ax1.set_facecolor('#111827')
-    ax1.set_title("Comparativa de Trayectorias del Precio Futuro (USD/MXN)", fontsize=12, fontweight="bold", pad=12, color='#f8fafc')
-    ax1.set_xlabel("Fecha", fontsize=10, color='#94a3b8')
-    ax1.set_ylabel("Precio Dólar ($)", fontsize=10, color='#94a3b8')
-    ax1.tick_params(colors='#94a3b8', labelsize=9)
-    ax1.grid(True, linestyle="--", alpha=0.2, color='#374151')
+    ax1.set_title("Comparativa de Trayectorias del Precio Futuro (USD/MXN)", fontsize=12, fontweight="bold", pad=12)
+    ax1.set_xlabel("Fecha", fontsize=10)
+    ax1.set_ylabel("Precio Dólar ($)", fontsize=10)
+    ax1.grid(True, linestyle="--", alpha=0.3)
 
     for i, tray in enumerate(st.session_state["historial_trayectorias"]):
         es_ultima = (i == len(st.session_state["historial_trayectorias"]) - 1)
         ax1.plot(
             tray["fechas"], tray["precio_futuro"], 
             linewidth=2.5 if es_ultima else 1.2, 
-            alpha=1.0 if es_ultima else 0.4, 
+            alpha=1.0 if es_ultima else 0.35, 
             label=tray["etiqueta"]
         )
-    legend = ax1.legend(loc="upper left", fontsize=8.5, framealpha=0.8)
-    plt.setp(legend.get_texts(), color='#f8fafc')
-    legend.get_frame().set_facecolor('#1f2937')
-    legend.get_frame().set_edgecolor('#374151')
-    
+    ax1.legend(loc="upper left", fontsize=8.5, framealpha=0.9)
     fig.tight_layout()
     st.pyplot(fig)
 
@@ -758,11 +744,9 @@ else:
     # Gráfica de Abanico
     st.markdown("### 🌪️ Gráfica de Abanico y Cuantiles de Monte Carlo")
     fig_fan, ax_fan = plt.subplots(figsize=(12, 4.5))
-    fig_fan.patch.set_facecolor('#0b0f19')
-    ax_fan.set_facecolor('#111827')
     num_muestras = min(100, matriz_precios.shape[0])
     for s in range(num_muestras):
-        ax_fan.plot(fechas_mc, matriz_precios[s, :], color='#475569', alpha=0.15, linewidth=0.8)
+        ax_fan.plot(fechas_mc, matriz_precios[s, :], color='#94a3b8', alpha=0.15, linewidth=0.8)
 
     mediana_tray = np.median(matriz_precios, axis=0)
     q25_tray = np.percentile(matriz_precios, 25, axis=0)
@@ -770,21 +754,16 @@ else:
     p5_tray = np.percentile(matriz_precios, 5, axis=0)
     p95_tray = np.percentile(matriz_precios, 95, axis=0)
 
-    ax_fan.plot(fechas_mc, mediana_tray, color='#38bdf8', linewidth=2.5, label='Mediana (50%)')
-    ax_fan.plot(fechas_mc, q25_tray, color='#60a5fa', linestyle='--', linewidth=1.5, label='Cuantil 25% (Q1)')
-    ax_fan.plot(fechas_mc, q75_tray, color='#60a5fa', linestyle='--', linewidth=1.5, label='Cuantil 75% (Q3)')
-    ax_fan.fill_between(fechas_mc, p5_tray, p95_tray, color='#3b82f6', alpha=0.15, label='Rango P5 - P95')
+    ax_fan.plot(fechas_mc, mediana_tray, color='#0f172a', linewidth=2.5, label='Mediana (50%)')
+    ax_fan.plot(fechas_mc, q25_tray, color='#2563eb', linestyle='--', linewidth=1.5, label='Cuantil 25% (Q1)')
+    ax_fan.plot(fechas_mc, q75_tray, color='#2563eb', linestyle='--', linewidth=1.5, label='Cuantil 75% (Q3)')
+    ax_fan.fill_between(fechas_mc, p5_tray, p95_tray, color='#3b82f6', alpha=0.12, label='Rango P5 - P95')
 
-    ax_fan.set_title(f"Abanico de Trayectorias Monte Carlo ({num_muestras} muestras) - {mc_actual['etiqueta']}", fontsize=12, fontweight="bold", pad=12, color='#f8fafc')
-    ax_fan.set_xlabel("Fecha", fontsize=10, color='#94a3b8')
-    ax_fan.set_ylabel("Precio Futuro ($)", fontsize=10, color='#94a3b8')
-    ax_fan.tick_params(colors='#94a3b8', labelsize=9)
-    ax_fan.grid(True, linestyle="--", alpha=0.2, color='#374151')
-    legend_fan = ax_fan.legend(loc="upper left", fontsize=8.5, framealpha=0.8)
-    plt.setp(legend_fan.get_texts(), color='#f8fafc')
-    legend_fan.get_frame().set_facecolor('#1f2937')
-    legend_fan.get_frame().set_edgecolor('#374151')
-    
+    ax_fan.set_title(f"Abanico de Trayectorias Monte Carlo ({num_muestras} muestras) - {mc_actual['etiqueta']}", fontsize=12, fontweight="bold", pad=12)
+    ax_fan.set_xlabel("Fecha", fontsize=10)
+    ax_fan.set_ylabel("Precio Futuro ($)", fontsize=10)
+    ax_fan.grid(True, linestyle="--", alpha=0.3)
+    ax_fan.legend(loc="upper left", fontsize=8.5, framealpha=0.9)
     fig_fan.tight_layout()
     st.pyplot(fig_fan)
 
@@ -830,12 +809,10 @@ else:
 
     st.markdown("### 📊 Histogramas Dinámicos de Distribución con Líneas de Referencia")
     fig_mc, axs = plt.subplots(2, 2, figsize=(14, 8.5))
-    fig_mc.patch.set_facecolor('#0b0f19')
-    paleta_colores = ["#38bdf8", "#f87171", "#4ade80", "#c084fc", "#fb923c", "#2dd4bf", "#94a3b8"]
+    paleta_colores = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0d9488", "#334155"]
 
     for idx, (col_name, titulo_base) in enumerate(metricas_nombres):
         ax = axs[idx // 2, idx % 2]
-        ax.set_facecolor('#111827')
         for i, item in enumerate(st.session_state["historial_mc"]):
             df_sim = item["df_excel"]
             es_ultimo = (i == len(st.session_state["historial_mc"]) - 1)
@@ -859,22 +836,18 @@ else:
                 moda_res = stats.mode(np.round(serie, 2), keepdims=True)
                 moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else serie.iloc[0]
 
-                ax.axvline(media_val, color='#f87171', linestyle='-', linewidth=1.4, label='Media')
-                ax.axvline(mediana_val, color='#4ade80', linestyle='--', linewidth=1.4, label='Mediana')
-                ax.axvline(q1_val, color='#c084fc', linestyle=':', linewidth=1.4, label='Q1')
-                ax.axvline(q3_val, color='#a855f7', linestyle=':', linewidth=1.4, label='Q3')
-                ax.axvline(moda_val, color='#fbbf24', linestyle='-.', linewidth=1.4, label='Moda')
+                ax.axvline(media_val, color='#dc2626', linestyle='-', linewidth=1.4, label='Media')
+                ax.axvline(mediana_val, color='#16a34a', linestyle='--', linewidth=1.4, label='Mediana')
+                ax.axvline(q1_val, color='#9333ea', linestyle=':', linewidth=1.4, label='Q1')
+                ax.axvline(q3_val, color='#7e22ce', linestyle=':', linewidth=1.4, label='Q3')
+                ax.axvline(moda_val, color='#d97706', linestyle='-.', linewidth=1.4, label='Moda')
 
-        ax.set_title(titulo_base, fontweight="bold", fontsize=10.5, color='#f8fafc')
-        ax.set_xlabel("Monto ($)", fontsize=8.5, color='#94a3b8')
-        ax.set_ylabel("Frecuencia", fontsize=8.5, color='#94a3b8')
-        ax.tick_params(colors='#94a3b8', labelsize=8)
-        ax.grid(True, linestyle="--", alpha=0.2, color='#374151')
-        
-        legend_hist = ax.legend(loc="upper right", fontsize=7.5, framealpha=0.8)
-        plt.setp(legend_hist.get_texts(), color='#f8fafc')
-        legend_hist.get_frame().set_facecolor('#1f2937')
-        legend_hist.get_frame().set_edgecolor('#374151')
+        ax.set_title(titulo_base, fontweight="bold", fontsize=10.5)
+        ax.set_xlabel("Monto ($)", fontsize=8.5)
+        ax.set_ylabel("Frecuencia", fontsize=8.5)
+        ax.grid(True, linestyle="--", alpha=0.3)
+        ax.legend(loc="upper right", fontsize=7.5, framealpha=0.9)
 
+    # Ajuste seguro de subplots para evitar errores de layout en Matplotlib
     fig_mc.subplots_adjust(hspace=0.35, wspace=0.25)
     st.pyplot(fig_mc)

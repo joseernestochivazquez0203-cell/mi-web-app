@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="Simulador Financiero Integral USD/MXN", page_icon="📈", layout="wide"
 )
 
-# --- CSS PERSONALIZADO: TEMA FINTECH OSCURO CON TABLAS INTEGRADAS ---
+# --- CSS PERSONALIZADO: TEMA FINTECH / TERMINAL FINANCIERA OSCURA ---
 st.markdown(
     """
     <style>
@@ -22,46 +22,33 @@ st.markdown(
         background-color: #0b0f19;
     }
     
-    /* Barra lateral estilizada y textos visibles */
+    /* Barra lateral estilizada */
     [data-testid="stSidebar"] {
         background-color: #111827;
         border-right: 1px solid #1f2937;
     }
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stMarkdown {
-        color: #e2e8f0 !important;
-    }
 
-    /* Tipografía y encabezados principales */
+    /* Tipografía y encabezados */
     h1, h2, h3 {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         color: #f8fafc !important;
     }
 
-    /* FORZAR TEMA OSCURO EN LAS TABLAS Y DATAFRAMES DE STREAMLIT */
+    /* Contenedores de tablas y DataFrames con diseño de tarjeta moderna */
     div[data-testid="stDataFrame"], div[data-testid="stTable"] {
         background: #111827 !important;
         padding: 16px;
         border-radius: 14px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
         border: 1px solid #1f2937;
         margin-bottom: 20px;
-    }
-
-    /* Estilo interno de las celdas y tablas nativas de Streamlit en modo oscuro */
-    [data-testid="stDataFrame"] iframe {
-        background-color: #111827 !important;
-    }
-
-    /* Inyección CSS profunda para elementos internos de tablas (cabeceras y celdas oscuras) */
-    .stDataFrame, dfn, table {
-        color: #f8fafc !important;
     }
 
     /* Tarjetas de métricas (st.metric) */
     div[data-testid="stMetric"] {
         background-color: #111827;
         border: 1px solid #1f2937;
-        border-left: 4px solid #38bdf8;
+        border-left: 4px solid #3b82f6;
         padding: 14px 18px;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -78,38 +65,31 @@ st.markdown(
 
     /* Botones modernos con gradiente azul ejecutivo */
     .stButton>button {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
         color: white;
         border-radius: 10px;
         font-weight: 600;
         border: none;
         padding: 0.6rem 1.2rem;
-        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         transition: all 0.2s ease-in-out;
     }
     .stButton>button:hover {
-        background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
-        box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
         transform: translateY(-1px);
     }
 
-    /* Estilo tabular avanzado para números financieros */
+    /* Estilo tabular avanzado para los números */
     table {
         font-variant-numeric: tabular-nums;
         width: 100% !important;
         border-collapse: collapse;
-        background-color: #111827 !important;
-        color: #f8fafc !important;
     }
     th {
         background-color: #1f2937 !important;
-        color: #38bdf8 !important;
+        color: #f8fafc !important;
         font-weight: 700 !important;
-    }
-    td {
-        background-color: #111827 !important;
-        color: #e2e8f0 !important;
-        border-bottom: 1px solid #1f2937 !important;
     }
     </style>
     """,

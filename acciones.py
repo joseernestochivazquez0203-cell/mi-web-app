@@ -12,9 +12,9 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("📊 Simulador de Portafolios de Inversión y Monte Carlo (1, 2 y 3 Años)")
+st.title("📊 Simulador de Portafolios de Inversión y Monte Carlo")
 st.markdown(
-    "Modelo cuantitativo para la optimización y comparación multianual de portafolios con activos de la BMV."
+    "Modelo cuantitativo multianual con animación de optimización de portafolios de la BMV y CETES."
 )
 
 # ==============================================================================
@@ -26,17 +26,10 @@ n_simulaciones = st.sidebar.slider(
     "Número de Portafolios (Simulación):", 1000, 10000, 5000, 500
 )
 n_corridas = st.sidebar.slider(
-    "Corridas de Optimización (Sharpe):", 100, 1000, 500, 100
+    "Corridas de Optimización (Sharpe):", 50, 500, 200, 50
 )
 
-# Definición de las empresas de la BMV
-empresas = [
-    "Grupo México",
-    "Lamosa",
-    "América Movil",
-    "Bimbo",
-    "Kimbera",
-]
+empresas = ["Grupo México", "Lamosa", "América Movil", "Bimbo", "Kimbera"]
 tickers = {
     "Grupo México": "GMEXICOB.MX",
     "Lamosa": "LAMOSA.MX",
@@ -45,9 +38,6 @@ tickers = {
     "Kimbera": "KIMBERA.MX",
 }
 
-# ==============================================================================
-# 2. FUNCIÓN DE PROCESAMIENTO MULTIPERIODO (1, 2 y 3 AÑOS)
-# ==============================================================================
 fechas_horizontes = {
     "1 año": {"inicio": "2025-09-18", "fin": "2026-09-16"},
     "2 años": {"inicio": "2024-09-18", "fin": "2026-09-16"},
@@ -55,8 +45,11 @@ fechas_horizontes = {
 }
 
 
+# ==============================================================================
+# 2. FUNCIÓN DE SIMULACIÓN Y ANIMACIÓN PASO A PASO
+# ==============================================================================
 @st.cache_data
-def ejecutar_simulacion_periodo(start, end, n_sim, n_corr):
+def ejecutar_simulacion_completa(start, end, n_sim, n_corr):
   # Descarga de datos
   datos = yf.download(list(tickers.values()), start=start, end=end)["Close"]
   if isinstance(datos.columns, pd.MultiIndex):
@@ -66,18 +59,9 @@ def ejecutar_simulacion_periodo(start, end, n_sim, n_corr):
   )
   datos = datos[empresas].dropna()
 
-  # Rendimientos y Estadísticos
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
-  matriz_covarianza = rendimientos[empresas].cov(ddof=0)
-  Sigma = matriz_covarianza.values
 
-  # Parámetros CETES
-  a, b, c = 0.04, 0.08, 0.10
-  k = (b - a) / (c - a)
-  dias_ano = 252
-
-  # Pesos base para covarianza de pesos (o simulación directa)
   np.random.seed(42)
   aleatorios_base = np.random.uniform(
       0, 1, size=(len(datos) - 1, len(empresas))
@@ -86,7 +70,19 @@ def ejecutar_simulacion_periodo(start, end, n_sim, n_corr):
   matriz_cov_wi = pd.DataFrame(wi_base, columns=empresas).cov(ddof=0)
   Sigma_wi = matriz_cov_wi.values
 
+  a, b, c = 0.04, 0.08, 0.10
+  k = (b - a) / (c - a)
+  dias_ano = 252
+
   mejores_sharpe = []
+  datos_animacion = []
+  n_animacion_pasos = min(20, n_corr)
+  colores_anim = px.colors.sample_colorscale(
+      "turbo", np.linspace(0.1, 0.9, n_animacion_pasos)
+  )
+
+  w_cetes = 0.30
+  w_portafolio = 0.70
   df_sim_global = None
 
   for i in range(1, n_corr + 1):
@@ -97,6 +93,7 @@ def ejecutar_simulacion_periodo(start, end, n_sim, n_corr):
       TL = c - np.sqrt((1 - p_cetes) * (c - a) * (c - b))
 
     diario = (1 + TL) ** (1 / 360) - 1
+    cetes_anual = TL
 
     aleatorios_sim = np.random.uniform(0, 1, size=(n_sim, len(empresas)))
     wi_sim = aleatorios_sim / aleatorios_sim.sum(axis=1, keepdims=True)
@@ -110,7 +107,7 @@ def ejecutar_simulacion_periodo(start, end, n_sim, n_corr):
     df_sim["sharpe_ratio"] = (df_sim["Rp"] - diario) / df_sim["des_p"]
 
     if i == 1:
-      df_sim_global = df_sim.copy()  # Guardar para la frontera eficiente
+      df_sim_global = df_sim.copy()
 
     idx_max_sharpe = df_sim["sharpe_ratio"].idxmax()
     mejor_fila = df_sim.loc[[idx_max_sharpe]].copy()
@@ -118,48 +115,78 @@ def ejecutar_simulacion_periodo(start, end, n_sim, n_corr):
     mejor_fila["CETES_diario"] = diario
     mejores_sharpe.append(mejor_fila)
 
-  tabla_sharpe_max = pd.concat(mejores_sharpe)
+    # Datos para la animación paso a paso
+    if i <= n_animacion_pasos:
+      Rp_anual_sim = df_sim["Rp"] * dias_ano
+      des_p_anual_sim = df_sim["des_p"] * np.sqrt(dias_ano)
+      sharpe_anual_sim = (Rp_anual_sim - cetes_anual) / des_p_anual_sim
+      idx_opt = sharpe_anual_sim.idxmax()
 
-  # 1. Portafolio de Mínima Desviación del periodo
+      riesgo_opt_anual = des_p_anual_sim.loc[idx_opt]
+      ret_opt_anual = Rp_anual_sim.loc[idx_opt]
+      max_sh_anual = sharpe_anual_sim.loc[idx_opt]
+
+      # Línea de Mercado (CAL)
+      x_cal = np.linspace(0, riesgo_opt_anual * 1.25, 30)
+      y_cal = cetes_anual + max_sh_anual * x_cal
+
+      # Portafolio Combinado 30% CETES / 70% Portafolio
+      r_comb = w_portafolio * riesgo_opt_anual
+      ret_comb = (w_cetes * cetes_anual) + (w_portafolio * ret_opt_anual)
+
+      df_vis = df_sim.sample(
+          n=min(3000, len(df_sim)), random_state=42
+      ).copy()
+
+      datos_animacion.append({
+          "cetes_anual": cetes_anual,
+          "nube_x": (df_vis["des_p"] * np.sqrt(dias_ano)).values,
+          "nube_y": (df_vis["Rp"] * np.sqrt(dias_ano)).values
+          if "Rp" in df_vis
+          else (df_vis["Rp"] * dias_ano).values,
+          "x_cal": x_cal,
+          "y_cal": y_cal,
+          "star_x": riesgo_opt_anual,
+          "star_y": ret_opt_anual,
+          "mix_x": r_comb,
+          "mix_y": ret_comb,
+          "color": colores_anim[i - 1],
+      })
+
+  tabla_sharpe_max = pd.concat(mejores_sharpe)
   idx_min_desp = df_sim_global["des_p"].idxmin()
   min_port = df_sim_global.loc[[idx_min_desp]].copy()
 
-  # 2. Portafolio de Máximo Sharpe global entre las corridas
   idx_max_global = tabla_sharpe_max["sharpe_ratio"].idxmax()
   max_sharpe_port = tabla_sharpe_max.loc[[idx_max_global]].copy()
 
-  return min_port, max_sharpe_port, df_sim_global, promedio, Sigma
+  return min_port, max_sharpe_port, datos_animacion
 
 
-with st.spinner(
-    "Calculando simulaciones para 1, 2 y 3 años (esto puede tomar unos"
-    " segundos)..."
-):
-  # Ejecutar de forma automática para los 3 periodos
-  res_1yr = ejecutar_simulacion_periodo(
+with st.spinner("Calculando simulaciones y optimizaciones Monte Carlo..."):
+  res_1 = ejecutar_simulacion_completa(
       fechas_horizontes["1 año"]["inicio"],
       fechas_horizontes["1 año"]["fin"],
       n_simulaciones,
       n_corridas,
   )
-  res_2yr = ejecutar_simulacion_periodo(
+  res_2 = ejecutar_simulacion_completa(
       fechas_horizontes["2 años"]["inicio"],
       fechas_horizontes["2 años"]["fin"],
       n_simulaciones,
       n_corridas,
   )
-  res_3yr = ejecutar_simulacion_periodo(
+  res_3 = ejecutar_simulacion_completa(
       fechas_horizontes["3 años"]["inicio"],
       fechas_horizontes["3 años"]["fin"],
       n_simulaciones,
       n_corridas,
   )
 
-  min_1yr, maxshare1, df_sim_1yr, prom_1, sig_1 = res_1yr
-  min_2yr, maxshare2, df_sim_2yr, prom_2, sig_2 = res_2yr
-  min_3yr, maxshare3, df_sim_3yr, prom_3, sig_3 = res_3yr
+  min_1yr, maxshare1, anim_1 = res_1
+  min_2yr, maxshare2, anim_2 = res_2
+  min_3yr, maxshare3, anim_3 = res_3
 
-# Renombrar índices para las tablas comparativas
 min_1yr.index, min_2yr.index, min_3yr.index = ["1 año"], ["2 años"], ["3 años"]
 maxshare1.index, maxshare2.index, maxshare3.index = (
     ["1 año"],
@@ -167,97 +194,250 @@ maxshare1.index, maxshare2.index, maxshare3.index = (
     ["3 años"],
 )
 
-# ==============================================================================
-# 3. TABLAS COMPARATIVAS (MÍNIMA DESVIACIÓN Y MÁXIMO SHARPE)
-# ==============================================================================
-st.markdown("---")
-st.subheader(
-    "📉 Tabla Comparativa de Portafolios Óptimos (Mínima Desviación)"
-)
 
-tabla_comparativa_min = pd.concat([min_1yr, min_2yr, min_3yr])
-columnas_ordenadas_min = empresas + ["Rp", "vp", "des_p"]
-# Asegurar que existan solo las columnas requeridas
-tabla_comparativa_min = tabla_comparativa_min[
-    [c for c in columnas_ordenadas_min if c in tabla_comparativa_min.columns]
-]
-st.dataframe(tabla_comparativa_min.style.format("{:.6f}"))
+# Función auxiliar para crear la figura animada interactiva con Plotly
+def construir_figura_animada(datos_anim, titulo_horizonte):
+  fig = go.Figure()
+  n_pasos = len(datos_anim)
 
-st.markdown("---")
-st.subheader("🏆 Tabla Comparativa de Máximos Sharpe Ratios (1, 2 y 3 Años)")
-
-tabla_comparativa_sharpe = pd.concat([maxshare1, maxshare2, maxshare3])
-columnas_orden_sharpe = empresas + [
-    "Rp",
-    "vp",
-    "des_p",
-    "CETES_diario",
-    "sharpe_ratio",
-]
-tabla_comparativa_sharpe = tabla_comparativa_sharpe[
-    [
-        c
-        for c in columnas_orden_sharpe
-        if c in tabla_comparativa_sharpe.columns
-    ]
-]
-st.dataframe(tabla_comparativa_sharpe.style.format("{:.6f}"))
-
-# ==============================================================================
-# 4. VISUALIZACIÓN INTERACTIVA DE FRONTERA EFICIENTE POR HORIZONTE
-# ==============================================================================
-st.markdown("---")
-st.subheader("📊 Visualización de Fronteras Eficientes")
-
-horizonte_seleccionado = st.selectbox(
-    "Seleccione el horizonte temporal a graficar:",
-    options=["1 año", "2 años", "3 años"],
-    index=0,
-)
-
-# Mapeo de datos seleccionados
-if horizonte_seleccionado == "1 año":
-  df_actual = df_sim_1yr
-  star_actual = maxshare1
-elif horizonte_seleccionado == "2 años":
-  df_actual = df_sim_2yr
-  star_actual = maxshare2
-else:
-  df_actual = df_sim_3yr
-  star_actual = maxshare3
-
-dias_ano = 252
-fig = go.Figure()
-
-# Nube de puntos simulados anualizados
-fig.add_trace(
-    go.Scatter(
-        x=df_actual["des_p"] * np.sqrt(dias_ano),
-        y=df_actual["Rp"] * dias_ano,
-        mode="markers",
-        marker=dict(size=4, color="blue", opacity=0.4),
-        name="Portafolios Simulados",
+  # Trace base (Nube)
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(size=3.5, color="lightgreen", opacity=0.45),
+          name="Portafolios Simulados",
+      )
+  )
+  # Traces para CAL
+  for j in range(n_pasos):
+    fig.add_trace(
+        go.Scatter(
+            x=[],
+            y=[],
+            mode="lines",
+            line=dict(color="red", width=1.2, dash="dash"),
+            opacity=0.4,
+            showlegend=False,
+        )
     )
-)
+  # Estrellas Sharpe
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(
+              size=11, color="gold", symbol="star", line=dict(width=1, color="black")
+          ),
+          name="Máximo Sharpe",
+      )
+  )
+  # Diamantes Mix 30/70 (Punto Verde)
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(
+              size=9,
+              color="#27ae60",
+              symbol="diamond",
+              line=dict(width=1, color="black"),
+          ),
+          name="Mix 30% CETES / 70% Portafolio",
+      )
+  )
+  # CETES actual
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(size=8, color="darkred", symbol="circle"),
+          name="CETES",
+      )
+  )
 
-# Estrella del Máximo Sharpe
-fig.add_trace(
-    go.Scatter(
-        x=star_actual["des_p"] * np.sqrt(dias_ano),
-        y=star_actual["Rp"] * dias_ano,
-        mode="markers",
-        marker=dict(
-            size=14, color="gold", symbol="star", line=dict(color="black", width=1)
-        ),
-        name="Máximo Sharpe",
+  frames = []
+  for f_idx in range(n_pasos):
+    f_data = []
+    curr = datos_anim[f_idx]
+    # Nube
+    f_data.append(
+        go.Scatter(
+            x=curr["nube_x"],
+            y=curr["nube_y"] * 252
+            if curr["nube_y"].max() < 1
+            else curr["nube_y"],
+            marker=dict(size=3.5, color=curr["color"]),
+        )
     )
+    # CALs acumuladas
+    for j in range(n_pasos):
+      if j <= f_idx:
+        f_data.append(
+            go.Scatter(x=datos_anim[j]["x_cal"], y=datos_anim[j]["y_cal"])
+        )
+      else:
+        f_data.append(go.Scatter(x=[], y=[]))
+    # Estrellas acumuladas
+    f_data.append(
+        go.Scatter(
+            x=[datos_anim[j]["star_x"] for j in range(f_idx + 1)],
+            y=[datos_anim[j]["star_y"] for j in range(f_idx + 1)],
+        )
+    )
+    # Mix Verde acumulados
+    f_data.append(
+        go.Scatter(
+            x=[datos_anim[j]["mix_x"] for j in range(f_idx + 1)],
+            y=[datos_anim[j]["mix_y"] for j in range(f_idx + 1)],
+        )
+    )
+    # CETES actual
+    f_data.append(go.Scatter(x=[0], y=[curr["cetes_anual"]]))
+
+    frames.append(go.Frame(data=f_data, name=f"Paso {f_idx + 1}"))
+
+  # Inicializar con frame 0
+  for idx, t_data in enumerate(frames[0].data):
+    fig.data[idx].x = t_data.x
+    fig.data[idx].y = t_data.y
+
+  fig.update_layout(
+      title=f"Simulación Monte Carlo Paso a Paso ({titulo_horizonte})",
+      template="plotly_white",
+      xaxis=dict(title="Volatility (Riesgo Anual)", range=[0, 1.2]),
+      yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.05, 0.35]),
+      updatemenus=[{
+          "type": "buttons",
+          "buttons": [
+              {
+                  "label": "▶ Reproducir",
+                  "method": "animate",
+                  "args": [
+                      None,
+                      {
+                          "frame": {"duration": 300, "redraw": False},
+                          "fromcurrent": True,
+                      },
+                  ],
+              },
+              {
+                  "label": "⏸ Pausa",
+                  "method": "animate",
+                  "args": [
+                      [None],
+                      {
+                          "frame": {"duration": 0, "redraw": False},
+                          "mode": "immediate",
+                      },
+                  ],
+              },
+          ],
+          "direction": "left",
+          "pad": {"r": 10, "t": 87},
+          "x": 0.1,
+          "xanchor": "right",
+          "y": 0,
+          "yanchor": "top",
+      }],
+      sliders=[{
+          "active": 0,
+          "yanchor": "top",
+          "xanchor": "left",
+          "currentvalue": {
+              "font": {"size": 13},
+              "prefix": "Iteración: ",
+              "visible": True,
+              "xanchor": "right",
+          },
+          "pad": {"b": 10, "t": 50},
+          "len": 0.9,
+          "x": 0.1,
+          "y": 0,
+          "steps": [
+              {
+                  "args": [
+                      [f"Paso {k}"],
+                      {
+                          "frame": {"duration": 200, "redraw": False},
+                          "mode": "immediate",
+                      },
+                  ],
+                  "label": f"#{k}",
+                  "method": "animate",
+              }
+              for k in range(1, n_pasos + 1)
+          ],
+      }],
+  )
+  fig.frames = frames
+  return fig
+
+
+# ==============================================================================
+# 3. INTERFAZ DE PESTAÑAS (TABS)
+# ==============================================================================
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas"]
 )
 
-fig.update_layout(
-    title=f"Frontera Eficiente y Portafolio Óptimo - {horizonte_seleccionado}",
-    xaxis_title="Riesgo Anual (Desviación Estándar)",
-    yaxis_title="Rendimiento Anual Esperado",
-    template="plotly_white",
-)
+with tab1:
+  st.subheader("Simulación y Frontera Eficiente - 1 Año")
+  fig_1 = construir_figura_animada(anim_1, "1 Año")
+  st.plotly_chart(fig_1, use_container_width=True)
 
-st.plotly_chart(fig, use_container_width=True)
+with tab2:
+  st.subheader("Simulación y Frontera Eficiente - 2 Años")
+  fig_2 = construir_figura_animada(anim_2, "2 Años")
+  st.plotly_chart(fig_2, use_container_width=True)
+
+with tab3:
+  st.subheader("Simulación y Frontera Eficiente - 3 Años")
+  fig_3 = construir_figura_animada(anim_3, "3 Años")
+  st.plotly_chart(fig_3, use_container_width=True)
+
+with tab4:
+  st.subheader("📋 Tablas Comparativas Multianuales")
+
+  st.markdown("### Portafolios Óptimos (Mínima Desviación)")
+  tabla_min = pd.concat([min_1yr, min_2yr, min_3yr])
+  cols_min = [c for c in empresas + ["Rp", "vp", "des_p"] if c in tabla_min.columns]
+
+  # Formato visual en porcentaje para las empresas y métricas pertinentes
+  formatos_min = {c: "{:.2%}" for c in empresas}
+  if "Rp" in cols_min:
+    formatos_min["Rp"] = "{:.4%}"
+  if "des_p" in cols_min:
+    formatos_min["des_p"] = "{:.4%}"
+
+  st.dataframe(
+      tabla_min[cols_min].style.format(formatos_min), use_container_width=True
+  )
+
+  st.markdown("---")
+  st.markdown("### Máximos Sharpe Ratios (1, 2 y 3 Años)")
+  tabla_sharpe = pd.concat([maxshare1, maxshare2, maxshare3])
+  cols_sharpe = [
+      c
+      for c in empresas + ["Rp", "vp", "des_p", "CETES_diario", "sharpe_ratio"]
+      if c in tabla_sharpe.columns
+  ]
+
+  formatos_sharpe = {c: "{:.2%}" for c in empresas}
+  if "Rp" in cols_sharpe:
+    formatos_sharpe["Rp"] = "{:.4%}"
+  if "des_p" in cols_sharpe:
+    formatos_sharpe["des_p"] = "{:.4%}"
+  if "CETES_diario" in cols_sharpe:
+    formatos_sharpe["CETES_diario"] = "{:.4%}"
+  if "sharpe_ratio" in cols_sharpe:
+    formatos_sharpe["sharpe_ratio"] = "{:.4f}"
+
+  st.dataframe(
+      tabla_sharpe[cols_sharpe].style.format(formatos_sharpe),
+      use_container_width=True,
+  )

@@ -46,11 +46,10 @@ fechas_horizontes = {
 
 
 # ==============================================================================
-# 2. FUNCIÓN DE SIMULACIÓN Y ANIMACIÓN PASO A PASO (CORREGIDA)
+# 2. FUNCIÓN DE SIMULACIÓN Y ANIMACIÓN PASO A PASO
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_completa(start, end, n_sim, n_corr):
-  # Descarga de datos
   datos = yf.download(list(tickers.values()), start=start, end=end)["Close"]
   if isinstance(datos.columns, pd.MultiIndex):
     datos.columns = datos.columns.droplevel(0)
@@ -116,7 +115,6 @@ def ejecutar_simulacion_completa(start, end, n_sim, n_corr):
     mejores_sharpe.append(mejor_fila)
 
     if i <= n_animacion_pasos:
-      # Anualización correcta
       Rp_anual_sim = df_sim["Rp"] * dias_ano
       des_p_anual_sim = df_sim["des_p"] * np.sqrt(dias_ano)
       sharpe_anual_sim = (Rp_anual_sim - cetes_anual) / des_p_anual_sim
@@ -126,11 +124,9 @@ def ejecutar_simulacion_completa(start, end, n_sim, n_corr):
       ret_opt_anual = Rp_anual_sim.loc[idx_opt]
       max_sh_anual = sharpe_anual_sim.loc[idx_opt]
 
-      # Línea de Mercado (CAL)
       x_cal = np.linspace(0, riesgo_opt_anual * 1.25, 30)
       y_cal = cetes_anual + max_sh_anual * x_cal
 
-      # Portafolio Combinado 30% CETES / 70% Portafolio óptimo
       r_comb = w_portafolio * riesgo_opt_anual
       ret_comb = (w_cetes * cetes_anual) + (w_portafolio * ret_opt_anual)
 
@@ -193,12 +189,10 @@ maxshare1.index, maxshare2.index, maxshare3.index = (
 )
 
 
-# Función para construir la gráfica animada corregida
 def construir_figura_animada(datos_anim, titulo_horizonte):
   fig = go.Figure()
   n_pasos = len(datos_anim)
 
-  # Nube base
   fig.add_trace(
       go.Scatter(
           x=[],
@@ -208,7 +202,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
           name="Portafolios Simulados",
       )
   )
-  # CALs
   for j in range(n_pasos):
     fig.add_trace(
         go.Scatter(
@@ -220,7 +213,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
             showlegend=False,
         )
     )
-  # Estrellas Sharpe
   fig.add_trace(
       go.Scatter(
           x=[],
@@ -232,7 +224,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
           name="Máximo Sharpe",
       )
   )
-  # Diamantes Mix 30/70 (Punto Verde)
   fig.add_trace(
       go.Scatter(
           x=[],
@@ -247,7 +238,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
           name="Mix 30% CETES / 70% Portafolio",
       )
   )
-  # CETES
   fig.add_trace(
       go.Scatter(
           x=[],
@@ -262,7 +252,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
   for f_idx in range(n_pasos):
     f_data = []
     curr = datos_anim[f_idx]
-    # Nube corregida
     f_data.append(
         go.Scatter(
             x=curr["nube_x"],
@@ -270,7 +259,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
             marker=dict(size=3.5, color=curr["color"]),
         )
     )
-    # CALs acumuladas
     for j in range(n_pasos):
       if j <= f_idx:
         f_data.append(
@@ -278,23 +266,19 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
         )
       else:
         f_data.append(go.Scatter(x=[], y=[]))
-    # Estrellas acumuladas
     f_data.append(
         go.Scatter(
             x=[datos_anim[j]["star_x"] for j in range(f_idx + 1)],
             y=[datos_anim[j]["star_y"] for j in range(f_idx + 1)],
         )
     )
-    # Mix Verde acumulados
     f_data.append(
         go.Scatter(
             x=[datos_anim[j]["mix_x"] for j in range(f_idx + 1)],
             y=[datos_anim[j]["mix_y"] for j in range(f_idx + 1)],
         )
     )
-    # CETES actual
     f_data.append(go.Scatter(x=[0], y=[curr["cetes_anual"]]))
-
     frames.append(go.Frame(data=f_data, name=f"Paso {f_idx + 1}"))
 
   for idx, t_data in enumerate(frames[0].data):
@@ -376,86 +360,105 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
 # ==============================================================================
 # 3. INTERFAZ DE PESTAÑAS (TABS)
 # ==============================================================================
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas e Individuales"]
-)
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📅 1 Año",
+    "📅 2 Años",
+    "📅 3 Años",
+    "📋 Tablas Comparativas Generales",
+])
 
+formatos_porcentaje = {c: "{:.2%}" for c in empresas}
+formatos_porcentaje.update({
+    "Rp": "{:.4%}",
+    "des_p": "{:.4%}",
+    "CETES_diario": "{:.4%}",
+    "sharpe_ratio": "{:.4f}",
+})
+
+# PESTAÑA 1: 1 AÑO
 with tab1:
   st.subheader("Simulación y Frontera Eficiente - 1 Año")
   fig_1 = construir_figura_animada(anim_1, "1 Año")
   st.plotly_chart(fig_1, use_container_width=True)
 
+  st.markdown("---")
+  st.subheader("📑 Resultados Individuales (1 Año)")
+
+  st.markdown("#### Portafolio de Mínima Desviación")
+  cols_min = [c for c in empresas + ["Rp", "vp", "des_p"] if c in min_1yr.columns]
+  st.dataframe(
+      min_1yr[cols_min].style.format(formatos_porcentaje),
+      use_container_width=True,
+  )
+
+  st.markdown("#### Mejores Portafolios (Máximo Sharpe - Top 10)")
+  cols_sharpe = [
+      c
+      for c in empresas + ["Rp", "vp", "des_p", "CETES_diario", "sharpe_ratio"]
+      if c in tabla_1000_1yr.columns
+  ]
+  st.dataframe(
+      tabla_1000_1yr.head(10)[cols_sharpe].style.format(formatos_porcentaje),
+      use_container_width=True,
+  )
+
+# PESTAÑA 2: 2 AÑOS
 with tab2:
   st.subheader("Simulación y Frontera Eficiente - 2 Años")
   fig_2 = construir_figura_animada(anim_2, "2 Años")
   st.plotly_chart(fig_2, use_container_width=True)
 
+  st.markdown("---")
+  st.subheader("📑 Resultados Individuales (2 Años)")
+
+  st.markdown("#### Portafolio de Mínima Desviación")
+  st.dataframe(
+      min_2yr[cols_min].style.format(formatos_porcentaje),
+      use_container_width=True,
+  )
+
+  st.markdown("#### Mejores Portafolios (Máximo Sharpe - Top 10)")
+  st.dataframe(
+      tabla_1000_2yr.head(10)[cols_sharpe].style.format(formatos_porcentaje),
+      use_container_width=True,
+  )
+
+# PESTAÑA 3: 3 AÑOS
 with tab3:
   st.subheader("Simulación y Frontera Eficiente - 3 Años")
   fig_3 = construir_figura_animada(anim_3, "3 Años")
   st.plotly_chart(fig_3, use_container_width=True)
 
+  st.markdown("---")
+  st.subheader("📑 Resultados Individuales (3 Años)")
+
+  st.markdown("#### Portafolio de Mínima Desviación")
+  st.dataframe(
+      min_3yr[cols_min].style.format(formatos_porcentaje),
+      use_container_width=True,
+  )
+
+  st.markdown("#### Mejores Portafolios (Máximo Sharpe - Top 10)")
+  st.dataframe(
+      tabla_1000_3yr.head(10)[cols_sharpe].style.format(formatos_porcentaje),
+      use_container_width=True,
+  )
+
+# PESTAÑA 4: TABLAS COMPARATIVAS GENERALES
 with tab4:
-  st.subheader("📋 Tablas Comparativas y Resultados Individuales")
+  st.subheader("📋 Tablas Comparativas Multianuales")
 
-  formatos_porcentaje = {c: "{:.2%}" for c in empresas}
-  formatos_porcentaje.update({
-      "Rp": "{:.4%}",
-      "des_p": "{:.4%}",
-      "CETES_diario": "{:.4%}",
-      "sharpe_ratio": "{:.4f}",
-  })
-
-  # --- TABLA MÍNIMA DESVIACIÓN ---
   st.markdown("### 📉 Tabla Comparativa: Portafolios de Mínima Desviación")
   tabla_min = pd.concat([min_1yr, min_2yr, min_3yr])
-  cols_min = [c for c in empresas + ["Rp", "vp", "des_p"] if c in tabla_min.columns]
   st.dataframe(
       tabla_min[cols_min].style.format(formatos_porcentaje),
       use_container_width=True,
   )
 
   st.markdown("---")
-
-  # --- TABLA MÁXIMO SHARPE COMPARATIVA ---
   st.markdown("### 🏆 Tabla Comparativa: Máximos Sharpe Ratios (1, 2 y 3 Años)")
   tabla_sharpe = pd.concat([maxshare1, maxshare2, maxshare3])
-  cols_sharpe = [
-      c
-      for c in empresas + ["Rp", "vp", "des_p", "CETES_diario", "sharpe_ratio"]
-      if c in tabla_sharpe.columns
-  ]
   st.dataframe(
       tabla_sharpe[cols_sharpe].style.format(formatos_porcentaje),
       use_container_width=True,
   )
-
-  st.markdown("---")
-
-  # --- TABLAS INDIVIDUALES DETALLADAS ---
-  st.markdown("### 📑 Tablas Individuales de las Corridas (Máximo Sharpe)")
-
-  sub_tab1, sub_tab2, sub_tab3 = st.tabs(
-      ["1 Año (Detalle)", "2 Años (Detalle)", "3 Años (Detalle)"]
-  )
-
-  with sub_tab1:
-    st.markdown("#### Mejores Portafolios (1 Año)")
-    st.dataframe(
-        tabla_1000_1yr.head(10)[cols_sharpe].style.format(formatos_porcentaje),
-        use_container_width=True,
-    )
-
-  with sub_tab2:
-    st.markdown("#### Mejores Portafolios (2 Años)")
-    st.dataframe(
-        tabla_1000_2yr.head(10)[cols_sharpe].style.format(formatos_porcentaje),
-        use_container_width=True,
-    )
-
-  with sub_tab3:
-    st.markdown("#### Mejores Portafolios (3 Años)")
-    st.dataframe(
-        tabla_1000_3yr.head(10)[cols_sharpe].style.format(formatos_porcentaje),
-        use_container_width=True,
-    )

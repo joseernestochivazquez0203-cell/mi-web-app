@@ -375,6 +375,11 @@ formatos_porcentaje.update({
     "sharpe_ratio": "{:.4f}",
 })
 
+cols_min = [c for c in empresas + ["Rp", "vp", "des_p"]]
+cols_sharpe = [
+    c for c in empresas + ["Rp", "vp", "des_p", "CETES_diario", "sharpe_ratio"]
+]
+
 # PESTAÑA 1: 1 AÑO
 with tab1:
   st.subheader("Simulación y Frontera Eficiente - 1 Año")
@@ -385,20 +390,26 @@ with tab1:
   st.subheader("📑 Resultados Individuales (1 Año)")
 
   st.markdown("#### Portafolio de Mínima Desviación")
-  cols_min = [c for c in empresas + ["Rp", "vp", "des_p"] if c in min_1yr.columns]
   st.dataframe(
-      min_1yr[cols_min].style.format(formatos_porcentaje),
+      min_1yr[[c for c in cols_min if c in min_1yr.columns]].style.format(
+          formatos_porcentaje
+      ),
+      use_container_width=True,
+  )
+
+  st.markdown("#### Portafolio de Máximo Sharpe (Individual)")
+  st.dataframe(
+      maxshare1[
+          [c for c in cols_sharpe if c in maxshare1.columns]
+      ].style.format(formatos_porcentaje),
       use_container_width=True,
   )
 
   st.markdown("#### Mejores Portafolios (Máximo Sharpe - Top 10)")
-  cols_sharpe = [
-      c
-      for c in empresas + ["Rp", "vp", "des_p", "CETES_diario", "sharpe_ratio"]
-      if c in tabla_1000_1yr.columns
-  ]
   st.dataframe(
-      tabla_1000_1yr.head(10)[cols_sharpe].style.format(formatos_porcentaje),
+      tabla_1000_1yr.head(10)[
+          [c for c in cols_sharpe if c in tabla_1000_1yr.columns]
+      ].style.format(formatos_porcentaje),
       use_container_width=True,
   )
 
@@ -413,13 +424,25 @@ with tab2:
 
   st.markdown("#### Portafolio de Mínima Desviación")
   st.dataframe(
-      min_2yr[cols_min].style.format(formatos_porcentaje),
+      min_2yr[[c for c in cols_min if c in min_2yr.columns]].style.format(
+          formatos_porcentaje
+      ),
+      use_container_width=True,
+  )
+
+  st.markdown("#### Portafolio de Máximo Sharpe (Individual)")
+  st.dataframe(
+      maxshare2[
+          [c for c in cols_sharpe if c in maxshare2.columns]
+      ].style.format(formatos_porcentaje),
       use_container_width=True,
   )
 
   st.markdown("#### Mejores Portafolios (Máximo Sharpe - Top 10)")
   st.dataframe(
-      tabla_1000_2yr.head(10)[cols_sharpe].style.format(formatos_porcentaje),
+      tabla_1000_2yr.head(10)[
+          [c for c in cols_sharpe if c in tabla_1000_2yr.columns]
+      ].style.format(formatos_porcentaje),
       use_container_width=True,
   )
 
@@ -434,13 +457,25 @@ with tab3:
 
   st.markdown("#### Portafolio de Mínima Desviación")
   st.dataframe(
-      min_3yr[cols_min].style.format(formatos_porcentaje),
+      min_3yr[[c for c in cols_min if c in min_3yr.columns]].style.format(
+          formatos_porcentaje
+      ),
+      use_container_width=True,
+  )
+
+  st.markdown("#### Portafolio de Máximo Sharpe (Individual)")
+  st.dataframe(
+      maxshare3[
+          [c for c in cols_sharpe if c in maxshare3.columns]
+      ].style.format(formatos_porcentaje),
       use_container_width=True,
   )
 
   st.markdown("#### Mejores Portafolios (Máximo Sharpe - Top 10)")
   st.dataframe(
-      tabla_1000_3yr.head(10)[cols_sharpe].style.format(formatos_porcentaje),
+      tabla_1000_3yr.head(10)[
+          [c for c in cols_sharpe if c in tabla_1000_3yr.columns]
+      ].style.format(formatos_porcentaje),
       use_container_width=True,
   )
 
@@ -451,7 +486,9 @@ with tab4:
   st.markdown("### 📉 Tabla Comparativa: Portafolios de Mínima Desviación")
   tabla_min = pd.concat([min_1yr, min_2yr, min_3yr])
   st.dataframe(
-      tabla_min[cols_min].style.format(formatos_porcentaje),
+      tabla_min[[c for c in cols_min if c in tabla_min.columns]].style.format(
+          formatos_porcentaje
+      ),
       use_container_width=True,
   )
 
@@ -459,6 +496,8 @@ with tab4:
   st.markdown("### 🏆 Tabla Comparativa: Máximos Sharpe Ratios (1, 2 y 3 Años)")
   tabla_sharpe = pd.concat([maxshare1, maxshare2, maxshare3])
   st.dataframe(
-      tabla_sharpe[cols_sharpe].style.format(formatos_porcentaje),
+      tabla_sharpe[
+          [c for c in cols_sharpe if c in tabla_sharpe.columns]
+      ].style.format(formatos_porcentaje),
       use_container_width=True,
   )

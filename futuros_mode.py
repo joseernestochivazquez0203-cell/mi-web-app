@@ -172,7 +172,6 @@ def simular_diario_log_logistico(precio_inicial, cap_inicial, t_contrato):
     fechas = pd.date_range(start="2026-10-15", end="2026-12-17", freq="D")
     n = len(fechas)
 
-    np.random.seed(42)  
     U = np.random.uniform(0.0001, 0.9999, n)
     precios = B4 * (U / (1 - U)) ** (1 / B3)
     precios[0] = 18.44
@@ -235,7 +234,6 @@ def simular_diario_fisher(precio_inicial, cap_inicial, t_contrato):
     sigma = B5_desv / 100.0
     dt = 1 / 252.0
 
-    np.random.seed(42)  
     Z = np.random.standard_normal(n)
     precios = np.zeros(n)
     precios[0] = 18.44

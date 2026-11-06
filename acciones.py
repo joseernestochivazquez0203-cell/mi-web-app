@@ -296,7 +296,7 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA ANIMADA
+# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (EJE Y DE -0.5 A 0.5)
 # ==============================================================================
 def construir_figura_animada(
     datos_anim, titulo_horizonte, lbl_tasa="CETES", is_mx=False
@@ -428,6 +428,7 @@ def construir_figura_animada(
     fig.data[idx].x = t_data.x
     fig.data[idx].y = t_data.y
 
+  # Rango exacto de -0.5 a 0.5 solicitado
   y_range = [-0.5, 0.5]
 
   fig.update_layout(
@@ -629,11 +630,11 @@ def generar_simulacion_y_estadisticos(
       ],
   )
 
-  return df_estadisticos, rend_global, rend_mx_acc, rend_usa_usd
+  return df_estadisticos, rend_global, rend_mx_sim, rend_usa_usd
 
 
 # ==============================================================================
-# 5. INTERFAZ EN PESTAÑAS PRINCIPALES (INCLUYENDO ANEXO DE FÓRMULAS)
+# 5. INTERFAZ EN PESTAÑAS PRINCIPALES
 # ==============================================================================
 tab_mx, tab_usa, tab_excel, tab_stats, tab_charts, tab_anexo = st.tabs([
     "🇲🇽 Mercado Mexicano (BMV)",
@@ -1113,63 +1114,112 @@ with tab_stats:
   st.dataframe(df_stats.style.format(formatos_stats), use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 5: GRÁFICAS DE PRECIOS ESCALADOS & MATRIZ DE COVARIANZA
+# PESTAÑA 5: GRÁFICAS DE PRECIOS ESCALADOS & MATRIZ DE COVARIANZA DINÁMICAS
 # ------------------------------------------------------------------------------
 with tab_charts:
   st.header("📈 Gráficas Escaladas de Precios y Matrices de Covarianza")
 
-  horiz_chart = st.selectbox(
-      "Horizonte de Análisis:",
-      ["1 año", "2 años", "3 años"],
-      key="sel_chart_horiz",
-  )
+  # Selector de mercado y horizonte para sincronizar con las pestañas
+  col_sel1, col_sel2 = st.columns(2)
+  with col_sel1:
+    mercado_chart = st.selectbox(
+        "Selecciona el Mercado:", ["México (BMV)", "EE. UU. (Tech)"]
+    )
+  with col_sel2:
+    horiz_chart = st.selectbox(
+        "Selecciona el Horizonte:", ["1 año", "2 años", "3 años"]
+    )
 
-  if horiz_chart == "1 año":
-    d_mx, c_mx, min_mx_h = datos_mx_1, cov_mx_1, min_mx_1
-    d_usa, c_usa, min_usa_h = datos_usa_1, cov_usa_1, min_usa_1
-  elif horiz_chart == "2 años":
-    d_mx, c_mx, min_mx_h = datos_mx_2, cov_mx_2, min_mx_2
+  if mercado_chart == "México (BMV)":
+    if horiz_chart == "1 año":
+      d_m, c_m, min_h, empresas_act = (
+          datos_mx_1,
+          cov_mx_1,
+          min_mx_1,
+          empresas_mx,
+      )
+    elif horiz_chart == "2 años":
+      d_m, c_m, min_h, empresas_act = (
+          datos_mx_2,
+          cov_mx_2,
+          min_mx_2,
+          empresas_mx,
+      )
+    else:
+      d_m, c_m, min_h, empresas_act = (
+          datos_mx_3,
+          cov_mx_3,
+          min_mx_3,
+          empresas_mx,
+      )
+    titulo_mercado = "Mercado Mexicano"
   else:
-    d_mx, c_mx, min_mx_h = datos_mx_3, cov_mx_3, min_mx_3
+    if horiz_chart == "1 año":
+      d_m, c_m, min_h, empresas_act = (
+          datos_usa_1,
+          cov_usa_1,
+          min_usa_1,
+          empresas_usa,
+      )
+    elif horiz_chart == "2 años":
+      d_m, c_m, min_h, empresas_act = (
+          datos_usa_2,
+          cov_usa_2,
+          min_usa_2,
+          empresas_usa,
+      )
+    else:
+      d_m, c_m, min_h, empresas_act = (
+          datos_usa_3,
+          cov_usa_3,
+          min_usa_3,
+          empresas_usa,
+      )
+    titulo_mercado = "Mercado EE. UU."
 
-  st.subheader("🇲🇽 Mercado Mexicano - Precios Normalizados (Base 100)")
-  precios_norm_mx = (d_mx / d_mx.iloc[0]) * 100
-  fig_norm_mx = px.line(
-      precios_norm_mx,
-      title="Evolución Comparativa de Precios Escalados (Base 100 = Inicio)",
+  st.subheader(
+      f"📉 {titulo_mercado} - Precios Normalizados (Base 100) [{horiz_chart}]"
+  )
+  precios_norm = (d_m / d_m.iloc[0]) * 100
+  fig_norm = px.line(
+      precios_norm,
+      title=(
+          f"Evolución Comparativa de Precios Escalados ({titulo_mercado} -"
+          f" {horiz_chart})"
+      ),
   )
 
-  # Agregar destaque del portafolio de mínima varianza en azul
-  ret_diarios_mx = np.log(d_mx / d_mx.shift(1)).dropna()
-  w_min_mx = min_mx_h[empresas_mx].values[0]
-  port_min_var_mx = (
-      ret_diarios_mx[empresas_mx].dot(w_min_mx).cumsum().apply(np.exp) * 100
+  # Agregar portafolio de mínima varianza en azul
+  ret_diarios = np.log(d_m / d_m.shift(1)).dropna()
+  w_min = min_h[empresas_act].values[0]
+  port_min_var = (
+      ret_diarios[empresas_act].dot(w_min).cumsum().apply(np.exp) * 100
   )
 
-  fig_norm_mx.add_trace(
+  fig_norm.add_trace(
       go.Scatter(
-          x=port_min_var_mx.index,
-          y=port_min_var_mx,
+          x=port_min_var.index,
+          y=port_min_var,
           mode="lines",
           line=dict(color="blue", width=3, dash="dash"),
           name="🔵 Mínima Varianza (Portafolio)",
       )
   )
-  st.plotly_chart(fig_norm_mx, use_container_width=True)
+  st.plotly_chart(fig_norm, use_container_width=True)
 
-  st.subheader("🔷 Matriz de Covarianza Anualizada (México)")
-  fig_cov_mx = px.imshow(
-      c_mx,
-      x=empresas_mx,
-      y=empresas_mx,
+  st.subheader(f"🔷 Matriz de Covarianza Anualizada ({titulo_mercado})")
+  fig_cov = px.imshow(
+      c_m,
+      x=empresas_act,
+      y=empresas_act,
       color_continuous_scale="Viridis",
       text_auto=".4f",
-      title="Matriz de Covarianza (Sigma)",
+      title=f"Matriz de Covarianza (Sigma) - {horiz_chart}",
   )
-  st.plotly_chart(fig_cov_mx, use_container_width=True)
+  st.plotly_chart(fig_cov, use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 6: ANEXO DE FÓRMULAS QUANTITATIVE & RIESGO (NUEVO)
+# PESTAÑA 6: ANEXO DE FÓRMULAS QUANTITATIVE & RIESGO
 # ------------------------------------------------------------------------------
 with tab_anexo:
   st.header("📐 Anexo Cuantitativo: Fórmulas y Modelos Matemáticos")

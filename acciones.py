@@ -69,7 +69,7 @@ tickers_mx = {
 empresas_usa = ["Microsoft", "Netflix", "Alphabet", "Amazon", "NVIDIA"]
 tickers_usa = {
     "Microsoft": "MSFT",
-    "Netflix": "NFTL",
+    "Netflix": "NFLX",
     "Alphabet": "GOOGL",
     "Amazon": "AMZN",
     "NVIDIA": "NVDA",

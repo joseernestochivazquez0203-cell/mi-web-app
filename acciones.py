@@ -428,7 +428,6 @@ def construir_figura_animada(
     fig.data[idx].x = t_data.x
     fig.data[idx].y = t_data.y
 
-  # Rango exacto de -0.5 a 0.5 solicitado
   y_range = [-0.5, 0.5]
 
   fig.update_layout(
@@ -518,7 +517,7 @@ def resaltar_maximo_sharpe(df, col_sharpe="sharpe_ratio"):
 
 
 # ==============================================================================
-# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS
+# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS (CORREGIDO)
 # ==============================================================================
 def generar_simulacion_y_estadisticos(
     max_mx, max_usa, n_dias, alpha, num_simulaciones_futuras=1000
@@ -630,7 +629,12 @@ def generar_simulacion_y_estadisticos(
       ],
   )
 
-  return df_estadisticos, rend_global, rend_mx_sim, rend_usa_usd
+  return (
+      df_estadisticos,
+      rend_global,
+      rend_mx_acc,
+      rend_usa_usd,
+  )  # Variable corregida
 
 
 # ==============================================================================
@@ -1119,7 +1123,6 @@ with tab_stats:
 with tab_charts:
   st.header("📈 Gráficas Escaladas de Precios y Matrices de Covarianza")
 
-  # Selector de mercado y horizonte para sincronizar con las pestañas
   col_sel1, col_sel2 = st.columns(2)
   with col_sel1:
     mercado_chart = st.selectbox(
@@ -1189,7 +1192,6 @@ with tab_charts:
       ),
   )
 
-  # Agregar portafolio de mínima varianza en azul
   ret_diarios = np.log(d_m / d_m.shift(1)).dropna()
   w_min = min_h[empresas_act].values[0]
   port_min_var = (

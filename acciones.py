@@ -283,7 +283,7 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (EJE Y DE -0.5 A 0.5 PARA MÉXICO)
+# 3. CONSTRUCTOR DE GRÁFICA ANIMADA
 # ==============================================================================
 def construir_figura_animada(
     datos_anim, titulo_horizonte, lbl_tasa="CETES", is_mx=False
@@ -518,7 +518,6 @@ def generar_simulacion_y_estadisticos(
   monto_usa_acc_mxn = 245000.0
   monto_tbills_mxn = 105000.0
 
-  # 1. Portafolio Acciones México
   mu_mx = max_mx["Rp"].values[0] / 252
   sigma_mx = max_mx["des_p"].values[0] / np.sqrt(252)
   rend_sim_mx = np.random.normal(
@@ -526,7 +525,6 @@ def generar_simulacion_y_estadisticos(
   )
   val_final_mx_acc = monto_mx_acc * np.exp(np.sum(rend_sim_mx, axis=1))
 
-  # 2. CETES (Triangular con menor volatilidad diaria)
   a_c, b_c, c_c = 0.07, 0.08, 0.09
   k_c = (b_c - a_c) / (c_c - a_c)
   u_c = np.random.uniform(0, 1, size=(num_simulaciones_futuras, n_dias))
@@ -538,7 +536,6 @@ def generar_simulacion_y_estadisticos(
   factor_cetes = np.prod(1 + tasas_cetes / 360, axis=1)
   val_final_cetes = monto_cetes * factor_cetes
 
-  # 3. Portafolio Acciones USA (en USD)
   monto_usa_acc_usd = monto_usa_acc_mxn / tc_inicial
   mu_usa = max_usa["Rp"].values[0] / 252
   sigma_usa = max_usa["des_p"].values[0] / np.sqrt(252)
@@ -549,7 +546,6 @@ def generar_simulacion_y_estadisticos(
       np.sum(rend_sim_usa, axis=1)
   )
 
-  # 4. T-Bills (Triangular estable en USD)
   monto_tbills_usd = monto_tbills_mxn / tc_inicial
   a_t, b_t, c_t = 0.0365, 0.0370, 0.0375
   k_t = (b_t - a_t) / (c_t - a_t)
@@ -562,7 +558,6 @@ def generar_simulacion_y_estadisticos(
   factor_tbills = np.prod(1 + tasas_tbills / 360, axis=1)
   val_final_tbills_usd = monto_tbills_usd * factor_tbills
 
-  # 5. Tipo de Cambio Dólar Weibull
   u_tc = np.random.uniform(0.001, 0.999, size=num_simulaciones_futuras)
   tc_final = scale_lambda * (u_tc / (1 - u_tc)) ** (1 / shape_k)
 
@@ -898,12 +893,12 @@ with tab_usa:
     )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: MODELO EXCEL ESTOCÁSTICO & DISTRIBUCIÓN DE TÍTULOS
+# PESTAÑA 3: MODELO EXCEL ESTOCÁSTICO & DISTRIBUCIÓN DE TÍTULOS (MX y USA)
 # ------------------------------------------------------------------------------
 with tab_excel:
   st.header(
-      "📑 Simulación Diaria Estocástica & Distribución de Acciones (Títulos"
-      " Óptimos)"
+      "📑 Simulación Diaria Estocástica & Distribución de Acciones (México y"
+      " EE. UU.)"
   )
 
   horizonte_excel = st.selectbox(
@@ -918,15 +913,27 @@ with tab_excel:
   else:
     mx_p, usa_p = max_mx_3, max_usa_3
 
-  # Obtener precios actuales para calcular cuántas acciones comprar
-  st.subheader("📦 Asignación de Títulos por Acción (Pesos Óptimos)")
-  precios_mx_actuales = yf.download(
-      list(tickers_mx.values()), period="5d", progress=False
-  )["Close"].iloc[-1]
-  if isinstance(precios_mx_actuales, pd.DataFrame):
-    precios_mx_actuales = precios_mx_actuales.iloc[0]
-  precios_mx_actuales.index = list(tickers_mx.keys())
+  # Obtener precios actuales con manejo robusto para evitar None
+  raw_mx = yf.download(list(tickers_mx.values()), period="5d", progress=False)[
+      "Close"
+  ]
+  if isinstance(raw_mx, pd.DataFrame):
+    raw_mx = raw_mx.iloc[-1]
+  precios_mx_actuales = {
+      k: float(raw_mx[v]) for k, v in tickers_mx.items() if v in raw_mx
+  }
 
+  raw_usa = yf.download(list(tickers_usa.values()), period="5d", progress=False)[
+      "Close"
+  ]
+  if isinstance(raw_usa, pd.DataFrame):
+    raw_usa = raw_usa.iloc[-1]
+  precios_usa_actuales = {
+      k: float(raw_usa[v]) for k, v in tickers_usa.items() if v in raw_usa
+  }
+
+  # TABLA 1: ACCIONES MÉXICO ($500,000 MXN)
+  st.subheader("🇲🇽 Asignación de Títulos - Portafolio México ($500,000 MXN)")
   pesos_mx_opt = mx_p[empresas_mx].values[0]
   capital_mx_acc = 500000.0
 
@@ -934,18 +941,49 @@ with tab_excel:
       "Empresa": empresas_mx,
       "Peso Óptimo": pesos_mx_opt,
       "Capital Asignado (MXN)": pesos_mx_opt * capital_mx_acc,
-      "Precio Actual (MXN)": [precios_mx_actuales[e] for e in empresas_mx],
+      "Precio Actual (MXN)": [
+          precios_mx_actuales.get(e, 0.0) for e in empresas_mx
+      ],
   })
-  df_titulos_mx["Títulos a Comprar"] = (
-      df_titulos_mx["Capital Asignado (MXN)"]
-      / df_titulos_mx["Precio Actual (MXN)"]
-  )
+  df_titulos_mx["Títulos a Comprar"] = df_titulos_mx[
+      "Capital Asignado (MXN)"
+  ] / df_titulos_mx["Precio Actual (MXN)"].replace(0, np.nan)
 
   st.dataframe(
       df_titulos_mx.style.format({
           "Peso Óptimo": "{:.2%}",
           "Capital Asignado (MXN)": "${:,.2f}",
           "Precio Actual (MXN)": "${:,.2f}",
+          "Títulos a Comprar": "{:,.2f}",
+      }),
+      use_container_width=True,
+  )
+
+  # TABLA 2: ACCIONES EE. UU. ($245,000 MXN convertidos a USD)
+  st.subheader(
+      "🇺🇸 Asignación de Títulos - Portafolio EE. UU. ($245,000 MXN / USD)"
+  )
+  pesos_usa_opt = usa_p[empresas_usa].values[0]
+  tc_inicial = 18.44
+  capital_usa_usd = 245000.0 / tc_inicial
+
+  df_titulos_usa = pd.DataFrame({
+      "Empresa": empresas_usa,
+      "Peso Óptimo": pesos_usa_opt,
+      "Capital Asignado (USD)": pesos_usa_opt * capital_usa_usd,
+      "Precio Actual (USD)": [
+          precios_usa_actuales.get(e, 0.0) for e in empresas_usa
+      ],
+  })
+  df_titulos_usa["Títulos a Comprar"] = df_titulos_usa[
+      "Capital Asignado (USD)"
+  ] / df_titulos_usa["Precio Actual (USD)"].replace(0, np.nan)
+
+  st.dataframe(
+      df_titulos_usa.style.format({
+          "Peso Óptimo": "{:.2%}",
+          "Capital Asignado (USD)": "${:,.2f}",
+          "Precio Actual (USD)": "${:,.2f}",
           "Títulos a Comprar": "{:,.2f}",
       }),
       use_container_width=True,
@@ -958,11 +996,10 @@ with tab_excel:
       for i in range(dias_muestra)
   ]
 
-  tc_base = 18.44
   val_mx = 500000.0
   val_cetes = 150000.0
-  val_usa_usd = 245000.0 / tc_base
-  val_tb_usd = 105000.0 / tc_base
+  val_usa_usd = 245000.0 / tc_inicial
+  val_tb_usd = 105000.0 / tc_inicial
 
   filas_excel = []
   for idx, f in enumerate(fechas_m):

@@ -57,26 +57,26 @@ st.sidebar.info(
     f" **{dias_habiles}**"
 )
 
-# Activos actualizados
+# Activos actualizados (Grupo México cambiado por FEMSA; Netflix cambiado por Apple)
 empresas_mx = [
     "Grupo Lamosa",
     "Walmart México",
     "América Movil",
     "Bimbo",
-    "Grupo México",
+    "FEMSA",
 ]
 tickers_mx = {
     "Grupo Lamosa": "LAMOSA.MX",
     "Walmart México": "WALMEX.MX",
     "América Movil": "AMXB.MX",
     "Bimbo": "BIMBOA.MX",
-    "Grupo México": "GMEXICOB.MX",
+    "FEMSA": "FEMSAUBD.MX",
 }
 
-empresas_usa = ["Microsoft", "Netflix", "Alphabet", "Amazon", "NVIDIA"]
+empresas_usa = ["Microsoft", "Apple", "Alphabet", "Amazon", "NVIDIA"]
 tickers_usa = {
     "Microsoft": "MSFT",
-    "Netflix": "NFLX",
+    "Apple": "AAPL",
     "Alphabet": "GOOGL",
     "Amazon": "AMZN",
     "NVIDIA": "NVDA",
@@ -652,11 +652,17 @@ def generar_simulacion_y_estadisticos(
           "min",
       ],
   )
-  return df_estadisticos, rend_global, rend_mx_acc, rend_usa_usd
+  return (
+      df_estadisticos,
+      rend_global,
+      rend_mx_acc,
+      rend_usa_usd,
+      val_final_global_mxn,
+  )
 
 
 # ==============================================================================
-# 5. INTERFAZ EN PESTAÑAS PRINCIPALES (SIN PESTAÑA SUELTA DE GRÁFICAS)
+# 5. INTERFAZ EN PESTAÑAS PRINCIPALES
 # ==============================================================================
 tab_mx, tab_usa, tab_excel, tab_stats, tab_anexo = st.tabs([
     "🇲🇽 Mercado Mexicano (BMV)",
@@ -686,7 +692,7 @@ formatos_usa.update({
     "Rp": "{:.4%}",
     "des_p": "{:.4%}",
     "Tasa_diaria": "{:.4%}",
-    "Tasa_anual": "{:.2%}",
+    "Tasa_anual": "{:.4%}",
     "sharpe_ratio": "{:.4f}",
 })
 cols_min_usa = [c for c in empresas_usa + ["Rp", "vp", "des_p"]]
@@ -697,7 +703,7 @@ cols_sh_usa = [
 ]
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: MÉXICO (CON GRÁFICA DE PRECIOS Y COVARIANZA INTEGRADAS)
+# PESTAÑA 1: MÉXICO
 # ------------------------------------------------------------------------------
 with tab_mx:
   st.header("🇲🇽 Análisis de Portafolios - Activos Mexicanos y CETES")
@@ -705,7 +711,6 @@ with tab_mx:
       ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas (MX)"]
   )
 
-  # --- SUBSECCIÓN 1 AÑO ---
   with sub_mx_1:
     col_g, col_ctrl = st.columns([3, 1])
     with col_ctrl:
@@ -771,7 +776,6 @@ with tab_mx:
         use_container_width=True,
     )
 
-  # --- SUBSECCIÓN 2 AÑOS ---
   with sub_mx_2:
     st.plotly_chart(
         construir_figura_animada_con_minima(
@@ -832,7 +836,6 @@ with tab_mx:
         use_container_width=True,
     )
 
-  # --- SUBSECCIÓN 3 AÑOS ---
   with sub_mx_3:
     st.plotly_chart(
         construir_figura_animada_con_minima(
@@ -911,7 +914,7 @@ with tab_mx:
     )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 2: ESTADOS UNIDOS (CON GRÁFICA DE PRECIOS Y COVARIANZA INTEGRADAS)
+# PESTAÑA 2: ESTADOS UNIDOS
 # ------------------------------------------------------------------------------
 with tab_usa:
   st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
@@ -919,7 +922,6 @@ with tab_usa:
       ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas (USA)"]
   )
 
-  # --- SUBSECCIÓN 1 AÑO USA ---
   with sub_usa_1:
     st.plotly_chart(
         construir_figura_animada_con_minima(
@@ -981,7 +983,6 @@ with tab_usa:
         use_container_width=True,
     )
 
-  # --- SUBSECCIÓN 2 AÑOS USA ---
   with sub_usa_2:
     st.plotly_chart(
         construir_figura_animada_con_minima(
@@ -1043,7 +1044,6 @@ with tab_usa:
         use_container_width=True,
     )
 
-  # --- SUBSECCIÓN 3 AÑOS USA ---
   with sub_usa_3:
     st.plotly_chart(
         construir_figura_animada_con_minima(
@@ -1292,7 +1292,7 @@ with tab_excel:
   )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 4: ESTADÍSTICOS & RIESGO
+# PESTAÑA 4: ESTADÍSTICOS & RIESGO (CON GRÁFICA ILUSTRATIVA DE RENDIMIENTOS)
 # ------------------------------------------------------------------------------
 with tab_stats:
   st.header("📊 Tabla de Estadísticos & Métricas de Riesgo Estocástico")
@@ -1309,7 +1309,7 @@ with tab_stats:
   else:
     m_mx, m_usa = max_mx_3, max_usa_3
 
-  df_stats, rend_glob_sim, rend_mx_sim, rend_usa_sim = (
+  df_stats, rend_glob_sim, rend_mx_sim, rend_usa_sim, valores_globales_sim = (
       generar_simulacion_y_estadisticos(
           m_mx, m_usa, dias_habiles, alpha_nivel
       )
@@ -1317,6 +1317,30 @@ with tab_stats:
 
   formatos_stats = {col: "{:.2%}" for col in df_stats.columns}
   st.dataframe(df_stats.style.format(formatos_stats), use_container_width=True)
+
+  st.markdown("---")
+  st.subheader(
+      "📈 Gráfica Ilustrativa: Distribución de Probabilidad del Portafolio"
+      " Global"
+  )
+
+  # Histograma de los rendimientos simulados con Plotly
+  fig_hist = px.histogram(
+      x=rend_glob_sim * 100,
+      nbins=50,
+      labels={"x": "Rendimiento Simulado (%)"},
+      title=(
+          "Distribución de Frecuencia de los Rendimientos Globales (Monte"
+          " Carlo)"
+      ),
+      color_discrete_sequence=["#27ae60"],
+  )
+  fig_hist.update_layout(
+      xaxis_title="Rendimiento Anualizado (%)",
+      yaxis_title="Frecuencia (Simulaciones)",
+      template="plotly_white",
+  )
+  st.plotly_chart(fig_hist, use_container_width=True)
 
 # ------------------------------------------------------------------------------
 # PESTAÑA 5: ANEXO DE FÓRMULAS QUANTITATIVE & RIESGO
@@ -1335,7 +1359,7 @@ with tab_anexo:
     st.latex(r"R_p = \sum_{i=1}^{n} w_i \cdot \mu_i = \mathbf{w}^T \boldsymbol{\mu}")
     st.latex(
         r"\sigma_p^2 = \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} = \sum_{i=1}^n"
-        r" \sum_{j=1}^n w_j \sigma_{ij}"
+        r" \sum_{j=1}^n w_i w_j \sigma_{ij}"
     )
     st.latex(r"\sigma_p = \sqrt{\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}}")
 

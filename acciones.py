@@ -13,15 +13,15 @@ st.set_page_config(
 )
 
 st.title(
-    "📊 Simulador de Portafolios de Inversión"
+    "📊 Simulador de Portafolios de Inversión (México vs. Estados Unidos)"
 )
 st.markdown(
-    "Modelo cuantitativo multianual con optimización para activos de la BMV"
-    " (CETES) y de EE. UU. (T-Bills)."
+    "Modelo cuantitativo multianual con optimización avanzada para activos de la"
+    " BMV (CETES) y de EE. UU. (T-Bills)."
 )
 
 # ==============================================================================
-# 1. SIDEBAR: PARÁMETROS GENERALES
+# 1. SIDEBAR: PARÁMETROS GENERALES (Ampliación a 1000 corridas)
 # ==============================================================================
 st.sidebar.header("⚙️ Configuración del Análisis")
 
@@ -29,7 +29,7 @@ n_simulaciones = st.sidebar.slider(
     "Número de Portafolios (Simulación):", 1000, 10000, 5000, 500
 )
 n_corridas = st.sidebar.slider(
-    "Corridas de Optimización (Sharpe):", 50, 500, 200, 50
+    "Corridas de Optimización (Sharpe):", 100, 1000, 500, 100
 )
 
 # Definición de mercados
@@ -59,7 +59,7 @@ fechas_horizontes = {
 
 
 # ==============================================================================
-# 2. FUNCIÓN DE SIMULACIÓN GENERAL (GENÉRICA PARA AMBOS MERCADOS)
+# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN GLOBAL (INVESTIGACIÓN DE OPERACIONES)
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
@@ -75,7 +75,8 @@ def ejecutar_simulacion_mercado(
 
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
-    
+
+  np.random.seed(42)
   aleatorios_base = np.random.uniform(
       0, 1, size=(len(datos) - 1, len(lista_empresas))
   )
@@ -83,10 +84,10 @@ def ejecutar_simulacion_mercado(
   matriz_cov_wi = pd.DataFrame(wi_base, columns=lista_empresas).cov(ddof=0)
   Sigma_wi = matriz_cov_wi.values
 
-  # Configuración de tasa libre de riesgo (Triangular)
+  # Parámetros de tasa libre de riesgo triangular
   if tipo_tasa == "cetes":
     a, b, c = 0.04, 0.08, 0.10
-  else:  # t-bills
+  else:  # t-bills EE. UU.
     a, b, c = 0.0360, 0.0370, 0.0400
 
   k = (b - a) / (c - a)
@@ -94,7 +95,9 @@ def ejecutar_simulacion_mercado(
 
   mejores_sharpe = []
   datos_animacion = []
-  n_animacion_pasos = min(20, n_corr)
+  n_animacion_pasos = min(
+      25, n_corr
+  )  # Pasos controlados para la animación visual
   colores_anim = px.colors.sample_colorscale(
       "turbo", np.linspace(0.1, 0.9, n_animacion_pasos)
   )
@@ -129,8 +132,9 @@ def ejecutar_simulacion_mercado(
 
     idx_max_sharpe = df_sim["sharpe_ratio"].idxmax()
     mejor_fila = df_sim.loc[[idx_max_sharpe]].copy()
-    mejor_fila.index = [f"{i}"]
+    mejor_fila.index = [f"Corrida {i}"]
     mejor_fila["Tasa_diaria"] = diario
+    mejor_fila["Tasa_anual"] = tasa_anual
     mejores_sharpe.append(mejor_fila)
 
     if i <= n_animacion_pasos:
@@ -150,7 +154,7 @@ def ejecutar_simulacion_mercado(
       ret_comb = (w_cetes * tasa_anual) + (w_portafolio * ret_opt_anual)
 
       df_vis = df_sim.sample(
-          n=min(3000, len(df_sim)), random_state=42
+          n=min(2500, len(df_sim)), random_state=42
       ).copy()
 
       datos_animacion.append({
@@ -170,6 +174,7 @@ def ejecutar_simulacion_mercado(
   idx_min_desp = df_sim_global["des_p"].idxmin()
   min_port = df_sim_global.loc[[idx_min_desp]].copy()
 
+  # Optimización Global (Máximo absoluto de todas las corridas)
   idx_max_global = tabla_sharpe_max["sharpe_ratio"].idxmax()
   max_sharpe_port = tabla_sharpe_max.loc[[idx_max_global]].copy()
 
@@ -177,9 +182,9 @@ def ejecutar_simulacion_mercado(
 
 
 with st.spinner(
-    "Calculando simulaciones para México y Estados Unidos (1, 2 y 3 años)..."
+    "Ejecutando modelo de optimización estocástica (1,000 corridas)..."
 ):
-  # Resultados México (CETES)
+  # México
   res_mx_1 = ejecutar_simulacion_mercado(
       tickers_mx,
       empresas_mx,
@@ -208,7 +213,7 @@ with st.spinner(
       "cetes",
   )
 
-  # Resultados USA (T-Bills)
+  # USA
   res_usa_1 = ejecutar_simulacion_mercado(
       tickers_usa,
       empresas_usa,
@@ -237,22 +242,16 @@ with st.spinner(
       "tbills",
   )
 
-  # Desempaquetar MX
   min_mx_1, max_mx_1, anim_mx_1, t1000_mx_1 = res_mx_1
   min_mx_2, max_mx_2, anim_mx_2, t1000_mx_2 = res_mx_2
   min_mx_3, max_mx_3, anim_mx_3, t1000_mx_3 = res_mx_3
 
-  # Desempaquetar USA
   min_usa_1, max_usa_1, anim_usa_1, t1000_usa_1 = res_usa_1
   min_usa_2, max_usa_2, anim_usa_2, t1000_usa_2 = res_usa_2
   min_usa_3, max_usa_3, anim_usa_3, t1000_usa_3 = res_usa_3
 
-# Asignar índices de periodo
-for m in [min_mx_1, max_mx_1, t1000_mx_1]:
-  m.index = ["1 año" if len(m) == 1 else m.index]
 min_mx_1.index, min_mx_2.index, min_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
 max_mx_1.index, max_mx_2.index, max_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
-
 min_usa_1.index, min_usa_2.index, min_usa_3.index = (
     ["1 año"],
     ["2 años"],
@@ -266,7 +265,7 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. FUNCIÓN DE GRÁFICA ANIMADA
+# 3. CONSTRUCTOR DE GRÁFICA CORREGIDA (LÍNEA DE MERCADO Y ESCALA LIMPIA)
 # ==============================================================================
 def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   fig = go.Figure()
@@ -437,7 +436,25 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
 
 
 # ==============================================================================
-# 4. INTERFAZ PRINCIPAL CON PESTAÑAS PRINCIPALES (MÉXICO VS. USA)
+# 4. FUNCIÓN PARA DESTACAR EL MÁXIMO ABSOLUTO EN LAS TABLAS
+# ==============================================================================
+def resaltar_maximo_sharpe(df, col_sharpe="sharpe_ratio"):
+  """Aplica un estilo visual resaltando en verde claro la fila con el Máximo Sharpe Global"""
+  max_idx = df[col_sharpe].idxmax()
+
+  def estilo_fila(row):
+    if row.name == max_idx:
+      return [
+          "background-color: #d4edda; font-weight: bold; color: #155724"
+          for _ in row
+      ]
+    return ["" for _ in row]
+
+  return df.style.apply(estilo_fila, axis=1)
+
+
+# ==============================================================================
+# 5. INTERFAZ PRINCIPAL CON PESTAÑAS (MÉXICO VS. USA)
 # ==============================================================================
 tab_mx, tab_usa = st.tabs(
     ["🇲🇽 Mercado Mexicano (BMV / CETES)", "🇺🇸 Mercado Estadounidense (EE. UU. / T-Bills)"]
@@ -457,11 +474,14 @@ with tab_mx:
       "Rp": "{:.4%}",
       "des_p": "{:.4%}",
       "Tasa_diaria": "{:.4%}",
+      "Tasa_anual": "{:.2%}",
       "sharpe_ratio": "{:.4f}",
   })
   cols_min_mx = [c for c in empresas_mx + ["Rp", "vp", "des_p"]]
   cols_sh_mx = [
-      c for c in empresas_mx + ["Rp", "vp", "des_p", "Tasa_diaria", "sharpe_ratio"]
+      c
+      for c in empresas_mx
+      + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]
   ]
 
   with sub_mx_1:
@@ -476,18 +496,23 @@ with tab_mx:
         ),
         use_container_width=True,
     )
-    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     st.dataframe(
         max_mx_1[[c for c in cols_sh_mx if c in max_mx_1.columns]].style.format(
             formatos_mx
         ),
         use_container_width=True,
     )
-    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.markdown(
+        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
+        " destacado en verde)"
+    )
     st.dataframe(
-        t1000_mx_1.head(10)[
-            [c for c in cols_sh_mx if c in t1000_mx_1.columns]
-        ].style.format(formatos_mx),
+        resaltar_maximo_sharpe(
+            t1000_mx_1.head(n_corridas)[
+                [c for c in cols_sh_mx if c in t1000_mx_1.columns]
+            ]
+        ).format(formatos_mx),
         use_container_width=True,
     )
 
@@ -503,18 +528,23 @@ with tab_mx:
         ),
         use_container_width=True,
     )
-    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     st.dataframe(
         max_mx_2[[c for c in cols_sh_mx if c in max_mx_2.columns]].style.format(
             formatos_mx
         ),
         use_container_width=True,
     )
-    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.markdown(
+        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
+        " destacado en verde)"
+    )
     st.dataframe(
-        t1000_mx_2.head(10)[
-            [c for c in cols_sh_mx if c in t1000_mx_2.columns]
-        ].style.format(formatos_mx),
+        resaltar_maximo_sharpe(
+            t1000_mx_2.head(n_corridas)[
+                [c for c in cols_sh_mx if c in t1000_mx_2.columns]
+            ]
+        ).format(formatos_mx),
         use_container_width=True,
     )
 
@@ -530,18 +560,23 @@ with tab_mx:
         ),
         use_container_width=True,
     )
-    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     st.dataframe(
         max_mx_3[[c for c in cols_sh_mx if c in max_mx_3.columns]].style.format(
             formatos_mx
         ),
         use_container_width=True,
     )
-    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.markdown(
+        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
+        " destacado en verde)"
+    )
     st.dataframe(
-        t1000_mx_3.head(10)[
-            [c for c in cols_sh_mx if c in t1000_mx_3.columns]
-        ].style.format(formatos_mx),
+        resaltar_maximo_sharpe(
+            t1000_mx_3.head(n_corridas)[
+                [c for c in cols_sh_mx if c in t1000_mx_3.columns]
+            ]
+        ).format(formatos_mx),
         use_container_width=True,
     )
 
@@ -576,13 +611,14 @@ with tab_usa:
       "Rp": "{:.4%}",
       "des_p": "{:.4%}",
       "Tasa_diaria": "{:.4%}",
+      "Tasa_anual": "{:.2%}",
       "sharpe_ratio": "{:.4f}",
   })
   cols_min_usa = [c for c in empresas_usa + ["Rp", "vp", "des_p"]]
   cols_sh_usa = [
       c
       for c in empresas_usa
-      + ["Rp", "vp", "des_p", "Tasa_diaria", "sharpe_ratio"]
+      + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]
   ]
 
   with sub_usa_1:
@@ -597,18 +633,23 @@ with tab_usa:
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     st.dataframe(
         max_usa_1[
             [c for c in cols_sh_usa if c in max_usa_1.columns]
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.markdown(
+        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
+        " destacado en verde)"
+    )
     st.dataframe(
-        t1000_usa_1.head(10)[
-            [c for c in cols_sh_usa if c in t1000_usa_1.columns]
-        ].style.format(formatos_usa),
+        resaltar_maximo_sharpe(
+            t1000_usa_1.head(n_corridas)[
+                [c for c in cols_sh_usa if c in t1000_usa_1.columns]
+            ]
+        ).format(formatos_usa),
         use_container_width=True,
     )
 
@@ -624,18 +665,23 @@ with tab_usa:
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     st.dataframe(
         max_usa_2[
             [c for c in cols_sh_usa if c in max_usa_2.columns]
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.markdown(
+        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
+        " destacado en verde)"
+    )
     st.dataframe(
-        t1000_usa_2.head(10)[
-            [c for c in cols_sh_usa if c in t1000_usa_2.columns]
-        ].style.format(formatos_usa),
+        resaltar_maximo_sharpe(
+            t1000_usa_2.head(n_corridas)[
+                [c for c in cols_sh_usa if c in t1000_usa_2.columns]
+            ]
+        ).format(formatos_usa),
         use_container_width=True,
     )
 
@@ -651,18 +697,23 @@ with tab_usa:
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     st.dataframe(
         max_usa_3[
             [c for c in cols_sh_usa if c in max_usa_3.columns]
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.markdown(
+        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
+        " destacado en verde)"
+    )
     st.dataframe(
-        t1000_usa_3.head(10)[
-            [c for c in cols_sh_usa if c in t1000_usa_3.columns]
-        ].style.format(formatos_usa),
+        resaltar_maximo_sharpe(
+            t1000_usa_3.head(n_corridas)[
+                [c for c in cols_sh_usa if c in t1000_usa_3.columns]
+            ]
+        ).format(formatos_usa),
         use_container_width=True,
     )
 

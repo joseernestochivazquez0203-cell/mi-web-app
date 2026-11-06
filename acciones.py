@@ -32,7 +32,7 @@ n_corridas = st.sidebar.slider(
     "Corridas de Optimización (Sharpe):", 100, 1000, 500, 100
 )
 
-# Definición de mercados
+# Definición de mercados y activos
 empresas_mx = ["Grupo México", "Lamosa", "América Movil", "Bimbo", "Kimbera"]
 tickers_mx = {
     "Grupo México": "GMEXICOB.MX",
@@ -118,12 +118,16 @@ def ejecutar_simulacion_mercado(
     wi_sim = aleatorios_sim / aleatorios_sim.sum(axis=1, keepdims=True)
     df_sim = pd.DataFrame(wi_sim, columns=lista_empresas)
 
-    df_sim["Rp"] = df_sim[lista_empresas].dot(promedio)
+    # Anualización correcta y consistente para evitar desalineaciones en la gráfica
+    df_sim["Rp_diario"] = df_sim[lista_empresas].dot(promedio)
+    df_sim["Rp"] = df_sim["Rp_diario"] * dias_ano
+
     W_sim = df_sim[lista_empresas].values
-    vp_sim = np.einsum("ij,jk,ik->i", W_sim, Sigma_wi, W_sim)
-    df_sim["vp"] = vp_sim
-    df_sim["des_p"] = np.sqrt(vp_sim)
-    df_sim["sharpe_ratio"] = (df_sim["Rp"] - diario) / df_sim["des_p"]
+    vp_diario = np.einsum("ij,jk,ik->i", W_sim, Sigma_wi, W_sim)
+    df_sim["vp"] = vp_diario * dias_ano
+    df_sim["des_p"] = np.sqrt(vp_diario * dias_ano)
+
+    df_sim["sharpe_ratio"] = (df_sim["Rp"] - tasa_anual) / df_sim["des_p"]
 
     if i == 1:
       df_sim_global = df_sim.copy()
@@ -136,14 +140,10 @@ def ejecutar_simulacion_mercado(
     mejores_sharpe.append(mejor_fila)
 
     if i <= n_animacion_pasos:
-      Rp_anual_sim = df_sim["Rp"] * dias_ano
-      des_p_anual_sim = df_sim["des_p"] * np.sqrt(dias_ano)
-      sharpe_anual_sim = (Rp_anual_sim - tasa_anual) / des_p_anual_sim
-      idx_opt = sharpe_anual_sim.idxmax()
-
-      riesgo_opt_anual = des_p_anual_sim.loc[idx_opt]
-      ret_opt_anual = Rp_anual_sim.loc[idx_opt]
-      max_sh_anual = sharpe_anual_sim.loc[idx_opt]
+      idx_opt = idx_max_sharpe
+      riesgo_opt_anual = df_sim.loc[idx_opt, "des_p"]
+      ret_opt_anual = df_sim.loc[idx_opt, "Rp"]
+      max_sh_anual = df_sim.loc[idx_opt, "sharpe_ratio"]
 
       x_cal = np.linspace(0, riesgo_opt_anual * 1.25, 30)
       y_cal = tasa_anual + max_sh_anual * x_cal
@@ -157,8 +157,8 @@ def ejecutar_simulacion_mercado(
 
       datos_animacion.append({
           "tasa_anual": tasa_anual,
-          "nube_x": (df_vis["des_p"] * np.sqrt(dias_ano)).values,
-          "nube_y": (df_vis["Rp"] * np.sqrt(dias_ano)).values,
+          "nube_x": df_vis["des_p"].values,
+          "nube_y": df_vis["Rp"].values,
           "x_cal": x_cal,
           "y_cal": y_cal,
           "star_x": riesgo_opt_anual,

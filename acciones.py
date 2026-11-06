@@ -98,7 +98,7 @@ fechas_horizontes = {
 
 
 # ==============================================================================
-# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (SIN SEMILLA FIJA)
+# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ)
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
@@ -504,7 +504,7 @@ def resaltar_maximo_sharpe(df, col_sharpe="sharpe_ratio"):
 
 
 # ==============================================================================
-# 4. SIMULADOR ESTOCÁSTICO DIARIO (VALORES NUMÉRICOS REALES)
+# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS
 # ==============================================================================
 def generar_simulacion_y_estadisticos(
     max_mx, max_usa, n_dias, alpha, num_simulaciones_futuras=1000
@@ -526,8 +526,8 @@ def generar_simulacion_y_estadisticos(
   )
   val_final_mx_acc = monto_mx_acc * np.exp(np.sum(rend_sim_mx, axis=1))
 
-  # 2. CETES (Triangular)
-  a_c, b_c, c_c = 0.04, 0.08, 0.10
+  # 2. CETES (Triangular con menor volatilidad diaria)
+  a_c, b_c, c_c = 0.07, 0.08, 0.09
   k_c = (b_c - a_c) / (c_c - a_c)
   u_c = np.random.uniform(0, 1, size=(num_simulaciones_futuras, n_dias))
   tasas_cetes = np.where(
@@ -549,9 +549,9 @@ def generar_simulacion_y_estadisticos(
       np.sum(rend_sim_usa, axis=1)
   )
 
-  # 4. T-Bills (Triangular en USD)
+  # 4. T-Bills (Triangular estable en USD)
   monto_tbills_usd = monto_tbills_mxn / tc_inicial
-  a_t, b_t, c_t = 0.0360, 0.0370, 0.0400
+  a_t, b_t, c_t = 0.0365, 0.0370, 0.0375
   k_t = (b_t - a_t) / (c_t - a_t)
   u_t = np.random.uniform(0, 1, size=(num_simulaciones_futuras, n_dias))
   tasas_tbills = np.where(
@@ -566,7 +566,6 @@ def generar_simulacion_y_estadisticos(
   u_tc = np.random.uniform(0.001, 0.999, size=num_simulaciones_futuras)
   tc_final = scale_lambda * (u_tc / (1 - u_tc)) ** (1 / shape_k)
 
-  # Totales finales
   val_final_usa_total_mxn = (
       val_final_usa_acc_usd + val_final_tbills_usd
   ) * tc_final
@@ -574,7 +573,6 @@ def generar_simulacion_y_estadisticos(
       val_final_mx_acc + val_final_cetes + val_final_usa_total_mxn
   )
 
-  # Rendimientos estocásticos
   rend_global = (val_final_global_mxn - 1000000.0) / 1000000.0
   rend_mx_acc = (val_final_mx_acc - monto_mx_acc) / monto_mx_acc
   rend_usa_usd = (val_final_usa_acc_usd - monto_usa_acc_usd) / monto_usa_acc_usd
@@ -632,7 +630,7 @@ def generar_simulacion_y_estadisticos(
 tab_mx, tab_usa, tab_excel, tab_stats, tab_charts = st.tabs([
     "🇲🇽 Mercado Mexicano (BMV)",
     "🇺🇸 Mercado EE. UU. (Tech)",
-    "📑 Modelo Excel Estocástico",
+    "📑 Modelo Excel Estocástico & Títulos",
     "📊 Estadísticos & Riesgo",
     "📈 Gráficas Adicionales de Rendimiento",
 ])
@@ -695,10 +693,26 @@ with tab_mx:
         ),
         use_container_width=True,
     )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top 10)")
+    st.dataframe(
+        resaltar_maximo_sharpe(
+            t1000_mx_1.head(n_corridas)[
+                [c for c in cols_sh_mx if c in t1000_mx_1.columns]
+            ]
+        ).format(formatos_mx),
+        use_container_width=True,
+    )
 
   with sub_mx_2:
     st.plotly_chart(
         construir_figura_animada(anim_mx_2, "2 Años (México)", "CETES", is_mx=True),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_mx_2[[c for c in cols_min_mx if c in min_mx_2.columns]].style.format(
+            formatos_mx
+        ),
         use_container_width=True,
     )
     st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
@@ -708,10 +722,26 @@ with tab_mx:
         ),
         use_container_width=True,
     )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top 10)")
+    st.dataframe(
+        resaltar_maximo_sharpe(
+            t1000_mx_2.head(n_corridas)[
+                [c for c in cols_sh_mx if c in t1000_mx_2.columns]
+            ]
+        ).format(formatos_mx),
+        use_container_width=True,
+    )
 
   with sub_mx_3:
     st.plotly_chart(
         construir_figura_animada(anim_mx_3, "3 Años (México)", "CETES", is_mx=True),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_mx_3[[c for c in cols_min_mx if c in min_mx_3.columns]].style.format(
+            formatos_mx
+        ),
         use_container_width=True,
     )
     st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
@@ -721,9 +751,26 @@ with tab_mx:
         ),
         use_container_width=True,
     )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top 10)")
+    st.dataframe(
+        resaltar_maximo_sharpe(
+            t1000_mx_3.head(n_corridas)[
+                [c for c in cols_sh_mx if c in t1000_mx_3.columns]
+            ]
+        ).format(formatos_mx),
+        use_container_width=True,
+    )
 
   with sub_mx_comp:
     st.subheader("📋 Tablas Comparativas (México)")
+    st.markdown("### Mínima Desviación")
+    st.dataframe(
+        pd.concat([min_mx_1, min_mx_2, min_mx_3])[
+            [c for c in cols_min_mx if c in min_mx_1.columns]
+        ].style.format(formatos_mx),
+        use_container_width=True,
+    )
+    st.markdown("### Máximo Sharpe Ratios")
     st.dataframe(
         pd.concat([max_mx_1, max_mx_2, max_mx_3])[
             [c for c in cols_sh_mx if c in max_mx_1.columns]
@@ -747,11 +794,27 @@ with tab_usa:
         ),
         use_container_width=True,
     )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_usa_1[
+            [c for c in cols_min_usa if c in min_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
     st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     st.dataframe(
         max_usa_1[
             [c for c in cols_sh_usa if c in max_usa_1.columns]
         ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top 10)")
+    st.dataframe(
+        resaltar_maximo_sharpe(
+            t1000_usa_1.head(n_corridas)[
+                [c for c in cols_sh_usa if c in t1000_usa_1.columns]
+            ]
+        ).format(formatos_usa),
         use_container_width=True,
     )
 
@@ -762,11 +825,27 @@ with tab_usa:
         ),
         use_container_width=True,
     )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_usa_2[
+            [c for c in cols_min_usa if c in min_usa_2.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
     st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     st.dataframe(
         max_usa_2[
             [c for c in cols_sh_usa if c in max_usa_2.columns]
         ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top 10)")
+    st.dataframe(
+        resaltar_maximo_sharpe(
+            t1000_usa_2.head(n_corridas)[
+                [c for c in cols_sh_usa if c in t1000_usa_2.columns]
+            ]
+        ).format(formatos_usa),
         use_container_width=True,
     )
 
@@ -777,6 +856,13 @@ with tab_usa:
         ),
         use_container_width=True,
     )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_usa_3[
+            [c for c in cols_min_usa if c in min_usa_3.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
     st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     st.dataframe(
         max_usa_3[
@@ -784,9 +870,26 @@ with tab_usa:
         ].style.format(formatos_usa),
         use_container_width=True,
     )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top 10)")
+    st.dataframe(
+        resaltar_maximo_sharpe(
+            t1000_usa_3.head(n_corridas)[
+                [c for c in cols_sh_usa if c in t1000_usa_3.columns]
+            ]
+        ).format(formatos_usa),
+        use_container_width=True,
+    )
 
   with sub_usa_comp:
     st.subheader("📋 Tablas Comparativas (EE. UU.)")
+    st.markdown("### Mínima Desviación")
+    st.dataframe(
+        pd.concat([min_usa_1, min_usa_2, min_usa_3])[
+            [c for c in cols_min_usa if c in min_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("### Máximo Sharpe Ratios")
     st.dataframe(
         pd.concat([max_usa_1, max_usa_2, max_usa_3])[
             [c for c in cols_sh_usa if c in max_usa_1.columns]
@@ -795,11 +898,12 @@ with tab_usa:
     )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: MODELO EXCEL ESTOCÁSTICO (CON TASAS NUMÉRICAS REALES)
+# PESTAÑA 3: MODELO EXCEL ESTOCÁSTICO & DISTRIBUCIÓN DE TÍTULOS
 # ------------------------------------------------------------------------------
 with tab_excel:
   st.header(
-      "📑 Simulación Diaria Estocástica (Valores Numéricos Reales sin Textos)"
+      "📑 Simulación Diaria Estocástica & Distribución de Acciones (Títulos"
+      " Óptimos)"
   )
 
   horizonte_excel = st.selectbox(
@@ -814,6 +918,40 @@ with tab_excel:
   else:
     mx_p, usa_p = max_mx_3, max_usa_3
 
+  # Obtener precios actuales para calcular cuántas acciones comprar
+  st.subheader("📦 Asignación de Títulos por Acción (Pesos Óptimos)")
+  precios_mx_actuales = yf.download(
+      list(tickers_mx.values()), period="5d", progress=False
+  )["Close"].iloc[-1]
+  if isinstance(precios_mx_actuales, pd.DataFrame):
+    precios_mx_actuales = precios_mx_actuales.iloc[0]
+  precios_mx_actuales.index = list(tickers_mx.keys())
+
+  pesos_mx_opt = mx_p[empresas_mx].values[0]
+  capital_mx_acc = 500000.0
+
+  df_titulos_mx = pd.DataFrame({
+      "Empresa": empresas_mx,
+      "Peso Óptimo": pesos_mx_opt,
+      "Capital Asignado (MXN)": pesos_mx_opt * capital_mx_acc,
+      "Precio Actual (MXN)": [precios_mx_actuales[e] for e in empresas_mx],
+  })
+  df_titulos_mx["Títulos a Comprar"] = (
+      df_titulos_mx["Capital Asignado (MXN)"]
+      / df_titulos_mx["Precio Actual (MXN)"]
+  )
+
+  st.dataframe(
+      df_titulos_mx.style.format({
+          "Peso Óptimo": "{:.2%}",
+          "Capital Asignado (MXN)": "${:,.2f}",
+          "Precio Actual (MXN)": "${:,.2f}",
+          "Títulos a Comprar": "{:,.2f}",
+      }),
+      use_container_width=True,
+  )
+
+  st.subheader("📉 Simulación Diaria Estocástica (Tasas Estables)")
   dias_muestra = 10
   fechas_m = [
       (fecha_inicio_sim + datetime.timedelta(days=i)).strftime("%d/%m/%Y")
@@ -830,16 +968,16 @@ with tab_excel:
   for idx, f in enumerate(fechas_m):
     p_cetes = np.random.uniform(0, 1)
     tasa_c = (
-        0.04 + np.sqrt(p_cetes * 0.04 * 0.06)
-        if p_cetes < 0.6667
-        else 0.10 - np.sqrt((1 - p_cetes) * 0.06 * 0.02)
+        0.078 + np.sqrt(p_cetes * 0.002 * 0.004)
+        if p_cetes < 0.5
+        else 0.082 - np.sqrt((1 - p_cetes) * 0.004 * 0.002)
     )
 
     p_tb = np.random.uniform(0, 1)
     tasa_t = (
-        0.036 + np.sqrt(p_tb * 0.001 * 0.004)
-        if p_tb < 0.25
-        else 0.040 - np.sqrt((1 - p_tb) * 0.004 * 0.003)
+        0.0368 + np.sqrt(p_tb * 0.0002 * 0.0004)
+        if p_tb < 0.5
+        else 0.0372 - np.sqrt((1 - p_tb) * 0.0004 * 0.0002)
     )
 
     if idx == 0:
@@ -849,7 +987,7 @@ with tab_excel:
       val_cetes *= 1 + tasa_c / 360
       val_usa_usd *= 1 + np.random.normal(0.0006, 0.015)
       val_tb_usd *= 1 + tasa_t / 360
-      u_w = np.random.uniform(0.1, 0.9)
+      u_w = np.random.uniform(0.3, 0.7)
       tc = 18.32123 * (u_w / (1 - u_w)) ** (1 / 28.52977)
 
     total_usa_mxn = (val_usa_usd + val_tb_usd) * tc
@@ -885,7 +1023,7 @@ with tab_excel:
   )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 4: ESTADÍSTICOS & RIESGO (CON ALFA MODIFICABLE)
+# PESTAÑA 4: ESTADÍSTICOS & RIESGO
 # ------------------------------------------------------------------------------
 with tab_stats:
   st.header("📊 Tabla de Estadísticos & Métricas de Riesgo Estocástico")
@@ -912,7 +1050,7 @@ with tab_stats:
   st.dataframe(df_stats.style.format(formatos_stats), use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 5: GRÁFICAS ADICIONALES DE RENDIMIENTO (NUEVO)
+# PESTAÑA 5: GRÁFICAS ADICIONALES DE RENDIMIENTO
 # ------------------------------------------------------------------------------
 with tab_charts:
   st.header("📈 Gráficas Adicionales de Distribución de Rendimientos")

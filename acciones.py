@@ -59,7 +59,7 @@ fechas_horizontes = {
 
 
 # ==============================================================================
-# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN GLOBAL
+# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN GLOBAL (MATRIZ DE COVARIANZA CORREGIDA)
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
@@ -76,13 +76,9 @@ def ejecutar_simulacion_mercado(
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
 
-  np.random.seed(42)
-  aleatorios_base = np.random.uniform(
-      0, 1, size=(len(datos) - 1, len(lista_empresas))
-  )
-  wi_base = aleatorios_base / aleatorios_base.sum(axis=1, keepdims=True)
-  matriz_cov_wi = pd.DataFrame(wi_base, columns=lista_empresas).cov(ddof=0)
-  Sigma_wi = matriz_cov_wi.values
+  # Matriz de covarianza anualizada directa de los activos (Markowitz)
+  dias_ano = 252
+  Sigma = rendimientos[lista_empresas].cov(ddof=0).values * dias_ano
 
   # Parámetros de tasa libre de riesgo triangular
   if tipo_tasa == "cetes":
@@ -91,8 +87,6 @@ def ejecutar_simulacion_mercado(
     a, b, c = 0.0360, 0.0370, 0.0400
 
   k = (b - a) / (c - a)
-  dias_ano = 252
-
   mejores_sharpe = []
   datos_animacion = []
   n_animacion_pasos = min(25, n_corr)
@@ -114,18 +108,17 @@ def ejecutar_simulacion_mercado(
     diario = (1 + TL) ** (1 / 360) - 1
     tasa_anual = TL
 
+    # Generar portafolios aleatorios
     aleatorios_sim = np.random.uniform(0, 1, size=(n_sim, len(lista_empresas)))
     wi_sim = aleatorios_sim / aleatorios_sim.sum(axis=1, keepdims=True)
     df_sim = pd.DataFrame(wi_sim, columns=lista_empresas)
 
-    # Anualización correcta y consistente para evitar desalineaciones en la gráfica
-    df_sim["Rp_diario"] = df_sim[lista_empresas].dot(promedio)
-    df_sim["Rp"] = df_sim["Rp_diario"] * dias_ano
-
+    # Rendimiento y Desviación estándar anualizada correcta
+    df_sim["Rp"] = df_sim[lista_empresas].dot(promedio) * dias_ano
     W_sim = df_sim[lista_empresas].values
-    vp_diario = np.einsum("ij,jk,ik->i", W_sim, Sigma_wi, W_sim)
-    df_sim["vp"] = vp_diario * dias_ano
-    df_sim["des_p"] = np.sqrt(vp_diario * dias_ano)
+    vp_sim = np.einsum("ij,jk,ik->i", W_sim, Sigma, W_sim)
+    df_sim["vp"] = vp_sim
+    df_sim["des_p"] = np.sqrt(vp_sim)
 
     df_sim["sharpe_ratio"] = (df_sim["Rp"] - tasa_anual) / df_sim["des_p"]
 
@@ -259,7 +252,7 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (CAL LIMPIA Y MÁXIMO GLOBAL ROJO)
+# 3. CONSTRUCTOR DE GRÁFICA ANIMADA
 # ==============================================================================
 def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   fig = go.Figure()

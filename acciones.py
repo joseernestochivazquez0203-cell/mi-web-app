@@ -32,7 +32,6 @@ n_corridas = st.sidebar.slider(
     "Corridas de Optimización (Sharpe):", 100, 1000, 500, 100
 )
 
-# Definición de mercados y activos
 empresas_mx = ["Grupo México", "Lamosa", "América Movil", "Bimbo", "Kimbera"]
 tickers_mx = {
     "Grupo México": "GMEXICOB.MX",
@@ -59,7 +58,7 @@ fechas_horizontes = {
 
 
 # ==============================================================================
-# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN GLOBAL (MATRIZ DE COVARIANZA CORREGIDA)
+# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN GLOBAL
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
@@ -76,14 +75,12 @@ def ejecutar_simulacion_mercado(
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
 
-  # Matriz de covarianza anualizada directa de los activos (Markowitz)
   dias_ano = 252
   Sigma = rendimientos[lista_empresas].cov(ddof=0).values * dias_ano
 
-  # Parámetros de tasa libre de riesgo triangular
   if tipo_tasa == "cetes":
     a, b, c = 0.04, 0.08, 0.10
-  else:  # t-bills EE. UU.
+  else:
     a, b, c = 0.0360, 0.0370, 0.0400
 
   k = (b - a) / (c - a)
@@ -108,12 +105,10 @@ def ejecutar_simulacion_mercado(
     diario = (1 + TL) ** (1 / 360) - 1
     tasa_anual = TL
 
-    # Generar portafolios aleatorios
     aleatorios_sim = np.random.uniform(0, 1, size=(n_sim, len(lista_empresas)))
     wi_sim = aleatorios_sim / aleatorios_sim.sum(axis=1, keepdims=True)
     df_sim = pd.DataFrame(wi_sim, columns=lista_empresas)
 
-    # Rendimiento y Desviación estándar anualizada correcta
     df_sim["Rp"] = df_sim[lista_empresas].dot(promedio) * dias_ano
     W_sim = df_sim[lista_empresas].values
     vp_sim = np.einsum("ij,jk,ik->i", W_sim, Sigma, W_sim)
@@ -252,7 +247,7 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA ANIMADA
+# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (CON EJES DE -1 A 1)
 # ==============================================================================
 def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   fig = go.Figure()
@@ -385,8 +380,12 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   fig.update_layout(
       title=f"Simulación Monte Carlo Paso a Paso ({titulo_horizonte})",
       template="plotly_white",
-      xaxis=dict(title="Volatility (Riesgo Anual)", range=[0, 1.2]),
-      yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.05, 0.35]),
+      xaxis=dict(
+          title="Volatility (Riesgo Anual)", range=[0, 1.2]
+      ),  # Eje X de 0 a 1.2
+      yaxis=dict(
+          title="Return (Rendimiento Anual)", range=[-1.0, 1.0]
+      ),  # <--- Eje Y ampliado de -1 a 1
       updatemenus=[{
           "type": "buttons",
           "buttons": [

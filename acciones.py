@@ -296,10 +296,15 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (EJE Y DE -0.5 A 0.5)
+# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (CON PUNTO DE MÍNIMA VARIANZA EN AZUL)
 # ==============================================================================
-def construir_figura_animada(
-    datos_anim, titulo_horizonte, lbl_tasa="CETES", is_mx=False
+def construir_figura_animada_con_minima(
+    datos_anim,
+    min_port_df,
+    lista_empresas,
+    titulo_horizonte,
+    lbl_tasa="CETES",
+    is_mx=False,
 ):
   fig = go.Figure()
   n_pasos = len(datos_anim)
@@ -375,6 +380,24 @@ def construir_figura_animada(
       )
   )
 
+  # Punto fijo de Mínima Varianza en Azul
+  min_x = min_port_df["des_p"].values[0]
+  min_y = min_port_df["Rp"].values[0]
+  fig.add_trace(
+      go.Scatter(
+          x=[min_x],
+          y=[min_y],
+          mode="markers",
+          marker=dict(
+              size=12,
+              color="blue",
+              symbol="circle",
+              line=dict(width=1.5, color="black"),
+          ),
+          name="🔵 Mínima Varianza",
+      )
+  )
+
   frames = []
   best_global_idx = max(
       range(len(datos_anim)), key=lambda idx: datos_anim[idx]["star_sharpe"]
@@ -422,6 +445,7 @@ def construir_figura_animada(
         )
     )
     f_data.append(go.Scatter(x=[0], y=[curr["tasa_anual"]]))
+    f_data.append(go.Scatter(x=[min_x], y=[min_y]))
     frames.append(go.Frame(data=f_data, name=f"Paso {f_idx + 1}"))
 
   for idx, t_data in enumerate(frames[0].data):
@@ -517,7 +541,7 @@ def resaltar_maximo_sharpe(df, col_sharpe="sharpe_ratio"):
 
 
 # ==============================================================================
-# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS (CORREGIDO)
+# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS
 # ==============================================================================
 def generar_simulacion_y_estadisticos(
     max_mx, max_usa, n_dias, alpha, num_simulaciones_futuras=1000
@@ -628,24 +652,17 @@ def generar_simulacion_y_estadisticos(
           "min",
       ],
   )
-
-  return (
-      df_estadisticos,
-      rend_global,
-      rend_mx_acc,
-      rend_usa_usd,
-  )  # Variable corregida
+  return df_estadisticos, rend_global, rend_mx_acc, rend_usa_usd
 
 
 # ==============================================================================
-# 5. INTERFAZ EN PESTAÑAS PRINCIPALES
+# 5. INTERFAZ EN PESTAÑAS PRINCIPALES (SIN PESTAÑA SUELTA DE GRÁFICAS)
 # ==============================================================================
-tab_mx, tab_usa, tab_excel, tab_stats, tab_charts, tab_anexo = st.tabs([
+tab_mx, tab_usa, tab_excel, tab_stats, tab_anexo = st.tabs([
     "🇲🇽 Mercado Mexicano (BMV)",
     "🇺🇸 Mercado EE. UU. (Tech)",
     "📑 Modelo Excel Estocástico & Títulos",
     "📊 Estadísticos & Riesgo",
-    "📈 Gráficas & Covarianza",
     "📐 Anexo de Fórmulas Quantitative",
 ])
 
@@ -680,7 +697,7 @@ cols_sh_usa = [
 ]
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: MÉXICO
+# PESTAÑA 1: MÉXICO (CON GRÁFICA DE PRECIOS Y COVARIANZA INTEGRADAS)
 # ------------------------------------------------------------------------------
 with tab_mx:
   st.header("🇲🇽 Análisis de Portafolios - Activos Mexicanos y CETES")
@@ -688,6 +705,7 @@ with tab_mx:
       ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas (MX)"]
   )
 
+  # --- SUBSECCIÓN 1 AÑO ---
   with sub_mx_1:
     col_g, col_ctrl = st.columns([3, 1])
     with col_ctrl:
@@ -695,11 +713,39 @@ with tab_mx:
       st.info("Utiliza los controles superiores para ajustar las iteraciones.")
     with col_g:
       st.plotly_chart(
-          construir_figura_animada(
-              anim_mx_1, "1 Año (México)", "CETES", is_mx=True
+          construir_figura_animada_con_minima(
+              anim_mx_1,
+              min_mx_1,
+              empresas_mx,
+              "1 Año (México)",
+              "CETES",
+              is_mx=True,
           ),
           use_container_width=True,
       )
+
+    st.markdown("---")
+    st.subheader(
+        "📉 Mercado Mexicano - Precios Normalizados (Base 100) [1 Año]"
+    )
+    precios_norm_mx_1 = (datos_mx_1 / datos_mx_1.iloc[0]) * 100
+    fig_norm_mx_1 = px.line(
+        precios_norm_mx_1,
+        title="Evolución Comparativa de Precios Escalados (5 Acciones - 1 Año)",
+    )
+    st.plotly_chart(fig_norm_mx_1, use_container_width=True)
+
+    st.subheader("🔷 Matriz de Covarianza Anualizada (México - 1 Año)")
+    fig_cov_mx_1 = px.imshow(
+        cov_mx_1,
+        x=empresas_mx,
+        y=empresas_mx,
+        color_continuous_scale="Viridis",
+        text_auto=".4f",
+        title="Matriz de Covarianza (Sigma)",
+    )
+    st.plotly_chart(fig_cov_mx_1, use_container_width=True)
+    st.markdown("---")
 
     st.markdown("#### Portafolio de Mínima Desviación")
     st.dataframe(
@@ -725,11 +771,43 @@ with tab_mx:
         use_container_width=True,
     )
 
+  # --- SUBSECCIÓN 2 AÑOS ---
   with sub_mx_2:
     st.plotly_chart(
-        construir_figura_animada(anim_mx_2, "2 Años (México)", "CETES", is_mx=True),
+        construir_figura_animada_con_minima(
+            anim_mx_2,
+            min_mx_2,
+            empresas_mx,
+            "2 Años (México)",
+            "CETES",
+            is_mx=True,
+        ),
         use_container_width=True,
     )
+
+    st.markdown("---")
+    st.subheader(
+        "📉 Mercado Mexicano - Precios Normalizados (Base 100) [2 Años]"
+    )
+    precios_norm_mx_2 = (datos_mx_2 / datos_mx_2.iloc[0]) * 100
+    fig_norm_mx_2 = px.line(
+        precios_norm_mx_2,
+        title="Evolución Comparativa de Precios Escalados (5 Acciones - 2 Años)",
+    )
+    st.plotly_chart(fig_norm_mx_2, use_container_width=True)
+
+    st.subheader("🔷 Matriz de Covarianza Anualizada (México - 2 Años)")
+    fig_cov_mx_2 = px.imshow(
+        cov_mx_2,
+        x=empresas_mx,
+        y=empresas_mx,
+        color_continuous_scale="Viridis",
+        text_auto=".4f",
+        title="Matriz de Covarianza (Sigma)",
+    )
+    st.plotly_chart(fig_cov_mx_2, use_container_width=True)
+    st.markdown("---")
+
     st.markdown("#### Portafolio de Mínima Desviación")
     st.dataframe(
         min_mx_2[[c for c in cols_min_mx if c in min_mx_2.columns]].style.format(
@@ -754,11 +832,43 @@ with tab_mx:
         use_container_width=True,
     )
 
+  # --- SUBSECCIÓN 3 AÑOS ---
   with sub_mx_3:
     st.plotly_chart(
-        construir_figura_animada(anim_mx_3, "3 Años (México)", "CETES", is_mx=True),
+        construir_figura_animada_con_minima(
+            anim_mx_3,
+            min_mx_3,
+            empresas_mx,
+            "3 Años (México)",
+            "CETES",
+            is_mx=True,
+        ),
         use_container_width=True,
     )
+
+    st.markdown("---")
+    st.subheader(
+        "📉 Mercado Mexicano - Precios Normalizados (Base 100) [3 Años]"
+    )
+    precios_norm_mx_3 = (datos_mx_3 / datos_mx_3.iloc[0]) * 100
+    fig_norm_mx_3 = px.line(
+        precios_norm_mx_3,
+        title="Evolución Comparativa de Precios Escalados (5 Acciones - 3 Años)",
+    )
+    st.plotly_chart(fig_norm_mx_3, use_container_width=True)
+
+    st.subheader("🔷 Matriz de Covarianza Anualizada (México - 3 Años)")
+    fig_cov_mx_3 = px.imshow(
+        cov_mx_3,
+        x=empresas_mx,
+        y=empresas_mx,
+        color_continuous_scale="Viridis",
+        text_auto=".4f",
+        title="Matriz de Covarianza (Sigma)",
+    )
+    st.plotly_chart(fig_cov_mx_3, use_container_width=True)
+    st.markdown("---")
+
     st.markdown("#### Portafolio de Mínima Desviación")
     st.dataframe(
         min_mx_3[[c for c in cols_min_mx if c in min_mx_3.columns]].style.format(
@@ -801,7 +911,7 @@ with tab_mx:
     )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 2: ESTADOS UNIDOS
+# PESTAÑA 2: ESTADOS UNIDOS (CON GRÁFICA DE PRECIOS Y COVARIANZA INTEGRADAS)
 # ------------------------------------------------------------------------------
 with tab_usa:
   st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
@@ -809,13 +919,44 @@ with tab_usa:
       ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas (USA)"]
   )
 
+  # --- SUBSECCIÓN 1 AÑO USA ---
   with sub_usa_1:
     st.plotly_chart(
-        construir_figura_animada(
-            anim_usa_1, "1 Año (EE. UU.)", "T-Bills", is_mx=False
+        construir_figura_animada_con_minima(
+            anim_usa_1,
+            min_usa_1,
+            empresas_usa,
+            "1 Año (EE. UU.)",
+            "T-Bills",
+            is_mx=False,
         ),
         use_container_width=True,
     )
+
+    st.markdown("---")
+    st.subheader("📉 Mercado EE. UU. - Precios Normalizados (Base 100) [1 Año]")
+    precios_norm_usa_1 = (datos_usa_1 / datos_usa_1.iloc[0]) * 100
+    fig_norm_usa_1 = px.line(
+        precios_norm_usa_1,
+        title=(
+            "Evolución Comparativa de Precios Escalados (5 Acciones Tech - 1"
+            " Año)"
+        ),
+    )
+    st.plotly_chart(fig_norm_usa_1, use_container_width=True)
+
+    st.subheader("🔷 Matriz de Covarianza Anualizada (EE. UU. - 1 Año)")
+    fig_cov_usa_1 = px.imshow(
+        cov_usa_1,
+        x=empresas_usa,
+        y=empresas_usa,
+        color_continuous_scale="Viridis",
+        text_auto=".4f",
+        title="Matriz de Covarianza (Sigma)",
+    )
+    st.plotly_chart(fig_cov_usa_1, use_container_width=True)
+    st.markdown("---")
+
     st.markdown("#### Portafolio de Mínima Desviación")
     st.dataframe(
         min_usa_1[
@@ -840,13 +981,44 @@ with tab_usa:
         use_container_width=True,
     )
 
+  # --- SUBSECCIÓN 2 AÑOS USA ---
   with sub_usa_2:
     st.plotly_chart(
-        construir_figura_animada(
-            anim_usa_2, "2 Años (EE. UU.)", "T-Bills", is_mx=False
+        construir_figura_animada_con_minima(
+            anim_usa_2,
+            min_usa_2,
+            empresas_usa,
+            "2 Años (EE. UU.)",
+            "T-Bills",
+            is_mx=False,
         ),
         use_container_width=True,
     )
+
+    st.markdown("---")
+    st.subheader("📉 Mercado EE. UU. - Precios Normalizados (Base 100) [2 Años]")
+    precios_norm_usa_2 = (datos_usa_2 / datos_usa_2.iloc[0]) * 100
+    fig_norm_usa_2 = px.line(
+        precios_norm_usa_2,
+        title=(
+            "Evolución Comparativa de Precios Escalados (5 Acciones Tech - 2"
+            " Años)"
+        ),
+    )
+    st.plotly_chart(fig_norm_usa_2, use_container_width=True)
+
+    st.subheader("🔷 Matriz de Covarianza Anualizada (EE. UU. - 2 Años)")
+    fig_cov_usa_2 = px.imshow(
+        cov_usa_2,
+        x=empresas_usa,
+        y=empresas_usa,
+        color_continuous_scale="Viridis",
+        text_auto=".4f",
+        title="Matriz de Covarianza (Sigma)",
+    )
+    st.plotly_chart(fig_cov_usa_2, use_container_width=True)
+    st.markdown("---")
+
     st.markdown("#### Portafolio de Mínima Desviación")
     st.dataframe(
         min_usa_2[
@@ -871,13 +1043,44 @@ with tab_usa:
         use_container_width=True,
     )
 
+  # --- SUBSECCIÓN 3 AÑOS USA ---
   with sub_usa_3:
     st.plotly_chart(
-        construir_figura_animada(
-            anim_usa_3, "3 Años (EE. UU.)", "T-Bills", is_mx=False
+        construir_figura_animada_con_minima(
+            anim_usa_3,
+            min_usa_3,
+            empresas_usa,
+            "3 Años (EE. UU.)",
+            "T-Bills",
+            is_mx=False,
         ),
         use_container_width=True,
     )
+
+    st.markdown("---")
+    st.subheader("📉 Mercado EE. UU. - Precios Normalizados (Base 100) [3 Años]")
+    precios_norm_usa_3 = (datos_usa_3 / datos_usa_3.iloc[0]) * 100
+    fig_norm_usa_3 = px.line(
+        precios_norm_usa_3,
+        title=(
+            "Evolución Comparativa de Precios Escalados (5 Acciones Tech - 3"
+            " Años)"
+        ),
+    )
+    st.plotly_chart(fig_norm_usa_3, use_container_width=True)
+
+    st.subheader("🔷 Matriz de Covarianza Anualizada (EE. UU. - 3 Años)")
+    fig_cov_usa_3 = px.imshow(
+        cov_usa_3,
+        x=empresas_usa,
+        y=empresas_usa,
+        color_continuous_scale="Viridis",
+        text_auto=".4f",
+        title="Matriz de Covarianza (Sigma)",
+    )
+    st.plotly_chart(fig_cov_usa_3, use_container_width=True)
+    st.markdown("---")
+
     st.markdown("#### Portafolio de Mínima Desviación")
     st.dataframe(
         min_usa_3[
@@ -972,7 +1175,6 @@ with tab_excel:
       "Precio Actual (MXN)": [precios_mx_actuales[e] for e in empresas_mx],
   })
 
-  # Redondeo entero hacia abajo (tipo 5.46 -> 5 títulos)
   df_titulos_mx["Títulos a Comprar"] = np.floor(
       df_titulos_mx["Capital Asignado (MXN)"]
       / df_titulos_mx["Precio Actual (MXN)"]
@@ -1003,7 +1205,6 @@ with tab_excel:
       "Precio Actual (USD)": [precios_usa_actuales[e] for e in empresas_usa],
   })
 
-  # Redondeo entero hacia abajo
   df_titulos_usa["Títulos a Comprar"] = np.floor(
       df_titulos_usa["Capital Asignado (USD)"]
       / df_titulos_usa["Precio Actual (USD)"]
@@ -1118,110 +1319,7 @@ with tab_stats:
   st.dataframe(df_stats.style.format(formatos_stats), use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 5: GRÁFICAS DE PRECIOS ESCALADOS & MATRIZ DE COVARIANZA DINÁMICAS
-# ------------------------------------------------------------------------------
-with tab_charts:
-  st.header("📈 Gráficas Escaladas de Precios y Matrices de Covarianza")
-
-  col_sel1, col_sel2 = st.columns(2)
-  with col_sel1:
-    mercado_chart = st.selectbox(
-        "Selecciona el Mercado:", ["México (BMV)", "EE. UU. (Tech)"]
-    )
-  with col_sel2:
-    horiz_chart = st.selectbox(
-        "Selecciona el Horizonte:", ["1 año", "2 años", "3 años"]
-    )
-
-  if mercado_chart == "México (BMV)":
-    if horiz_chart == "1 año":
-      d_m, c_m, min_h, empresas_act = (
-          datos_mx_1,
-          cov_mx_1,
-          min_mx_1,
-          empresas_mx,
-      )
-    elif horiz_chart == "2 años":
-      d_m, c_m, min_h, empresas_act = (
-          datos_mx_2,
-          cov_mx_2,
-          min_mx_2,
-          empresas_mx,
-      )
-    else:
-      d_m, c_m, min_h, empresas_act = (
-          datos_mx_3,
-          cov_mx_3,
-          min_mx_3,
-          empresas_mx,
-      )
-    titulo_mercado = "Mercado Mexicano"
-  else:
-    if horiz_chart == "1 año":
-      d_m, c_m, min_h, empresas_act = (
-          datos_usa_1,
-          cov_usa_1,
-          min_usa_1,
-          empresas_usa,
-      )
-    elif horiz_chart == "2 años":
-      d_m, c_m, min_h, empresas_act = (
-          datos_usa_2,
-          cov_usa_2,
-          min_usa_2,
-          empresas_usa,
-      )
-    else:
-      d_m, c_m, min_h, empresas_act = (
-          datos_usa_3,
-          cov_usa_3,
-          min_usa_3,
-          empresas_usa,
-      )
-    titulo_mercado = "Mercado EE. UU."
-
-  st.subheader(
-      f"📉 {titulo_mercado} - Precios Normalizados (Base 100) [{horiz_chart}]"
-  )
-  precios_norm = (d_m / d_m.iloc[0]) * 100
-  fig_norm = px.line(
-      precios_norm,
-      title=(
-          f"Evolución Comparativa de Precios Escalados ({titulo_mercado} -"
-          f" {horiz_chart})"
-      ),
-  )
-
-  ret_diarios = np.log(d_m / d_m.shift(1)).dropna()
-  w_min = min_h[empresas_act].values[0]
-  port_min_var = (
-      ret_diarios[empresas_act].dot(w_min).cumsum().apply(np.exp) * 100
-  )
-
-  fig_norm.add_trace(
-      go.Scatter(
-          x=port_min_var.index,
-          y=port_min_var,
-          mode="lines",
-          line=dict(color="blue", width=3, dash="dash"),
-          name="🔵 Mínima Varianza (Portafolio)",
-      )
-  )
-  st.plotly_chart(fig_norm, use_container_width=True)
-
-  st.subheader(f"🔷 Matriz de Covarianza Anualizada ({titulo_mercado})")
-  fig_cov = px.imshow(
-      c_m,
-      x=empresas_act,
-      y=empresas_act,
-      color_continuous_scale="Viridis",
-      text_auto=".4f",
-      title=f"Matriz de Covarianza (Sigma) - {horiz_chart}",
-  )
-  st.plotly_chart(fig_cov, use_container_width=True)
-
-# ------------------------------------------------------------------------------
-# PESTAÑA 6: ANEXO DE FÓRMULAS QUANTITATIVE & RIESGO
+# PESTAÑA 5: ANEXO DE FÓRMULAS QUANTITATIVE & RIESGO
 # ------------------------------------------------------------------------------
 with tab_anexo:
   st.header("📐 Anexo Cuantitativo: Fórmulas y Modelos Matemáticos")
@@ -1237,7 +1335,7 @@ with tab_anexo:
     st.latex(r"R_p = \sum_{i=1}^{n} w_i \cdot \mu_i = \mathbf{w}^T \boldsymbol{\mu}")
     st.latex(
         r"\sigma_p^2 = \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} = \sum_{i=1}^n"
-        r" \sum_{j=1}^n w_i w_j \sigma_{ij}"
+        r" \sum_{j=1}^n w_j \sigma_{ij}"
     )
     st.latex(r"\sigma_p = \sqrt{\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}}")
 

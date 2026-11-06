@@ -56,10 +56,16 @@ st.sidebar.info(
     f" **{dias_habiles}**"
 )
 
-# Activos balanceados
-empresas_mx = ["Grupo Lamosa", "Walmart México", "América Movil", "Bimbo", "Grupo México"]
+# Activos actualizados por ti
+empresas_mx = [
+    "Grupo Lamosa",
+    "Walmart México",
+    "América Movil",
+    "Bimbo",
+    "Grupo México",
+]
 tickers_mx = {
-    "Lamosa": "LAMOSA.MX",
+    "Grupo Lamosa": "LAMOSA.MX",
     "Walmart México": "WALMEX.MX",
     "América Movil": "AMXB.MX",
     "Bimbo": "BIMBOA.MX",
@@ -69,7 +75,7 @@ tickers_mx = {
 empresas_usa = ["Microsoft", "Netflix", "Alphabet", "Amazon", "NVIDIA"]
 tickers_usa = {
     "Microsoft": "MSFT",
-    "Netflix": "NFLX",
+    "Netflix": "NFLX",  # Corregido de NFTL a NFLX
     "Alphabet": "GOOGL",
     "Amazon": "AMZN",
     "NVIDIA": "NVDA",
@@ -283,7 +289,7 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA ANIMADA
+# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (EJE Y DE -0.5 A 0.5)
 # ==============================================================================
 def construir_figura_animada(
     datos_anim, titulo_horizonte, lbl_tasa="CETES", is_mx=False
@@ -415,7 +421,7 @@ def construir_figura_animada(
     fig.data[idx].x = t_data.x
     fig.data[idx].y = t_data.y
 
-  y_range = [-0.5, 0.5] if is_mx else [-0.5, 0.5]
+  y_range = [-0.5, 0.5]
 
   fig.update_layout(
       title=f"Simulación Monte Carlo Paso a Paso ({titulo_horizonte})",
@@ -913,7 +919,7 @@ with tab_excel:
   else:
     mx_p, usa_p = max_mx_3, max_usa_3
 
-  # Obtención robusta de precios actuales (evita Nones descargando histórico reciente si falla el último día)
+  # Obtención robusta de precios actuales
   precios_mx_actuales = {}
   for k, v in tickers_mx.items():
     try:
@@ -922,7 +928,7 @@ with tab_excel:
         df_p = df_p.iloc[:, 0]
       precios_mx_actuales[k] = float(df_p.dropna().iloc[-1])
     except:
-      precios_mx_actuales[k] = 100.0  # Respaldo de seguridad
+      precios_mx_actuales[k] = 100.0
 
   precios_usa_actuales = {}
   for k, v in tickers_usa.items():
@@ -932,7 +938,7 @@ with tab_excel:
         df_p = df_p.iloc[:, 0]
       precios_usa_actuales[k] = float(df_p.dropna().iloc[-1])
     except:
-      precios_usa_actuales[k] = 150.0  # Respaldo de seguridad
+      precios_usa_actuales[k] = 150.0
 
   # TABLA 1: ACCIONES MÉXICO ($500,000 MXN)
   st.subheader("🇲🇽 Asignación de Títulos - Portafolio México ($500,000 MXN)")

@@ -1,20 +1,23 @@
 import numpy as np
 import pandas as pd
-import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import yfinance as yf
 
 # Configuración de la página en Streamlit
 st.set_page_config(
-    page_title="Simulador de Portafolios & Monte Carlo",
+    page_title="Simulador de Portafolios Internacionales & Monte Carlo",
     page_icon="📈",
     layout="wide",
 )
 
-st.title("📊 Simulador de Portafolios de Inversión y Monte Carlo")
+st.title(
+    "📊 Simulador de Portafolios de Inversión"
+)
 st.markdown(
-    "Modelo cuantitativo multianual con optimización de portafolios de la BMV y CETES."
+    "Modelo cuantitativo multianual con optimización para activos de la BMV"
+    " (CETES) y de EE. UU. (T-Bills)."
 )
 
 # ==============================================================================
@@ -29,13 +32,23 @@ n_corridas = st.sidebar.slider(
     "Corridas de Optimización (Sharpe):", 50, 500, 200, 50
 )
 
-empresas = ["Grupo México", "Lamosa", "América Movil", "Bimbo", "Kimbera"]
-tickers = {
+# Definición de mercados
+empresas_mx = ["Grupo México", "Lamosa", "América Movil", "Bimbo", "Kimbera"]
+tickers_mx = {
     "Grupo México": "GMEXICOB.MX",
     "Lamosa": "LAMOSA.MX",
     "América Movil": "AMXB.MX",
     "Bimbo": "BIMBOA.MX",
     "Kimbera": "KIMBERA.MX",
+}
+
+empresas_usa = ["Microsoft", "Netflix", "Spotify", "Intel", "Apple"]
+tickers_usa = {
+    "Microsoft": "MSFT",
+    "Netflix": "NFLX",
+    "Spotify": "SPOT",
+    "Intel": "INTC",
+    "Apple": "AAPL",
 }
 
 fechas_horizontes = {
@@ -46,30 +59,36 @@ fechas_horizontes = {
 
 
 # ==============================================================================
-# 2. FUNCIÓN DE SIMULACIÓN Y ANIMACIÓN PASO A PASO
+# 2. FUNCIÓN DE SIMULACIÓN GENERAL (GENÉRICA PARA AMBOS MERCADOS)
 # ==============================================================================
 @st.cache_data
-def ejecutar_simulacion_completa(start, end, n_sim, n_corr):
-  datos = yf.download(list(tickers.values()), start=start, end=end)["Close"]
+def ejecutar_simulacion_mercado(
+    tickers_dict, lista_empresas, start, end, n_sim, n_corr, tipo_tasa="cetes"
+):
+  datos = yf.download(list(tickers_dict.values()), start=start, end=end)[
+      "Close"
+  ]
   if isinstance(datos.columns, pd.MultiIndex):
     datos.columns = datos.columns.droplevel(0)
-  datos.rename(
-      columns={v: k for k, v in tickers.items()}, inplace=True
-  )
-  datos = datos[empresas].dropna()
+  datos.rename(columns={v: k for k, v in tickers_dict.items()}, inplace=True)
+  datos = datos[lista_empresas].dropna()
 
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
-
-  np.random.seed(42)
+    
   aleatorios_base = np.random.uniform(
-      0, 1, size=(len(datos) - 1, len(empresas))
+      0, 1, size=(len(datos) - 1, len(lista_empresas))
   )
   wi_base = aleatorios_base / aleatorios_base.sum(axis=1, keepdims=True)
-  matriz_cov_wi = pd.DataFrame(wi_base, columns=empresas).cov(ddof=0)
+  matriz_cov_wi = pd.DataFrame(wi_base, columns=lista_empresas).cov(ddof=0)
   Sigma_wi = matriz_cov_wi.values
 
-  a, b, c = 0.04, 0.08, 0.10
+  # Configuración de tasa libre de riesgo (Triangular)
+  if tipo_tasa == "cetes":
+    a, b, c = 0.04, 0.08, 0.10
+  else:  # t-bills
+    a, b, c = 0.0360, 0.0370, 0.0400
+
   k = (b - a) / (c - a)
   dias_ano = 252
 
@@ -85,21 +104,21 @@ def ejecutar_simulacion_completa(start, end, n_sim, n_corr):
   df_sim_global = None
 
   for i in range(1, n_corr + 1):
-    p_cetes = np.random.uniform(0, 1)
-    if p_cetes < k:
-      TL = a + np.sqrt(p_cetes * (b - a) * (c - a))
+    p_tasa = np.random.uniform(0, 1)
+    if p_tasa < k:
+      TL = a + np.sqrt(p_tasa * (b - a) * (c - a))
     else:
-      TL = c - np.sqrt((1 - p_cetes) * (c - a) * (c - b))
+      TL = c - np.sqrt((1 - p_tasa) * (c - a) * (c - b))
 
     diario = (1 + TL) ** (1 / 360) - 1
-    cetes_anual = TL
+    tasa_anual = TL
 
-    aleatorios_sim = np.random.uniform(0, 1, size=(n_sim, len(empresas)))
+    aleatorios_sim = np.random.uniform(0, 1, size=(n_sim, len(lista_empresas)))
     wi_sim = aleatorios_sim / aleatorios_sim.sum(axis=1, keepdims=True)
-    df_sim = pd.DataFrame(wi_sim, columns=empresas)
+    df_sim = pd.DataFrame(wi_sim, columns=lista_empresas)
 
-    df_sim["Rp"] = df_sim[empresas].dot(promedio)
-    W_sim = df_sim[empresas].values
+    df_sim["Rp"] = df_sim[lista_empresas].dot(promedio)
+    W_sim = df_sim[lista_empresas].values
     vp_sim = np.einsum("ij,jk,ik->i", W_sim, Sigma_wi, W_sim)
     df_sim["vp"] = vp_sim
     df_sim["des_p"] = np.sqrt(vp_sim)
@@ -111,13 +130,13 @@ def ejecutar_simulacion_completa(start, end, n_sim, n_corr):
     idx_max_sharpe = df_sim["sharpe_ratio"].idxmax()
     mejor_fila = df_sim.loc[[idx_max_sharpe]].copy()
     mejor_fila.index = [f"{i}"]
-    mejor_fila["CETES_diario"] = diario
+    mejor_fila["Tasa_diaria"] = diario
     mejores_sharpe.append(mejor_fila)
 
     if i <= n_animacion_pasos:
       Rp_anual_sim = df_sim["Rp"] * dias_ano
       des_p_anual_sim = df_sim["des_p"] * np.sqrt(dias_ano)
-      sharpe_anual_sim = (Rp_anual_sim - cetes_anual) / des_p_anual_sim
+      sharpe_anual_sim = (Rp_anual_sim - tasa_anual) / des_p_anual_sim
       idx_opt = sharpe_anual_sim.idxmax()
 
       riesgo_opt_anual = des_p_anual_sim.loc[idx_opt]
@@ -125,17 +144,17 @@ def ejecutar_simulacion_completa(start, end, n_sim, n_corr):
       max_sh_anual = sharpe_anual_sim.loc[idx_opt]
 
       x_cal = np.linspace(0, riesgo_opt_anual * 1.25, 30)
-      y_cal = cetes_anual + max_sh_anual * x_cal
+      y_cal = tasa_anual + max_sh_anual * x_cal
 
       r_comb = w_portafolio * riesgo_opt_anual
-      ret_comb = (w_cetes * cetes_anual) + (w_portafolio * ret_opt_anual)
+      ret_comb = (w_cetes * tasa_anual) + (w_portafolio * ret_opt_anual)
 
       df_vis = df_sim.sample(
           n=min(3000, len(df_sim)), random_state=42
       ).copy()
 
       datos_animacion.append({
-          "cetes_anual": cetes_anual,
+          "tasa_anual": tasa_anual,
           "nube_x": (df_vis["des_p"] * np.sqrt(dias_ano)).values,
           "nube_y": (df_vis["Rp"] * dias_ano).values,
           "x_cal": x_cal,
@@ -157,39 +176,99 @@ def ejecutar_simulacion_completa(start, end, n_sim, n_corr):
   return min_port, max_sharpe_port, datos_animacion, tabla_sharpe_max
 
 
-with st.spinner("Calculando simulaciones y optimizaciones Monte Carlo..."):
-  res_1 = ejecutar_simulacion_completa(
+with st.spinner(
+    "Calculando simulaciones para México y Estados Unidos (1, 2 y 3 años)..."
+):
+  # Resultados México (CETES)
+  res_mx_1 = ejecutar_simulacion_mercado(
+      tickers_mx,
+      empresas_mx,
       fechas_horizontes["1 año"]["inicio"],
       fechas_horizontes["1 año"]["fin"],
       n_simulaciones,
       n_corridas,
+      "cetes",
   )
-  res_2 = ejecutar_simulacion_completa(
+  res_mx_2 = ejecutar_simulacion_mercado(
+      tickers_mx,
+      empresas_mx,
       fechas_horizontes["2 años"]["inicio"],
       fechas_horizontes["2 años"]["fin"],
       n_simulaciones,
       n_corridas,
+      "cetes",
   )
-  res_3 = ejecutar_simulacion_completa(
+  res_mx_3 = ejecutar_simulacion_mercado(
+      tickers_mx,
+      empresas_mx,
       fechas_horizontes["3 años"]["inicio"],
       fechas_horizontes["3 años"]["fin"],
       n_simulaciones,
       n_corridas,
+      "cetes",
   )
 
-  min_1yr, maxshare1, anim_1, tabla_1000_1yr = res_1
-  min_2yr, maxshare2, anim_2, tabla_1000_2yr = res_2
-  min_3yr, maxshare3, anim_3, tabla_1000_3yr = res_3
+  # Resultados USA (T-Bills)
+  res_usa_1 = ejecutar_simulacion_mercado(
+      tickers_usa,
+      empresas_usa,
+      fechas_horizontes["1 año"]["inicio"],
+      fechas_horizontes["1 año"]["fin"],
+      n_simulaciones,
+      n_corridas,
+      "tbills",
+  )
+  res_usa_2 = ejecutar_simulacion_mercado(
+      tickers_usa,
+      empresas_usa,
+      fechas_horizontes["2 años"]["inicio"],
+      fechas_horizontes["2 años"]["fin"],
+      n_simulaciones,
+      n_corridas,
+      "tbills",
+  )
+  res_usa_3 = ejecutar_simulacion_mercado(
+      tickers_usa,
+      empresas_usa,
+      fechas_horizontes["3 años"]["inicio"],
+      fechas_horizontes["3 años"]["fin"],
+      n_simulaciones,
+      n_corridas,
+      "tbills",
+  )
 
-min_1yr.index, min_2yr.index, min_3yr.index = ["1 año"], ["2 años"], ["3 años"]
-maxshare1.index, maxshare2.index, maxshare3.index = (
+  # Desempaquetar MX
+  min_mx_1, max_mx_1, anim_mx_1, t1000_mx_1 = res_mx_1
+  min_mx_2, max_mx_2, anim_mx_2, t1000_mx_2 = res_mx_2
+  min_mx_3, max_mx_3, anim_mx_3, t1000_mx_3 = res_mx_3
+
+  # Desempaquetar USA
+  min_usa_1, max_usa_1, anim_usa_1, t1000_usa_1 = res_usa_1
+  min_usa_2, max_usa_2, anim_usa_2, t1000_usa_2 = res_usa_2
+  min_usa_3, max_usa_3, anim_usa_3, t1000_usa_3 = res_usa_3
+
+# Asignar índices de periodo
+for m in [min_mx_1, max_mx_1, t1000_mx_1]:
+  m.index = ["1 año" if len(m) == 1 else m.index]
+min_mx_1.index, min_mx_2.index, min_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
+max_mx_1.index, max_mx_2.index, max_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
+
+min_usa_1.index, min_usa_2.index, min_usa_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
+max_usa_1.index, max_usa_2.index, max_usa_3.index = (
     ["1 año"],
     ["2 años"],
     ["3 años"],
 )
 
 
-def construir_figura_animada(datos_anim, titulo_horizonte):
+# ==============================================================================
+# 3. FUNCIÓN DE GRÁFICA ANIMADA
+# ==============================================================================
+def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   fig = go.Figure()
   n_pasos = len(datos_anim)
 
@@ -235,7 +314,7 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
               symbol="diamond",
               line=dict(width=1, color="black"),
           ),
-          name="Mix 30% CETES / 70% Portafolio",
+          name=f"Mix 30% {lbl_tasa} / 70% Portafolio",
       )
   )
   fig.add_trace(
@@ -244,7 +323,7 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
           y=[],
           mode="markers",
           marker=dict(size=8, color="darkred", symbol="circle"),
-          name="CETES",
+          name=lbl_tasa,
       )
   )
 
@@ -278,7 +357,7 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
             y=[datos_anim[j]["mix_y"] for j in range(f_idx + 1)],
         )
     )
-    f_data.append(go.Scatter(x=[0], y=[curr["cetes_anual"]]))
+    f_data.append(go.Scatter(x=[0], y=[curr["tasa_anual"]]))
     frames.append(go.Frame(data=f_data, name=f"Paso {f_idx + 1}"))
 
   for idx, t_data in enumerate(frames[0].data):
@@ -358,146 +437,248 @@ def construir_figura_animada(datos_anim, titulo_horizonte):
 
 
 # ==============================================================================
-# 3. INTERFAZ DE PESTAÑAS (TABS)
+# 4. INTERFAZ PRINCIPAL CON PESTAÑAS PRINCIPALES (MÉXICO VS. USA)
 # ==============================================================================
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📅 1 Año",
-    "📅 2 Años",
-    "📅 3 Años",
-    "📋 Tablas Comparativas Generales",
-])
+tab_mx, tab_usa = st.tabs(
+    ["🇲🇽 Mercado Mexicano (BMV / CETES)", "🇺🇸 Mercado Estadounidense (EE. UU. / T-Bills)"]
+)
 
-formatos_porcentaje = {c: "{:.2%}" for c in empresas}
-formatos_porcentaje.update({
-    "Rp": "{:.4%}",
-    "des_p": "{:.4%}",
-    "CETES_diario": "{:.4%}",
-    "sharpe_ratio": "{:.4f}",
-})
-
-cols_min = [c for c in empresas + ["Rp", "vp", "des_p"]]
-cols_sharpe = [
-    c for c in empresas + ["Rp", "vp", "des_p", "CETES_diario", "sharpe_ratio"]
-]
-
-# PESTAÑA 1: 1 AÑO
-with tab1:
-  st.subheader("Simulación y Frontera Eficiente - 1 Año")
-  fig_1 = construir_figura_animada(anim_1, "1 Año")
-  st.plotly_chart(fig_1, use_container_width=True)
-
-  st.markdown("---")
-  st.subheader("📑 Resultados Individuales (1 Año)")
-
-  st.markdown("#### Portafolio de Mínima Desviación")
-  st.dataframe(
-      min_1yr[[c for c in cols_min if c in min_1yr.columns]].style.format(
-          formatos_porcentaje
-      ),
-      use_container_width=True,
+# ------------------------------------------------------------------------------
+# PESTAÑA MÉXICO
+# ------------------------------------------------------------------------------
+with tab_mx:
+  st.header("🇲🇽 Análisis de Portafolios - Activos Mexicanos y CETES")
+  sub_mx_1, sub_mx_2, sub_mx_3, sub_mx_comp = st.tabs(
+      ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas (MX)"]
   )
 
-  st.markdown("#### Portafolio de Máximo Sharpe (Individual)")
-  st.dataframe(
-      maxshare1[
-          [c for c in cols_sharpe if c in maxshare1.columns]
-      ].style.format(formatos_porcentaje),
-      use_container_width=True,
+  formatos_mx = {c: "{:.2%}" for c in empresas_mx}
+  formatos_mx.update({
+      "Rp": "{:.4%}",
+      "des_p": "{:.4%}",
+      "Tasa_diaria": "{:.4%}",
+      "sharpe_ratio": "{:.4f}",
+  })
+  cols_min_mx = [c for c in empresas_mx + ["Rp", "vp", "des_p"]]
+  cols_sh_mx = [
+      c for c in empresas_mx + ["Rp", "vp", "des_p", "Tasa_diaria", "sharpe_ratio"]
+  ]
+
+  with sub_mx_1:
+    st.plotly_chart(
+        construir_figura_animada(anim_mx_1, "1 Año (México)", "CETES"),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_mx_1[[c for c in cols_min_mx if c in min_mx_1.columns]].style.format(
+            formatos_mx
+        ),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.dataframe(
+        max_mx_1[[c for c in cols_sh_mx if c in max_mx_1.columns]].style.format(
+            formatos_mx
+        ),
+        use_container_width=True,
+    )
+    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.dataframe(
+        t1000_mx_1.head(10)[
+            [c for c in cols_sh_mx if c in t1000_mx_1.columns]
+        ].style.format(formatos_mx),
+        use_container_width=True,
+    )
+
+  with sub_mx_2:
+    st.plotly_chart(
+        construir_figura_animada(anim_mx_2, "2 Años (México)", "CETES"),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_mx_2[[c for c in cols_min_mx if c in min_mx_2.columns]].style.format(
+            formatos_mx
+        ),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.dataframe(
+        max_mx_2[[c for c in cols_sh_mx if c in max_mx_2.columns]].style.format(
+            formatos_mx
+        ),
+        use_container_width=True,
+    )
+    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.dataframe(
+        t1000_mx_2.head(10)[
+            [c for c in cols_sh_mx if c in t1000_mx_2.columns]
+        ].style.format(formatos_mx),
+        use_container_width=True,
+    )
+
+  with sub_mx_3:
+    st.plotly_chart(
+        construir_figura_animada(anim_mx_3, "3 Años (México)", "CETES"),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_mx_3[[c for c in cols_min_mx if c in min_mx_3.columns]].style.format(
+            formatos_mx
+        ),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.dataframe(
+        max_mx_3[[c for c in cols_sh_mx if c in max_mx_3.columns]].style.format(
+            formatos_mx
+        ),
+        use_container_width=True,
+    )
+    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.dataframe(
+        t1000_mx_3.head(10)[
+            [c for c in cols_sh_mx if c in t1000_mx_3.columns]
+        ].style.format(formatos_mx),
+        use_container_width=True,
+    )
+
+  with sub_mx_comp:
+    st.subheader("📋 Tablas Comparativas (México)")
+    st.markdown("### Mínima Desviación")
+    st.dataframe(
+        pd.concat([min_mx_1, min_mx_2, min_mx_3])[
+            [c for c in cols_min_mx if c in min_mx_1.columns]
+        ].style.format(formatos_mx),
+        use_container_width=True,
+    )
+    st.markdown("### Máximo Sharpe Ratios")
+    st.dataframe(
+        pd.concat([max_mx_1, max_mx_2, max_mx_3])[
+            [c for c in cols_sh_mx if c in max_mx_1.columns]
+        ].style.format(formatos_mx),
+        use_container_width=True,
+    )
+
+# ------------------------------------------------------------------------------
+# PESTAÑA USA
+# ------------------------------------------------------------------------------
+with tab_usa:
+  st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
+  sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs(
+      ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas (USA)"]
   )
 
-  st.markdown("#### Mejores Portafolios (Máximo Sharpe - Top 10)")
-  st.dataframe(
-      tabla_1000_1yr.head(10)[
-          [c for c in cols_sharpe if c in tabla_1000_1yr.columns]
-      ].style.format(formatos_porcentaje),
-      use_container_width=True,
-  )
+  formatos_usa = {c: "{:.2%}" for c in empresas_usa}
+  formatos_usa.update({
+      "Rp": "{:.4%}",
+      "des_p": "{:.4%}",
+      "Tasa_diaria": "{:.4%}",
+      "sharpe_ratio": "{:.4f}",
+  })
+  cols_min_usa = [c for c in empresas_usa + ["Rp", "vp", "des_p"]]
+  cols_sh_usa = [
+      c
+      for c in empresas_usa
+      + ["Rp", "vp", "des_p", "Tasa_diaria", "sharpe_ratio"]
+  ]
 
-# PESTAÑA 2: 2 AÑOS
-with tab2:
-  st.subheader("Simulación y Frontera Eficiente - 2 Años")
-  fig_2 = construir_figura_animada(anim_2, "2 Años")
-  st.plotly_chart(fig_2, use_container_width=True)
+  with sub_usa_1:
+    st.plotly_chart(
+        construir_figura_animada(anim_usa_1, "1 Año (EE. UU.)", "T-Bills"),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_usa_1[
+            [c for c in cols_min_usa if c in min_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.dataframe(
+        max_usa_1[
+            [c for c in cols_sh_usa if c in max_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.dataframe(
+        t1000_usa_1.head(10)[
+            [c for c in cols_sh_usa if c in t1000_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
 
-  st.markdown("---")
-  st.subheader("📑 Resultados Individuales (2 Años)")
+  with sub_usa_2:
+    st.plotly_chart(
+        construir_figura_animada(anim_usa_2, "2 Años (EE. UU.)", "T-Bills"),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_usa_2[
+            [c for c in cols_min_usa if c in min_usa_2.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.dataframe(
+        max_usa_2[
+            [c for c in cols_sh_usa if c in max_usa_2.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.dataframe(
+        t1000_usa_2.head(10)[
+            [c for c in cols_sh_usa if c in t1000_usa_2.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
 
-  st.markdown("#### Portafolio de Mínima Desviación")
-  st.dataframe(
-      min_2yr[[c for c in cols_min if c in min_2yr.columns]].style.format(
-          formatos_porcentaje
-      ),
-      use_container_width=True,
-  )
+  with sub_usa_3:
+    st.plotly_chart(
+        construir_figura_animada(anim_usa_3, "3 Años (EE. UU.)", "T-Bills"),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Mínima Desviación")
+    st.dataframe(
+        min_usa_3[
+            [c for c in cols_min_usa if c in min_usa_3.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("#### Portafolio de Máximo Sharpe")
+    st.dataframe(
+        max_usa_3[
+            [c for c in cols_sh_usa if c in max_usa_3.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("#### Mejores Portafolios (Top 10)")
+    st.dataframe(
+        t1000_usa_3.head(10)[
+            [c for c in cols_sh_usa if c in t1000_usa_3.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
 
-  st.markdown("#### Portafolio de Máximo Sharpe (Individual)")
-  st.dataframe(
-      maxshare2[
-          [c for c in cols_sharpe if c in maxshare2.columns]
-      ].style.format(formatos_porcentaje),
-      use_container_width=True,
-  )
-
-  st.markdown("#### Mejores Portafolios (Máximo Sharpe - Top 10)")
-  st.dataframe(
-      tabla_1000_2yr.head(10)[
-          [c for c in cols_sharpe if c in tabla_1000_2yr.columns]
-      ].style.format(formatos_porcentaje),
-      use_container_width=True,
-  )
-
-# PESTAÑA 3: 3 AÑOS
-with tab3:
-  st.subheader("Simulación y Frontera Eficiente - 3 Años")
-  fig_3 = construir_figura_animada(anim_3, "3 Años")
-  st.plotly_chart(fig_3, use_container_width=True)
-
-  st.markdown("---")
-  st.subheader("📑 Resultados Individuales (3 Años)")
-
-  st.markdown("#### Portafolio de Mínima Desviación")
-  st.dataframe(
-      min_3yr[[c for c in cols_min if c in min_3yr.columns]].style.format(
-          formatos_porcentaje
-      ),
-      use_container_width=True,
-  )
-
-  st.markdown("#### Portafolio de Máximo Sharpe (Individual)")
-  st.dataframe(
-      maxshare3[
-          [c for c in cols_sharpe if c in maxshare3.columns]
-      ].style.format(formatos_porcentaje),
-      use_container_width=True,
-  )
-
-  st.markdown("#### Mejores Portafolios (Máximo Sharpe - Top 10)")
-  st.dataframe(
-      tabla_1000_3yr.head(10)[
-          [c for c in cols_sharpe if c in tabla_1000_3yr.columns]
-      ].style.format(formatos_porcentaje),
-      use_container_width=True,
-  )
-
-# PESTAÑA 4: TABLAS COMPARATIVAS GENERALES
-with tab4:
-  st.subheader("📋 Tablas Comparativas Multianuales")
-
-  st.markdown("### 📉 Tabla Comparativa: Portafolios de Mínima Desviación")
-  tabla_min = pd.concat([min_1yr, min_2yr, min_3yr])
-  st.dataframe(
-      tabla_min[[c for c in cols_min if c in tabla_min.columns]].style.format(
-          formatos_porcentaje
-      ),
-      use_container_width=True,
-  )
-
-  st.markdown("---")
-  st.markdown("### 🏆 Tabla Comparativa: Máximos Sharpe Ratios (1, 2 y 3 Años)")
-  tabla_sharpe = pd.concat([maxshare1, maxshare2, maxshare3])
-  st.dataframe(
-      tabla_sharpe[
-          [c for c in cols_sharpe if c in tabla_sharpe.columns]
-      ].style.format(formatos_porcentaje),
-      use_container_width=True,
-  )
+  with sub_usa_comp:
+    st.subheader("📋 Tablas Comparativas (EE. UU.)")
+    st.markdown("### Mínima Desviación")
+    st.dataframe(
+        pd.concat([min_usa_1, min_usa_2, min_usa_3])[
+            [c for c in cols_min_usa if c in min_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown("### Máximo Sharpe Ratios")
+    st.dataframe(
+        pd.concat([max_usa_1, max_usa_2, max_usa_3])[
+            [c for c in cols_sh_usa if c in max_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )

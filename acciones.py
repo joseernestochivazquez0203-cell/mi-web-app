@@ -57,19 +57,19 @@ st.sidebar.info(
 )
 
 # Activos balanceados
-empresas_mx = ["Femsa", "Walmart México", "América Movil", "Bimbo", "Grupo México"]
+empresas_mx = ["Grupo Lamosa", "Walmart México", "América Movil", "Bimbo", "Grupo México"]
 tickers_mx = {
-    "Femsa": "FEMSAUBD.MX",
+    "Lamosa": "LAMOSA.MX",
     "Walmart México": "WALMEX.MX",
     "América Movil": "AMXB.MX",
     "Bimbo": "BIMBOA.MX",
     "Grupo México": "GMEXICOB.MX",
 }
 
-empresas_usa = ["Microsoft", "Apple", "Alphabet", "Amazon", "NVIDIA"]
+empresas_usa = ["Microsoft", "Netflix", "Alphabet", "Amazon", "NVIDIA"]
 tickers_usa = {
     "Microsoft": "MSFT",
-    "Apple": "AAPL",
+    "Netflix": "NFTL",
     "Alphabet": "GOOGL",
     "Amazon": "AMZN",
     "NVIDIA": "NVDA",
@@ -415,7 +415,7 @@ def construir_figura_animada(
     fig.data[idx].x = t_data.x
     fig.data[idx].y = t_data.y
 
-  y_range = [-0.5, 0.5] if is_mx else [-1.0, 1.0]
+  y_range = [-0.5, 0.5] if is_mx else [-0.5, 0.5]
 
   fig.update_layout(
       title=f"Simulación Monte Carlo Paso a Paso ({titulo_horizonte})",

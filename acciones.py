@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 st.title(
-    "📊 Simulador de Portafolios de Inversión"
+    "📊 Simulador de Portafolios de Inversión (México vs. Estados Unidos)"
 )
 st.markdown(
     "Modelo cuantitativo multianual con optimización avanzada para activos de la"
@@ -21,7 +21,7 @@ st.markdown(
 )
 
 # ==============================================================================
-# 1. SIDEBAR: PARÁMETROS GENERALES (Ampliación a 1000 corridas)
+# 1. SIDEBAR: PARÁMETROS GENERALES
 # ==============================================================================
 st.sidebar.header("⚙️ Configuración del Análisis")
 
@@ -59,7 +59,7 @@ fechas_horizontes = {
 
 
 # ==============================================================================
-# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN GLOBAL (INVESTIGACIÓN DE OPERACIONES)
+# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN GLOBAL
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
@@ -76,6 +76,7 @@ def ejecutar_simulacion_mercado(
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
 
+  np.random.seed(42)
   aleatorios_base = np.random.uniform(
       0, 1, size=(len(datos) - 1, len(lista_empresas))
   )
@@ -94,9 +95,7 @@ def ejecutar_simulacion_mercado(
 
   mejores_sharpe = []
   datos_animacion = []
-  n_animacion_pasos = min(
-      25, n_corr
-  )  # Pasos controlados para la animación visual
+  n_animacion_pasos = min(25, n_corr)
   colores_anim = px.colors.sample_colorscale(
       "turbo", np.linspace(0.1, 0.9, n_animacion_pasos)
   )
@@ -159,11 +158,12 @@ def ejecutar_simulacion_mercado(
       datos_animacion.append({
           "tasa_anual": tasa_anual,
           "nube_x": (df_vis["des_p"] * np.sqrt(dias_ano)).values,
-          "nube_y": (df_vis["Rp"] * dias_ano).values,
+          "nube_y": (df_vis["Rp"] * np.sqrt(dias_ano)).values,
           "x_cal": x_cal,
           "y_cal": y_cal,
           "star_x": riesgo_opt_anual,
           "star_y": ret_opt_anual,
+          "star_sharpe": max_sh_anual,
           "mix_x": r_comb,
           "mix_y": ret_comb,
           "color": colores_anim[i - 1],
@@ -173,17 +173,13 @@ def ejecutar_simulacion_mercado(
   idx_min_desp = df_sim_global["des_p"].idxmin()
   min_port = df_sim_global.loc[[idx_min_desp]].copy()
 
-  # Optimización Global (Máximo absoluto de todas las corridas)
   idx_max_global = tabla_sharpe_max["sharpe_ratio"].idxmax()
   max_sharpe_port = tabla_sharpe_max.loc[[idx_max_global]].copy()
 
   return min_port, max_sharpe_port, datos_animacion, tabla_sharpe_max
 
 
-with st.spinner(
-    "Ejecutando modelo de optimización estocástica (1,000 corridas)..."
-):
-  # México
+with st.spinner("Ejecutando modelo de optimización estocástica..."):
   res_mx_1 = ejecutar_simulacion_mercado(
       tickers_mx,
       empresas_mx,
@@ -212,7 +208,6 @@ with st.spinner(
       "cetes",
   )
 
-  # USA
   res_usa_1 = ejecutar_simulacion_mercado(
       tickers_usa,
       empresas_usa,
@@ -264,13 +259,12 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA CORREGIDA (CAL LIMPIA Y MÁXIMO SHARPE DESTACADO)
+# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (CAL LIMPIA Y MÁXIMO GLOBAL ROJO)
 # ==============================================================================
 def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   fig = go.Figure()
   n_pasos = len(datos_anim)
 
-  # 1. Nube de portafolios simulados
   fig.add_trace(
       go.Scatter(
           x=[],
@@ -280,8 +274,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
           name="Portafolios Simulados",
       )
   )
-
-  # 2. Líneas de Mercado (CAL) acumuladas de forma limpia
   for j in range(n_pasos):
     fig.add_trace(
         go.Scatter(
@@ -292,8 +284,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
             showlegend=False,
         )
     )
-
-  # 3. Estrellas de Máximo Sharpe de cada iteración (color dorado normal)
   fig.add_trace(
       go.Scatter(
           x=[],
@@ -308,15 +298,13 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
           name="Máximo Sharpe (Iteraciones)",
       )
   )
-
-  # 4. ★ MÁXIMO SHARPE GLOBAL ABSOLUTO (Destacado en Rojo Brillante / Magenta)
   fig.add_trace(
       go.Scatter(
           x=[],
           y=[],
           mode="markers",
           marker=dict(
-              size=16,
+              size=15,
               color="#e74c3c",
               symbol="star",
               line=dict(width=1.5, color="black"),
@@ -324,8 +312,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
           name="★ Máximo Sharpe Absoluto (Global)",
       )
   )
-
-  # 5. Diamantes Mix Verde (30/70)
   fig.add_trace(
       go.Scatter(
           x=[],
@@ -340,8 +326,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
           name=f"Mix 30% {lbl_tasa} / 70% Portafolio",
       )
   )
-
-  # 6. Tasa Libre de Riesgo
   fig.add_trace(
       go.Scatter(
           x=[],
@@ -353,7 +337,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   )
 
   frames = []
-  # Encontrar el índice global del máximo absoluto en todo el set de animación
   best_global_idx = max(
       range(len(datos_anim)), key=lambda idx: datos_anim[idx]["star_sharpe"]
   )
@@ -361,8 +344,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   for f_idx in range(n_pasos):
     f_data = []
     curr = datos_anim[f_idx]
-
-    # Nube
     f_data.append(
         go.Scatter(
             x=curr["nube_x"],
@@ -370,8 +351,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
             marker=dict(size=3.5, color="#3498db"),
         )
     )
-
-    # CALs
     for j in range(n_pasos):
       if j <= f_idx:
         f_data.append(
@@ -380,7 +359,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
       else:
         f_data.append(go.Scatter(x=[], y=[]))
 
-    # Estrellas normales (todas hasta el paso actual excepto la global absoluta si ya salió)
     stars_x, stars_y = [], []
     for j in range(f_idx + 1):
       if j != best_global_idx:
@@ -388,7 +366,6 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
         stars_y.append(datos_anim[j]["star_y"])
     f_data.append(go.Scatter(x=stars_x, y=stars_y))
 
-    # ★ Estrella Máxima Global Absoluta (Aparece y se pinta de rojo brillante al llegar a su paso)
     if f_idx >= best_global_idx:
       f_data.append(
           go.Scatter(
@@ -399,17 +376,13 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
     else:
       f_data.append(go.Scatter(x=[], y=[]))
 
-    # Mix Verde
     f_data.append(
         go.Scatter(
             x=[datos_anim[j]["mix_x"] for j in range(f_idx + 1)],
             y=[datos_anim[j]["mix_y"] for j in range(f_idx + 1)],
         )
     )
-
-    # Tasa Libre de Riesgo
     f_data.append(go.Scatter(x=[0], y=[curr["tasa_anual"]]))
-
     frames.append(go.Frame(data=f_data, name=f"Paso {f_idx + 1}"))
 
   for idx, t_data in enumerate(frames[0].data):
@@ -473,24 +446,22 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
                   "args": [
                       [f"Paso {k}"],
                       {
-                        "frame": {"duration": 200, "redraw": False},
-                        "mode": "immediate",
-                    },
-                ],
-                "label": f"#{k}",
-                "method": "animate",
-            }
-            for k in range(1, n_pasos + 1)
-        ],
-    }],
+                          "frame": {"duration": 200, "redraw": False},
+                          "mode": "immediate",
+                      },
+                  ],
+                  "label": f"#{k}",
+                  "method": "animate",
+              }
+              for k in range(1, n_pasos + 1)
+          ],
+      }],
   )
   fig.frames = frames
   return fig
-# ==============================================================================
-# 4. FUNCIÓN PARA DESTACAR EL MÁXIMO ABSOLUTO EN LAS TABLAS
-# ==============================================================================
+
+
 def resaltar_maximo_sharpe(df, col_sharpe="sharpe_ratio"):
-  """Aplica un estilo visual resaltando en verde claro la fila con el Máximo Sharpe Global"""
   max_idx = df[col_sharpe].idxmax()
 
   def estilo_fila(row):
@@ -505,7 +476,7 @@ def resaltar_maximo_sharpe(df, col_sharpe="sharpe_ratio"):
 
 
 # ==============================================================================
-# 5. INTERFAZ PRINCIPAL CON PESTAÑAS (MÉXICO VS. USA)
+# 4. INTERFAZ PRINCIPAL CON PESTAÑAS
 # ==============================================================================
 tab_mx, tab_usa = st.tabs(
     ["🇲🇽 Mercado Mexicano (BMV / CETES)", "🇺🇸 Mercado Estadounidense (EE. UU. / T-Bills)"]
@@ -554,10 +525,7 @@ with tab_mx:
         ),
         use_container_width=True,
     )
-    st.markdown(
-        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
-        " destacado en verde)"
-    )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top)")
     st.dataframe(
         resaltar_maximo_sharpe(
             t1000_mx_1.head(n_corridas)[
@@ -586,10 +554,7 @@ with tab_mx:
         ),
         use_container_width=True,
     )
-    st.markdown(
-        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
-        " destacado en verde)"
-    )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top)")
     st.dataframe(
         resaltar_maximo_sharpe(
             t1000_mx_2.head(n_corridas)[
@@ -618,10 +583,7 @@ with tab_mx:
         ),
         use_container_width=True,
     )
-    st.markdown(
-        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
-        " destacado en verde)"
-    )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top)")
     st.dataframe(
         resaltar_maximo_sharpe(
             t1000_mx_3.head(n_corridas)[
@@ -691,10 +653,7 @@ with tab_usa:
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-    st.markdown(
-        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
-        " destacado en verde)"
-    )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top)")
     st.dataframe(
         resaltar_maximo_sharpe(
             t1000_usa_1.head(n_corridas)[
@@ -723,10 +682,7 @@ with tab_usa:
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-    st.markdown(
-        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
-        " destacado en verde)"
-    )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top)")
     st.dataframe(
         resaltar_maximo_sharpe(
             t1000_usa_2.head(n_corridas)[
@@ -755,10 +711,7 @@ with tab_usa:
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-    st.markdown(
-        "#### Mejores Portafolios de las Corridas (El Máximo Global está"
-        " destacado en verde)"
-    )
+    st.markdown("#### Mejores Portafolios de las Corridas (Top)")
     st.dataframe(
         resaltar_maximo_sharpe(
             t1000_usa_3.head(n_corridas)[

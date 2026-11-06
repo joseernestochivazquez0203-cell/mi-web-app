@@ -1,4 +1,5 @@
 import datetime
+import math
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -22,7 +23,7 @@ st.markdown(
 )
 
 # ==============================================================================
-# 1. SIDEBAR: PARÁMETROS GENERALES Y CONFIGURACIÓN DINÁMICA
+# 1. BARRA LATERAL (SIDEBAR): PARÁMETROS GENERALES
 # ==============================================================================
 st.sidebar.header("⚙️ Configuración del Análisis")
 
@@ -56,7 +57,7 @@ st.sidebar.info(
     f" **{dias_habiles}**"
 )
 
-# Activos actualizados por ti
+# Activos actualizados
 empresas_mx = [
     "Grupo Lamosa",
     "Walmart México",
@@ -75,7 +76,7 @@ tickers_mx = {
 empresas_usa = ["Microsoft", "Netflix", "Alphabet", "Amazon", "NVIDIA"]
 tickers_usa = {
     "Microsoft": "MSFT",
-    "Netflix": "NFLX",  # Corregido de NFTL a NFLX
+    "Netflix": "NFLX",
     "Alphabet": "GOOGL",
     "Amazon": "AMZN",
     "NVIDIA": "NVDA",
@@ -206,7 +207,7 @@ def ejecutar_simulacion_mercado(
   idx_max_global = tabla_sharpe_max["sharpe_ratio"].idxmax()
   max_sharpe_port = tabla_sharpe_max.loc[[idx_max_global]].copy()
 
-  return min_port, max_sharpe_port, datos_animacion, tabla_sharpe_max
+  return min_port, max_sharpe_port, datos_animacion, tabla_sharpe_max, datos, Sigma
 
 
 with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
@@ -266,13 +267,19 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       "tbills",
   )
 
-  min_mx_1, max_mx_1, anim_mx_1, t1000_mx_1 = res_mx_1
-  min_mx_2, max_mx_2, anim_mx_2, t1000_mx_2 = res_mx_2
-  min_mx_3, max_mx_3, anim_mx_3, t1000_mx_3 = res_mx_3
+  min_mx_1, max_mx_1, anim_mx_1, t1000_mx_1, datos_mx_1, cov_mx_1 = res_mx_1
+  min_mx_2, max_mx_2, anim_mx_2, t1000_mx_2, datos_mx_2, cov_mx_2 = res_mx_2
+  min_mx_3, max_mx_3, anim_mx_3, t1000_mx_3, datos_mx_3, cov_mx_3 = res_mx_3
 
-  min_usa_1, max_usa_1, anim_usa_1, t1000_usa_1 = res_usa_1
-  min_usa_2, max_usa_2, anim_usa_2, t1000_usa_2 = res_usa_2
-  min_usa_3, max_usa_3, anim_usa_3, t1000_usa_3 = res_usa_3
+  min_usa_1, max_usa_1, anim_usa_1, t1000_usa_1, datos_usa_1, cov_usa_1 = (
+      res_usa_1
+  )
+  min_usa_2, max_usa_2, anim_usa_2, t1000_usa_2, datos_usa_2, cov_usa_2 = (
+      res_usa_2
+  )
+  min_usa_3, max_usa_3, anim_usa_3, t1000_usa_3, datos_usa_3, cov_usa_3 = (
+      res_usa_3
+  )
 
 min_mx_1.index, min_mx_2.index, min_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
 max_mx_1.index, max_mx_2.index, max_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
@@ -289,7 +296,7 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (EJE Y DE -0.5 A 0.5)
+# 3. CONSTRUCTOR DE GRÁFICA ANIMADA
 # ==============================================================================
 def construir_figura_animada(
     datos_anim, titulo_horizonte, lbl_tasa="CETES", is_mx=False
@@ -626,14 +633,15 @@ def generar_simulacion_y_estadisticos(
 
 
 # ==============================================================================
-# 5. INTERFAZ EN PESTAÑAS PRINCIPALES
+# 5. INTERFAZ EN PESTAÑAS PRINCIPALES (INCLUYENDO ANEXO DE FÓRMULAS)
 # ==============================================================================
-tab_mx, tab_usa, tab_excel, tab_stats, tab_charts = st.tabs([
+tab_mx, tab_usa, tab_excel, tab_stats, tab_charts, tab_anexo = st.tabs([
     "🇲🇽 Mercado Mexicano (BMV)",
     "🇺🇸 Mercado EE. UU. (Tech)",
     "📑 Modelo Excel Estocástico & Títulos",
     "📊 Estadísticos & Riesgo",
-    "📈 Gráficas Adicionales de Rendimiento",
+    "📈 Gráficas & Covarianza",
+    "📐 Anexo de Fórmulas Quantitative",
 ])
 
 formatos_mx = {c: "{:.2%}" for c in empresas_mx}
@@ -676,10 +684,18 @@ with tab_mx:
   )
 
   with sub_mx_1:
-    st.plotly_chart(
-        construir_figura_animada(anim_mx_1, "1 Año (México)", "CETES", is_mx=True),
-        use_container_width=True,
-    )
+    col_g, col_ctrl = st.columns([3, 1])
+    with col_ctrl:
+      st.subheader("🎛️ Controles")
+      st.info("Utiliza los controles superiores para ajustar las iteraciones.")
+    with col_g:
+      st.plotly_chart(
+          construir_figura_animada(
+              anim_mx_1, "1 Año (México)", "CETES", is_mx=True
+          ),
+          use_container_width=True,
+      )
+
     st.markdown("#### Portafolio de Mínima Desviación")
     st.dataframe(
         min_mx_1[[c for c in cols_min_mx if c in min_mx_1.columns]].style.format(
@@ -899,12 +915,12 @@ with tab_usa:
     )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: MODELO EXCEL ESTOCÁSTICO & DISTRIBUCIÓN DE TÍTULOS (MX y USA)
+# PESTAÑA 3: MODELO EXCEL ESTOCÁSTICO & TÍTULOS ENTEROS (NP.FLOOR)
 # ------------------------------------------------------------------------------
 with tab_excel:
   st.header(
-      "📑 Simulación Diaria Estocástica & Distribución de Acciones (México y"
-      " EE. UU.)"
+      "📑 Simulación Diaria Estocástica & Distribución de Acciones (Títulos"
+      " Enteros)"
   )
 
   horizonte_excel = st.selectbox(
@@ -919,7 +935,6 @@ with tab_excel:
   else:
     mx_p, usa_p = max_mx_3, max_usa_3
 
-  # Obtención robusta de precios actuales
   precios_mx_actuales = {}
   for k, v in tickers_mx.items():
     try:
@@ -951,17 +966,19 @@ with tab_excel:
       "Capital Asignado (MXN)": pesos_mx_opt * capital_mx_acc,
       "Precio Actual (MXN)": [precios_mx_actuales[e] for e in empresas_mx],
   })
-  df_titulos_mx["Títulos a Comprar"] = (
+
+  # Redondeo entero hacia abajo (tipo 5.46 -> 5 títulos)
+  df_titulos_mx["Títulos a Comprar"] = np.floor(
       df_titulos_mx["Capital Asignado (MXN)"]
       / df_titulos_mx["Precio Actual (MXN)"]
-  )
+  ).astype(int)
 
   st.dataframe(
       df_titulos_mx.style.format({
           "Peso Óptimo": "{:.2%}",
           "Capital Asignado (MXN)": "${:,.2f}",
           "Precio Actual (MXN)": "${:,.2f}",
-          "Títulos a Comprar": "{:,.2f}",
+          "Títulos a Comprar": "{:d}",
       }),
       use_container_width=True,
   )
@@ -980,17 +997,19 @@ with tab_excel:
       "Capital Asignado (USD)": pesos_usa_opt * capital_usa_usd,
       "Precio Actual (USD)": [precios_usa_actuales[e] for e in empresas_usa],
   })
-  df_titulos_usa["Títulos a Comprar"] = (
+
+  # Redondeo entero hacia abajo
+  df_titulos_usa["Títulos a Comprar"] = np.floor(
       df_titulos_usa["Capital Asignado (USD)"]
       / df_titulos_usa["Precio Actual (USD)"]
-  )
+  ).astype(int)
 
   st.dataframe(
       df_titulos_usa.style.format({
           "Peso Óptimo": "{:.2%}",
           "Capital Asignado (USD)": "${:,.2f}",
           "Precio Actual (USD)": "${:,.2f}",
-          "Títulos a Comprar": "{:,.2f}",
+          "Títulos a Comprar": "{:d}",
       }),
       use_container_width=True,
   )
@@ -1094,48 +1113,100 @@ with tab_stats:
   st.dataframe(df_stats.style.format(formatos_stats), use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 5: GRÁFICAS ADICIONALES DE RENDIMIENTO
+# PESTAÑA 5: GRÁFICAS DE PRECIOS ESCALADOS & MATRIZ DE COVARIANZA
 # ------------------------------------------------------------------------------
 with tab_charts:
-  st.header("📈 Gráficas Adicionales de Distribución de Rendimientos")
-  st.markdown(
-      "Visualización avanzada de las simulaciones de rendimiento para evaluar"
-      " la asimetría y el comportamiento del portafolio."
+  st.header("📈 Gráficas Escaladas de Precios y Matrices de Covarianza")
+
+  horiz_chart = st.selectbox(
+      "Horizonte de Análisis:",
+      ["1 año", "2 años", "3 años"],
+      key="sel_chart_horiz",
   )
 
-  fig_hist = px.histogram(
-      x=rend_glob_sim,
-      nbins=50,
-      title="Distribución de Frecuencia del Rendimiento del Portafolio Global",
-      labels={"x": "Rendimiento Acumulado", "y": "Frecuencia"},
-      color_discrete_sequence=["#1f77b4"],
+  if horiz_chart == "1 año":
+    d_mx, c_mx, min_mx_h = datos_mx_1, cov_mx_1, min_mx_1
+    d_usa, c_usa, min_usa_h = datos_usa_1, cov_usa_1, min_usa_1
+  elif horiz_chart == "2 años":
+    d_mx, c_mx, min_mx_h = datos_mx_2, cov_mx_2, min_mx_2
+  else:
+    d_mx, c_mx, min_mx_h = datos_mx_3, cov_mx_3, min_mx_3
+
+  st.subheader("🇲🇽 Mercado Mexicano - Precios Normalizados (Base 100)")
+  precios_norm_mx = (d_mx / d_mx.iloc[0]) * 100
+  fig_norm_mx = px.line(
+      precios_norm_mx,
+      title="Evolución Comparativa de Precios Escalados (Base 100 = Inicio)",
   )
-  fig_hist.add_vline(
-      x=np.mean(rend_glob_sim),
-      line_dash="dash",
-      line_color="green",
-      annotation_text="Media",
+
+  # Agregar destaque del portafolio de mínima varianza en azul
+  ret_diarios_mx = np.log(d_mx / d_mx.shift(1)).dropna()
+  w_min_mx = min_mx_h[empresas_mx].values[0]
+  port_min_var_mx = (
+      ret_diarios_mx[empresas_mx].dot(w_min_mx).cumsum().apply(np.exp) * 100
   )
-  fig_hist.add_vline(
-      x=np.percentile(rend_glob_sim, alpha_nivel * 100),
-      line_dash="dash",
-      line_color="red",
-      annotation_text=f"VaR ({alpha_nivel*100}%)",
+
+  fig_norm_mx.add_trace(
+      go.Scatter(
+          x=port_min_var_mx.index,
+          y=port_min_var_mx,
+          mode="lines",
+          line=dict(color="blue", width=3, dash="dash"),
+          name="🔵 Mínima Varianza (Portafolio)",
+      )
   )
-  st.plotly_chart(fig_hist, use_container_width=True)
+  st.plotly_chart(fig_norm_mx, use_container_width=True)
+
+  st.subheader("🔷 Matriz de Covarianza Anualizada (México)")
+  fig_cov_mx = px.imshow(
+      c_mx,
+      x=empresas_mx,
+      y=empresas_mx,
+      color_continuous_scale="Viridis",
+      text_auto=".4f",
+      title="Matriz de Covarianza (Sigma)",
+  )
+  st.plotly_chart(fig_cov_mx, use_container_width=True)
+
+# ------------------------------------------------------------------------------
+# PESTAÑA 6: ANEXO DE FÓRMULAS QUANTITATIVE & RIESGO (NUEVO)
+# ------------------------------------------------------------------------------
+with tab_anexo:
+  st.header("📐 Anexo Cuantitativo: Fórmulas y Modelos Matemáticos")
+  st.markdown(
+      "Resumen técnico de las ecuaciones fundamentales implementadas en la"
+      " aplicación."
+  )
 
   col1, col2 = st.columns(2)
+
   with col1:
-    fig_box = px.box(
-        y=rend_mx_sim,
-        title="Boxplot: Rendimiento Acciones México",
-        labels={"y": "Rendimiento"},
+    st.markdown("### 1. Rendimiento y Volatilidad del Portafolio")
+    st.latex(r"R_p = \sum_{i=1}^{n} w_i \cdot \mu_i = \mathbf{w}^T \boldsymbol{\mu}")
+    st.latex(
+        r"\sigma_p^2 = \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} = \sum_{i=1}^n"
+        r" \sum_{j=1}^n w_i w_j \sigma_{ij}"
     )
-    st.plotly_chart(fig_box, use_container_width=True)
+    st.latex(r"\sigma_p = \sqrt{\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}}")
+
+    st.markdown("### 2. Ratio de Sharpe & Línea de Asignación de Capital (CAL)")
+    st.latex(r"Sharpe = \frac{R_p - R_f}{\sigma_p}")
+    st.latex(r"E(R_c) = R_f + Sharpe \cdot \sigma_c")
+
   with col2:
-    fig_box2 = px.box(
-        y=rend_usa_sim,
-        title="Boxplot: Rendimiento Acciones EE. UU. (USD)",
-        labels={"y": "Rendimiento"},
-    )
-    st.plotly_chart(fig_box2, use_container_width=True)
+    st.markdown("### 3. Distribución Triangular (CETES / T-Bills)")
+    st.latex(r"k = \frac{b - a}{c - a}")
+    st.latex(r"""
+        T_L = \begin{cases} 
+        a + \sqrt{U \cdot (b - a)(c - a)} & \text{si } U < k \\ 
+        c - \sqrt{(1 - U)(c - a)(c - b)} & \text{si } U \ge k 
+        \end{cases}
+        """)
+
+    st.markdown("### 4. Métricas de Riesgo (Cutoff & VaR)")
+    st.latex(r"Cutoff_{\alpha} = Q_{\alpha}(R_{global})")
+    st.latex(r"VaR_{\alpha} = \mu_{global} - Cutoff_{\alpha}")
+
+  st.markdown("---")
+  st.markdown("### 5. Tipo de Cambio Estocástico (Distribución Weibull)")
+  st.latex(r"TC = \lambda \cdot \left( \frac{U}{1 - U} \right)^{\frac{1}{k}}")

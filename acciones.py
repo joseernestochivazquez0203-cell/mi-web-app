@@ -264,50 +264,75 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA CORREGIDA (LÍNEA DE MERCADO Y ESCALA LIMPIA)
+# 3. CONSTRUCTOR DE GRÁFICA CORREGIDA (CAL LIMPIA Y MÁXIMO SHARPE DESTACADO)
 # ==============================================================================
 def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   fig = go.Figure()
   n_pasos = len(datos_anim)
 
+  # 1. Nube de portafolios simulados
   fig.add_trace(
       go.Scatter(
           x=[],
           y=[],
           mode="markers",
-          marker=dict(size=3.5, color="lightgreen", opacity=0.45),
+          marker=dict(size=3.5, color="#3498db", opacity=0.4),
           name="Portafolios Simulados",
       )
   )
+
+  # 2. Líneas de Mercado (CAL) acumuladas de forma limpia
   for j in range(n_pasos):
     fig.add_trace(
         go.Scatter(
             x=[],
             y=[],
             mode="lines",
-            line=dict(color="red", width=1.2, dash="dash"),
-            opacity=0.4,
+            line=dict(color="rgba(231, 76, 60, 0.3)", width=1),
             showlegend=False,
         )
     )
+
+  # 3. Estrellas de Máximo Sharpe de cada iteración (color dorado normal)
   fig.add_trace(
       go.Scatter(
           x=[],
           y=[],
           mode="markers",
           marker=dict(
-              size=11, color="gold", symbol="star", line=dict(width=1, color="black")
+              size=10,
+              color="gold",
+              symbol="star",
+              line=dict(width=1, color="black"),
           ),
-          name="Máximo Sharpe",
+          name="Máximo Sharpe (Iteraciones)",
       )
   )
+
+  # 4. ★ MÁXIMO SHARPE GLOBAL ABSOLUTO (Destacado en Rojo Brillante / Magenta)
   fig.add_trace(
       go.Scatter(
           x=[],
           y=[],
           mode="markers",
           marker=dict(
-              size=9,
+              size=16,
+              color="#e74c3c",
+              symbol="star",
+              line=dict(width=1.5, color="black"),
+          ),
+          name="★ Máximo Sharpe Absoluto (Global)",
+      )
+  )
+
+  # 5. Diamantes Mix Verde (30/70)
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(
+              size=8,
               color="#27ae60",
               symbol="diamond",
               line=dict(width=1, color="black"),
@@ -315,6 +340,8 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
           name=f"Mix 30% {lbl_tasa} / 70% Portafolio",
       )
   )
+
+  # 6. Tasa Libre de Riesgo
   fig.add_trace(
       go.Scatter(
           x=[],
@@ -326,16 +353,25 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
   )
 
   frames = []
+  # Encontrar el índice global del máximo absoluto en todo el set de animación
+  best_global_idx = max(
+      range(len(datos_anim)), key=lambda idx: datos_anim[idx]["star_sharpe"]
+  )
+
   for f_idx in range(n_pasos):
     f_data = []
     curr = datos_anim[f_idx]
+
+    # Nube
     f_data.append(
         go.Scatter(
             x=curr["nube_x"],
             y=curr["nube_y"],
-            marker=dict(size=3.5, color=curr["color"]),
+            marker=dict(size=3.5, color="#3498db"),
         )
     )
+
+    # CALs
     for j in range(n_pasos):
       if j <= f_idx:
         f_data.append(
@@ -343,19 +379,37 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
         )
       else:
         f_data.append(go.Scatter(x=[], y=[]))
-    f_data.append(
-        go.Scatter(
-            x=[datos_anim[j]["star_x"] for j in range(f_idx + 1)],
-            y=[datos_anim[j]["star_y"] for j in range(f_idx + 1)],
-        )
-    )
+
+    # Estrellas normales (todas hasta el paso actual excepto la global absoluta si ya salió)
+    stars_x, stars_y = [], []
+    for j in range(f_idx + 1):
+      if j != best_global_idx:
+        stars_x.append(datos_anim[j]["star_x"])
+        stars_y.append(datos_anim[j]["star_y"])
+    f_data.append(go.Scatter(x=stars_x, y=stars_y))
+
+    # ★ Estrella Máxima Global Absoluta (Aparece y se pinta de rojo brillante al llegar a su paso)
+    if f_idx >= best_global_idx:
+      f_data.append(
+          go.Scatter(
+              x=[datos_anim[best_global_idx]["star_x"]],
+              y=[datos_anim[best_global_idx]["star_y"]],
+          )
+      )
+    else:
+      f_data.append(go.Scatter(x=[], y=[]))
+
+    # Mix Verde
     f_data.append(
         go.Scatter(
             x=[datos_anim[j]["mix_x"] for j in range(f_idx + 1)],
             y=[datos_anim[j]["mix_y"] for j in range(f_idx + 1)],
         )
     )
+
+    # Tasa Libre de Riesgo
     f_data.append(go.Scatter(x=[0], y=[curr["tasa_anual"]]))
+
     frames.append(go.Frame(data=f_data, name=f"Paso {f_idx + 1}"))
 
   for idx, t_data in enumerate(frames[0].data):
@@ -419,21 +473,19 @@ def construir_figura_animada(datos_anim, titulo_horizonte, lbl_tasa="CETES"):
                   "args": [
                       [f"Paso {k}"],
                       {
-                          "frame": {"duration": 200, "redraw": False},
-                          "mode": "immediate",
-                      },
-                  ],
-                  "label": f"#{k}",
-                  "method": "animate",
-              }
-              for k in range(1, n_pasos + 1)
-          ],
-      }],
+                        "frame": {"duration": 200, "redraw": False},
+                        "mode": "immediate",
+                    },
+                ],
+                "label": f"#{k}",
+                "method": "animate",
+            }
+            for k in range(1, n_pasos + 1)
+        ],
+    }],
   )
   fig.frames = frames
   return fig
-
-
 # ==============================================================================
 # 4. FUNCIÓN PARA DESTACAR EL MÁXIMO ABSOLUTO EN LAS TABLAS
 # ==============================================================================

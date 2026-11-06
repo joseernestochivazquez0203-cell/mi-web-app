@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 st.title(
-    "📊 Simulador de Portafolios de Inversión (México vs. Estados Unidos)"
+    "📊 Simulador de Portafolios de Inversión"
 )
 st.markdown(
     "Modelo cuantitativo multianual con optimización avanzada para activos de la"
@@ -76,7 +76,6 @@ def ejecutar_simulacion_mercado(
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
 
-  np.random.seed(42)
   aleatorios_base = np.random.uniform(
       0, 1, size=(len(datos) - 1, len(lista_empresas))
   )

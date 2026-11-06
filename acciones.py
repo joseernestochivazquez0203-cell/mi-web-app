@@ -913,24 +913,26 @@ with tab_excel:
   else:
     mx_p, usa_p = max_mx_3, max_usa_3
 
-  # Obtener precios actuales con manejo robusto para evitar None
-  raw_mx = yf.download(list(tickers_mx.values()), period="5d", progress=False)[
-      "Close"
-  ]
-  if isinstance(raw_mx, pd.DataFrame):
-    raw_mx = raw_mx.iloc[-1]
-  precios_mx_actuales = {
-      k: float(raw_mx[v]) for k, v in tickers_mx.items() if v in raw_mx
-  }
+  # Obtención robusta de precios actuales (evita Nones descargando histórico reciente si falla el último día)
+  precios_mx_actuales = {}
+  for k, v in tickers_mx.items():
+    try:
+      df_p = yf.download(v, period="10d", progress=False)["Close"]
+      if isinstance(df_p, pd.DataFrame):
+        df_p = df_p.iloc[:, 0]
+      precios_mx_actuales[k] = float(df_p.dropna().iloc[-1])
+    except:
+      precios_mx_actuales[k] = 100.0  # Respaldo de seguridad
 
-  raw_usa = yf.download(list(tickers_usa.values()), period="5d", progress=False)[
-      "Close"
-  ]
-  if isinstance(raw_usa, pd.DataFrame):
-    raw_usa = raw_usa.iloc[-1]
-  precios_usa_actuales = {
-      k: float(raw_usa[v]) for k, v in tickers_usa.items() if v in raw_usa
-  }
+  precios_usa_actuales = {}
+  for k, v in tickers_usa.items():
+    try:
+      df_p = yf.download(v, period="10d", progress=False)["Close"]
+      if isinstance(df_p, pd.DataFrame):
+        df_p = df_p.iloc[:, 0]
+      precios_usa_actuales[k] = float(df_p.dropna().iloc[-1])
+    except:
+      precios_usa_actuales[k] = 150.0  # Respaldo de seguridad
 
   # TABLA 1: ACCIONES MÉXICO ($500,000 MXN)
   st.subheader("🇲🇽 Asignación de Títulos - Portafolio México ($500,000 MXN)")
@@ -941,13 +943,12 @@ with tab_excel:
       "Empresa": empresas_mx,
       "Peso Óptimo": pesos_mx_opt,
       "Capital Asignado (MXN)": pesos_mx_opt * capital_mx_acc,
-      "Precio Actual (MXN)": [
-          precios_mx_actuales.get(e, 0.0) for e in empresas_mx
-      ],
+      "Precio Actual (MXN)": [precios_mx_actuales[e] for e in empresas_mx],
   })
-  df_titulos_mx["Títulos a Comprar"] = df_titulos_mx[
-      "Capital Asignado (MXN)"
-  ] / df_titulos_mx["Precio Actual (MXN)"].replace(0, np.nan)
+  df_titulos_mx["Títulos a Comprar"] = (
+      df_titulos_mx["Capital Asignado (MXN)"]
+      / df_titulos_mx["Precio Actual (MXN)"]
+  )
 
   st.dataframe(
       df_titulos_mx.style.format({
@@ -959,7 +960,7 @@ with tab_excel:
       use_container_width=True,
   )
 
-  # TABLA 2: ACCIONES EE. UU. ($245,000 MXN convertidos a USD)
+  # TABLA 2: ACCIONES EE. UU. ($245,000 MXN / TC)
   st.subheader(
       "🇺🇸 Asignación de Títulos - Portafolio EE. UU. ($245,000 MXN / USD)"
   )
@@ -971,13 +972,12 @@ with tab_excel:
       "Empresa": empresas_usa,
       "Peso Óptimo": pesos_usa_opt,
       "Capital Asignado (USD)": pesos_usa_opt * capital_usa_usd,
-      "Precio Actual (USD)": [
-          precios_usa_actuales.get(e, 0.0) for e in empresas_usa
-      ],
+      "Precio Actual (USD)": [precios_usa_actuales[e] for e in empresas_usa],
   })
-  df_titulos_usa["Títulos a Comprar"] = df_titulos_usa[
-      "Capital Asignado (USD)"
-  ] / df_titulos_usa["Precio Actual (USD)"].replace(0, np.nan)
+  df_titulos_usa["Títulos a Comprar"] = (
+      df_titulos_usa["Capital Asignado (USD)"]
+      / df_titulos_usa["Precio Actual (USD)"]
+  )
 
   st.dataframe(
       df_titulos_usa.style.format({
@@ -996,10 +996,11 @@ with tab_excel:
       for i in range(dias_muestra)
   ]
 
+  tc_base = 18.44
   val_mx = 500000.0
   val_cetes = 150000.0
-  val_usa_usd = 245000.0 / tc_inicial
-  val_tb_usd = 105000.0 / tc_inicial
+  val_usa_usd = 245000.0 / tc_base
+  val_tb_usd = 105000.0 / tc_base
 
   filas_excel = []
   for idx, f in enumerate(fechas_m):

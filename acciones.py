@@ -525,20 +525,6 @@ def construir_figura_animada_con_minima(
   return fig
 
 
-def resaltar_maximo_sharpe(df, col_sharpe="sharpe_ratio"):
-  max_idx = df[col_sharpe].idxmax()
-
-  def estilo_fila(row):
-    if row.name == max_idx:
-      return [
-          "background-color: #d4edda; font-weight: bold; color: #155724"
-          for _ in row
-      ]
-    return ["" for _ in row]
-
-  return df.style.apply(estilo_fila, axis=1)
-
-
 # ==============================================================================
 # 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS
 # ==============================================================================
@@ -976,7 +962,7 @@ with tab_usa:
     )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: PORTAFOLIOS (FULL MÉXICO, FULL USA & GLOBAL)
+# PESTAÑA 3: PORTAFOLIOS (FULL MÉXICO, FULL USA & GLOBAL CON FILTRO DINÁMICO)
 # ------------------------------------------------------------------------------
 with tab_global:
   st.header(
@@ -984,45 +970,117 @@ with tab_global:
       " Global"
   )
   st.markdown(
-      "Aquí puedes simular y comparar los resultados desagregados por país o"
-      " unidos en el portafolio global."
+      "Selecciona el enfoque para visualizar exclusivamente las tablas, pesos"
+      " de acciones, estadísticas y múltiples gráficas correspondientes."
   )
 
-  enfoque_sel = st.selectbox(
-      "Selecciona el enfoque de simulación:",
-      [
-          "Full México (Solo Acciones MX + CETES)",
-          "Full EE. UU. (Solo Acciones USA + T-Bills + TC)",
-          "Global Unificado (México + EE. UU. Combinados)",
-      ],
-  )
-  horiz_sel = st.selectbox(
-      "Selecciona el horizonte temporal:",
-      ["1 año", "2 años", "3 años"],
-      key="sel_h_enfoque",
-  )
+  col_sel1, col_sel2 = st.columns(2)
+  with col_sel1:
+    enfoque_sel = st.selectbox(
+        "Selecciona el enfoque de simulación:",
+        [
+            "Full México (Solo Acciones MX + CETES)",
+            "Full EE. UU. (Solo Acciones USA + T-Bills + TC)",
+            "Global Unificado (México + EE. UU. Combinados)",
+        ],
+    )
+  with col_sel2:
+    horiz_sel = st.selectbox(
+        "Selecciona el horizonte temporal:",
+        ["1 año", "2 años", "3 años"],
+        key="sel_h_enfoque",
+    )
 
   if horiz_sel == "1 año":
     s_mx, s_usa = max_mx_1, max_usa_1
+    mx_raw, usa_raw = datos_mx_1, datos_usa_1
   elif horiz_sel == "2 años":
     s_mx, s_usa = max_mx_2, max_usa_2
+    mx_raw, usa_raw = datos_mx_2, datos_usa_2
   else:
     s_mx, s_usa = max_mx_3, max_usa_3
+    mx_raw, usa_raw = datos_mx_3, data_usa_3 = datos_mx_3, datos_usa_3
 
+  # Filtrado dinámico según el selector
   if "Full México" in enfoque_sel:
     enf_key = "mexico"
     titulo_enf = "Full México ($650,000 MXN Iniciales)"
+    mostrar_mx = True
+    mostrar_usa = False
   elif "Full EE. UU." in enfoque_sel:
     enf_key = "usa"
     titulo_enf = "Full EE. UU. ($350,000 MXN Equiv. en USD)"
+    mostrar_mx = False
+    mostrar_usa = True
   else:
     enf_key = "global"
     titulo_enf = "Portafolio Global Unificado ($1,000,000 MXN Iniciales)"
+    mostrar_mx = True
+    mostrar_usa = True
 
+  # 1. Asignación de Pesos y Acciones Individuales según el filtro
+  st.markdown(f"### 🎯 Asignación de Pesos y Acciones ({titulo_enf})")
+
+  precios_mx_actuales = {
+      k: float(yf.download(v, period="5d", progress=False)["Close"].iloc[-1])
+      for k, v in tickers_mx.items()
+  }
+  precios_usa_actuales = {
+      k: float(yf.download(v, period="5d", progress=False)["Close"].iloc[-1])
+      for k, v in tickers_usa.items()
+  }
+
+  if mostrar_mx:
+    st.markdown("#### 🇲🇽 Portafolio Accionario México ($500,000 MXN)")
+    pesos_mx_opt = s_mx[empresas_mx].values[0]
+    df_t_mx = pd.DataFrame({
+        "Empresa": empresas_mx,
+        "Peso Óptimo": pesos_mx_opt,
+        "Capital Asignado (MXN)": pesos_mx_opt * 500000.0,
+        "Precio Actual (MXN)": [precios_mx_actuales[e] for e in empresas_mx],
+    })
+    df_t_mx["Títulos a Comprar"] = np.floor(
+        df_t_mx["Capital Asignado (MXN)"] / df_t_mx["Precio Actual (MXN)"]
+    ).astype(int)
+    st.dataframe(
+        df_t_mx.style.format({
+            "Peso Óptimo": "{:.2%}",
+            "Capital Asignado (MXN)": "${:,.2f}",
+            "Precio Actual (MXN)": "${:,.2f}",
+            "Títulos a Comprar": "{:d}",
+        }),
+        use_container_width=True,
+    )
+
+  if mostrar_usa:
+    st.markdown("#### 🇺🇸 Portafolio Accionario EE. UU. ($245,000 MXN en USD)")
+    pesos_usa_opt = s_usa[empresas_usa].values[0]
+    tc_inicial = 18.44
+    df_t_usa = pd.DataFrame({
+        "Empresa": empresas_usa,
+        "Peso Óptimo": pesos_usa_opt,
+        "Capital Asignado (USD)": pesos_usa_opt * (245000.0 / tc_inicial),
+        "Precio Actual (USD)": [precios_usa_actuales[e] for e in empresas_usa],
+    })
+    df_t_usa["Títulos a Comprar"] = np.floor(
+        df_t_usa["Capital Asignado (USD)"] / df_t_usa["Precio Actual (USD)"]
+    ).astype(int)
+    st.dataframe(
+        df_t_usa.style.format({
+            "Peso Óptimo": "{:.2%}",
+            "Capital Asignado (USD)": "${:,.2f}",
+            "Precio Actual (USD)": "${:,.2f}",
+            "Títulos a Comprar": "{:d}",
+        }),
+        use_container_width=True,
+    )
+
+  st.markdown("---")
+
+  # 2. Tabla de Estadísticos & Riesgo Estocástico
   df_est_enf, rend_enf_sim, val_enf_sim = generar_simulacion_y_estadisticos(
       s_mx, s_usa, dias_habiles, alpha_nivel, enfoque=enf_key
   )
-
   st.subheader(f"📊 Tabla de Estadísticos & Riesgo Estocástico ({titulo_enf})")
   st.dataframe(
       df_est_enf.style.format(
@@ -1031,21 +1089,61 @@ with tab_global:
       use_container_width=True,
   )
 
-  st.subheader(
-      f"📈 Gráfica de Distribución del Valor Final ({titulo_enf})"
+  # 3. Métricas Destacadas (KPI Cards)
+  col_k1, col_k2, col_k3, col_k4 = st.columns(4)
+  col_k1.metric(
+      "Rendimiento Esperado", f"{np.mean(rend_enf_sim)*100:.2f}%"
   )
-  fig_enf = px.histogram(
+  col_k2.metric("Volatilidad (Riesgo)", f"{np.std(rend_enf_sim)*100:.2f}%")
+  col_k3.metric(
+      f"VaR ({alpha_nivel*100:.1f}%)",
+      f"{(np.mean(rend_enf_sim) - np.percentile(rend_enf_sim, alpha_nivel*100))*100:.2f}%",
+  )
+  col_k4.metric("Mediana Final (Q2)", f"${np.median(val_enf_sim):,.2f} MXN")
+
+  st.markdown("---")
+
+  # 4. Múltiples Gráficas de Análisis
+  st.subheader(
+      f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
+  )
+
+  fig_hist = px.histogram(
       x=val_enf_sim,
       nbins=50,
       labels={"x": "Valor Final en MXN"},
-      title=f"Simulación Estocástica a 1 Año - {titulo_enf}",
+      title=f"Distribución de Probabilidad del Valor Final - {titulo_enf}",
       color_discrete_sequence=["#2980b9"],
   )
-  fig_enf.update_layout(xaxis_title="Valor Final (MXN)", template="plotly_white")
-  st.plotly_chart(fig_enf, use_container_width=True)
+  fig_hist.update_layout(xaxis_title="Valor Final (MXN)", template="plotly_white")
+  st.plotly_chart(fig_hist, use_container_width=True)
+
+  col_g1, col_g2 = st.columns(2)
+  with col_g1:
+    fig_box = px.box(
+        y=rend_enf_sim * 100,
+        title="Diagrama de Caja (Boxplot) - Rendimientos Simulados",
+        labels={"y": "Rendimiento (%)"},
+        color_discrete_sequence=["#e74c3c"],
+    )
+    fig_box.update_layout(template="plotly_white")
+    st.plotly_chart(fig_box, use_container_width=True)
+
+  with col_g2:
+    # Gráfica de densidad / violín acumulada
+    fig_violin = px.violin(
+        y=val_enf_sim / 1000,
+        box=True,
+        points="all",
+        title="Violin Plot - Dispersión del Valor Final (Miles MXN)",
+        labels={"y": "Valor Final (Miles MXN)"},
+        color_discrete_sequence=["#27ae60"],
+    )
+    fig_violin.update_layout(template="plotly_white")
+    st.plotly_chart(fig_violin, use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 4: MODELO EXCEL ESTOCÁSTICO & TÍTULOS (CON LAS TABLAS RESTAURADAS)
+# PESTAÑA 4: MODELO EXCEL ESTOCÁSTICO & TÍTULOS
 # ------------------------------------------------------------------------------
 with tab_excel:
   st.header(
@@ -1065,42 +1163,27 @@ with tab_excel:
   else:
     mx_p, usa_p = max_mx_3, max_usa_3
 
-  precios_mx_actuales = {}
-  for k, v in tickers_mx.items():
-    try:
-      df_p = yf.download(v, period="10d", progress=False)["Close"]
-      if isinstance(df_p, pd.DataFrame):
-        df_p = df_p.iloc[:, 0]
-      precios_mx_actuales[k] = float(df_p.dropna().iloc[-1])
-    except:
-      precios_mx_actuales[k] = 100.0
+  precios_mx_actuales = {
+      k: float(yf.download(v, period="5d", progress=False)["Close"].iloc[-1])
+      for k, v in tickers_mx.items()
+  }
+  precios_usa_actuales = {
+      k: float(yf.download(v, period="5d", progress=False)["Close"].iloc[-1])
+      for k, v in tickers_usa.items()
+  }
 
-  precios_usa_actuales = {}
-  for k, v in tickers_usa.items():
-    try:
-      df_p = yf.download(v, period="10d", progress=False)["Close"]
-      if isinstance(df_p, pd.DataFrame):
-        df_p = df_p.iloc[:, 0]
-      precios_usa_actuales[k] = float(df_p.dropna().iloc[-1])
-    except:
-      precios_usa_actuales[k] = 150.0
-
-  # TABLA 1: ASIGNACIÓN DE TÍTULOS MÉXICO
   st.subheader("🇲🇽 Asignación de Títulos - Portafolio México ($500,000 MXN)")
   pesos_mx_opt = mx_p[empresas_mx].values[0]
-  capital_mx_acc = 500000.0
-
   df_titulos_mx = pd.DataFrame({
       "Empresa": empresas_mx,
       "Peso Óptimo": pesos_mx_opt,
-      "Capital Asignado (MXN)": pesos_mx_opt * capital_mx_acc,
+      "Capital Asignado (MXN)": pesos_mx_opt * 500000.0,
       "Precio Actual (MXN)": [precios_mx_actuales[e] for e in empresas_mx],
   })
   df_titulos_mx["Títulos a Comprar"] = np.floor(
       df_titulos_mx["Capital Asignado (MXN)"]
       / df_titulos_mx["Precio Actual (MXN)"]
   ).astype(int)
-
   st.dataframe(
       df_titulos_mx.style.format({
           "Peso Óptimo": "{:.2%}",
@@ -1111,25 +1194,21 @@ with tab_excel:
       use_container_width=True,
   )
 
-  # TABLA 2: ASIGNACIÓN DE TÍTULOS EE. UU.
   st.subheader(
       "🇺🇸 Asignación de Títulos - Portafolio EE. UU. ($245,000 MXN / USD)"
   )
   pesos_usa_opt = usa_p[empresas_usa].values[0]
   tc_inicial = 18.44
-  capital_usa_usd = 245000.0 / tc_inicial
-
   df_titulos_usa = pd.DataFrame({
       "Empresa": empresas_usa,
       "Peso Óptimo": pesos_usa_opt,
-      "Capital Asignado (USD)": pesos_usa_opt * capital_usa_usd,
+      "Capital Asignado (USD)": pesos_usa_opt * (245000.0 / tc_inicial),
       "Precio Actual (USD)": [precios_usa_actuales[e] for e in empresas_usa],
   })
   df_titulos_usa["Títulos a Comprar"] = np.floor(
       df_titulos_usa["Capital Asignado (USD)"]
       / df_titulos_usa["Precio Actual (USD)"]
   ).astype(int)
-
   st.dataframe(
       df_titulos_usa.style.format({
           "Peso Óptimo": "{:.2%}",

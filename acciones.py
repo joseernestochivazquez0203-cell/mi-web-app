@@ -676,23 +676,13 @@ def generar_simulacion_y_estadisticos(
 
 
 # ==============================================================================
-# 6. DEFINICIÓN DE TODAS LAS PESTAÑAS (MÉXICO, USA, GLOBAL, ENFOQUE, ETC.)
+# 6. DEFINICIÓN DE LAS PESTAÑAS (SIN LAS DOS PESTAÑAS ELIMINADAS)
 # ==============================================================================
-(
-    tab_mx,
-    tab_usa,
-    tab_global,
-    tab_port_enf,
-    tab_excel,
-    tab_stats,
-    tab_anexo,
-) = st.tabs([
+tab_mx, tab_usa, tab_port_enf, tab_excel, tab_anexo = st.tabs([
     "🇲🇽 Mercado Mexicano (BMV)",
     "🇺🇸 Mercado EE. UU. (Tech)",
-    "🌐 Portafolio Global (Unión)",
     "🌐 Simulación por Enfoque (México, USA & Global)",
     "📑 Modelo Excel Estocástico & Títulos",
-    "📊 Estadísticos & Riesgo",
     "📐 Anexo de Fórmulas Quantitative",
 ])
 
@@ -988,55 +978,7 @@ with tab_usa:
 
 
 # ==============================================================================
-# PESTAÑA 3: PORTAFOLIO GLOBAL (UNIÓN)
-# ==============================================================================
-with tab_global:
-  st.header(
-      "🌐 Portafolio Global unificado (Integración de México y EE. UU.)"
-  )
-  st.markdown(
-      "Aquí se unen los enfoques óptimos de ambos países bajo una simulación"
-      " conjunta estocástica."
-  )
-
-  horiz_global = st.selectbox(
-      "Selecciona el horizonte para la simulación global unida:",
-      ["1 año", "2 años", "3 años"],
-      key="sel_global",
-  )
-  if horiz_global == "1 año":
-    g_mx, g_usa = max_mx_1, max_usa_1
-  elif horiz_global == "2 años":
-    g_mx, g_usa = max_mx_2, max_usa_2
-  else:
-    g_mx, g_usa = max_mx_3, max_usa_3
-
-  df_est_global, rend_g_sim, val_g_sim = generar_simulacion_y_estadisticos(
-      g_mx, g_usa, dias_habiles, alpha_nivel, enfoque="global"
-  )
-
-  st.subheader("📊 Estadísticos Combinados del Portafolio Global")
-  st.dataframe(
-      df_est_global.style.format("{:.2%}"), use_container_width=True
-  )
-
-  st.subheader("📈 Distribución del Valor Final del Portafolio Global Unificado")
-  fig_g = px.histogram(
-      x=val_g_sim,
-      nbins=50,
-      labels={"x": "Valor Final en MXN"},
-      title=(
-          "Simulación Monte Carlo Combinada (México + EE. UU. + Tasas + Tipo de"
-          " Cambio)"
-      ),
-      color_discrete_sequence=["#8e44ad"],
-  )
-  fig_g.update_layout(xaxis_title="Valor Final (MXN)", template="plotly_white")
-  st.plotly_chart(fig_g, use_container_width=True)
-
-
-# ==============================================================================
-# PESTAÑA 4: SIMULACIÓN POR ENFOQUE (CON LA TABLA ESTOCÁSTICA DINÁMICA)
+# PESTAÑA 3: SIMULACIÓN POR ENFOQUE (DINÁMICA)
 # ==============================================================================
 with tab_port_enf:
   st.header(
@@ -1319,7 +1261,7 @@ with tab_port_enf:
 
 
 # ==============================================================================
-# PESTAÑA 5: MODELO EXCEL ESTOCÁSTICO & TÍTULOS (ORIGINAL)
+# PESTAÑA 4: MODELO EXCEL ESTOCÁSTICO & TÍTULOS
 # ==============================================================================
 with tab_excel:
   st.header(
@@ -1395,57 +1337,7 @@ with tab_excel:
 
 
 # ==============================================================================
-# PESTAÑA 6: ESTADÍSTICOS & RIESGO
-# ==============================================================================
-with tab_stats:
-  st.header("📊 Tabla de Estadísticos & Métricas de Riesgo Estocástico")
-  horizonte_stats = st.selectbox(
-      "Horizonte para los estadísticos:",
-      ["1 año", "2 años", "3 años"],
-      key="sel_stats",
-  )
-
-  if horizonte_stats == "1 año":
-    m_mx, m_usa = max_mx_1, max_usa_1
-  elif horizonte_stats == "2 años":
-    m_mx, m_usa = max_mx_2, max_usa_2
-  else:
-    m_mx, m_usa = max_mx_3, max_usa_3
-
-  df_stats, rend_glob_sim, valores_globales_sim = (
-      generar_simulacion_y_estadisticos(
-          m_mx, m_usa, dias_habiles, alpha_nivel, enfoque="global"
-      )
-  )
-
-  formatos_stats = {col: "{:.2%}" for col in df_stats.columns}
-  st.dataframe(df_stats.style.format(formatos_stats), use_container_width=True)
-
-  st.markdown("---")
-  st.subheader(
-      "📈 Gráfica Ilustrativa: Distribución de Probabilidad del Portafolio"
-      " Global"
-  )
-  fig_hist = px.histogram(
-      x=rend_glob_sim * 100,
-      nbins=50,
-      labels={"x": "Rendimiento Simulado (%)"},
-      title=(
-          "Distribución de Frecuencia de los Rendimientos Globales (Monte"
-          " Carlo)"
-      ),
-      color_discrete_sequence=["#27ae60"],
-  )
-  fig_hist.update_layout(
-      xaxis_title="Rendimiento Anualizado (%)",
-      yaxis_title="Frecuencia (Simulaciones)",
-      template="plotly_white",
-  )
-  st.plotly_chart(fig_hist, use_container_width=True)
-
-
-# ==============================================================================
-# PESTAÑA 7: ANEXO DE FÓRMULAS QUANTITATIVE
+# PESTAÑA 5: ANEXO DE FÓRMULAS QUANTITATIVE
 # ==============================================================================
 with tab_anexo:
   st.header("📐 Anexo Cuantitativo: Fórmulas y Modelos Matemáticos")

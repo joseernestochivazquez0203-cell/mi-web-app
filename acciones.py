@@ -676,14 +676,14 @@ def generar_simulacion_y_estadisticos(
 
 
 # ==============================================================================
-# 6. DEFINICIÓN DE LAS PESTAÑAS (SIN LAS DOS PESTAÑAS ELIMINADAS)
+# 6. DEFINICIÓN DE LAS PESTAÑAS
 # ==============================================================================
 tab_mx, tab_usa, tab_port_enf, tab_excel, tab_anexo = st.tabs([
-    "🇲🇽 Mercado Mexicano (BMV)",
-    "🇺🇸 Mercado EE. UU. (Tech)",
+    "🇲🇽 Mercado Mexicano",
+    "🇺🇸 Mercado EE. UU.",
     "🌐 Simulación por Enfoque (México, USA & Global)",
     "📑 Modelo Excel Estocástico & Títulos",
-    "📐 Anexo de Fórmulas Quantitative",
+    "📐 Anexo de Fórmulas",
 ])
 
 formatos_mx = {c: "{:.2%}" for c in empresas_mx}
@@ -1004,7 +1004,7 @@ with tab_port_enf:
     )
   with col_sel2:
     horiz_sel = st.selectbox(
-        "Selecciona el horizonte temporal:",
+        "Selecciona los pesos Wi de que año deseas para (SHARE RATIO):",
         ["1 año", "2 años", "3 años"],
         key="sel_h_enfoque",
     )

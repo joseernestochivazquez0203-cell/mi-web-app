@@ -105,7 +105,21 @@ fechas_horizontes = {
 
 
 # ==============================================================================
-# 2. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ) - 50 PASOS LENTOS
+# 2. FUNCIÓN SEGURA PARA OBTENER PRECIOS ACTUALES
+# ==============================================================================
+def obtener_precio_actual(ticker, default_val=100.0):
+  try:
+    df_p = yf.download(ticker, period="5d", progress=False)["Close"]
+    if isinstance(df_p, pd.DataFrame):
+      df_p = df_p.iloc[:, 0]
+    val = float(df_p.dropna().iloc[-1])
+    return val if not np.isnan(val) else default_val
+  except:
+    return default_val
+
+
+# ==============================================================================
+# 3. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ) - 50 PASOS LENTOS
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
@@ -296,7 +310,7 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 3. CONSTRUCTOR DE GRÁFICA ANIMADA (50 PASOS, MÁS LENTA Y FLUIDA)
+# 4. CONSTRUCTOR DE GRÁFICA ANIMADA (50 PASOS, MÁS LENTA Y FLUIDA)
 # ==============================================================================
 def construir_figura_animada_con_minima(
     datos_anim,
@@ -526,7 +540,7 @@ def construir_figura_animada_con_minima(
 
 
 # ==============================================================================
-# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS
+# 5. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS
 # ==============================================================================
 def generar_simulacion_y_estadisticos(
     max_mx,
@@ -662,12 +676,21 @@ def generar_simulacion_y_estadisticos(
 
 
 # ==============================================================================
-# 5. INTERFAZ EN PESTAÑAS PRINCIPALES
+# 6. DEFINICIÓN DE TODAS LAS PESTAÑAS (SIN ELIMINAR NINGUNA)
 # ==============================================================================
-tab_mx, tab_usa, tab_global, tab_excel, tab_stats, tab_anexo = st.tabs([
+(
+    tab_mx,
+    tab_usa,
+    tab_global,
+    tab_port_enf,
+    tab_excel,
+    tab_stats,
+    tab_anexo,
+) = st.tabs([
     "🇲🇽 Mercado Mexicano (BMV)",
     "🇺🇸 Mercado EE. UU. (Tech)",
-    "🌐 Portafolios (Full México, Full USA & Global)",
+    "🌐 Portafolio Global (Unión)",
+    "🌐 Simulación por Enfoque (México, USA & Global)",
     "📑 Modelo Excel Estocástico & Títulos",
     "📊 Estadísticos & Riesgo",
     "📐 Anexo de Fórmulas Quantitative",
@@ -703,9 +726,10 @@ cols_sh_usa = [
     + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]
 ]
 
-# ------------------------------------------------------------------------------
+
+# ==============================================================================
 # PESTAÑA 1: MERCADO MEXICANO
-# ------------------------------------------------------------------------------
+# ==============================================================================
 with tab_mx:
   st.header("🇲🇽 Análisis de Portafolios - Activos Mexicanos y CETES")
   sub_mx_1, sub_mx_2, sub_mx_3, sub_mx_comp = st.tabs([
@@ -885,9 +909,10 @@ with tab_mx:
         use_container_width=True,
     )
 
-# ------------------------------------------------------------------------------
+
+# ==============================================================================
 # PESTAÑA 2: ESTADOS UNIDOS
-# ------------------------------------------------------------------------------
+# ==============================================================================
 with tab_usa:
   st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
   sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs([
@@ -961,10 +986,59 @@ with tab_usa:
         use_container_width=True,
     )
 
-# ------------------------------------------------------------------------------
-# PESTAÑA 3: PORTAFOLIOS (FULL MÉXICO, FULL USA & GLOBAL CON FILTRO DINÁMICO)
-# ------------------------------------------------------------------------------
+
+# ==============================================================================
+# PESTAÑA 3: PORTAFOLIO GLOBAL (UNIÓN)
+# ==============================================================================
 with tab_global:
+  st.header(
+      "🌐 Portafolio Global unificado (Integración de México y EE. UU.)"
+  )
+  st.markdown(
+      "Aquí se unen los enfoques óptimos de ambos países bajo una simulación"
+      " conjunta estocástica."
+  )
+
+  horiz_global = st.selectbox(
+      "Selecciona el horizonte para la simulación global unida:",
+      ["1 año", "2 años", "3 años"],
+      key="sel_global",
+  )
+  if horiz_global == "1 año":
+    g_mx, g_usa = max_mx_1, max_usa_1
+  elif horiz_global == "2 años":
+    g_mx, g_usa = max_mx_2, max_usa_2
+  else:
+    g_mx, g_usa = max_mx_3, max_usa_3
+
+  df_est_global, rend_g_sim, val_g_sim = generar_simulacion_y_estadisticos(
+      g_mx, g_usa, dias_habiles, alpha_nivel, enfoque="global"
+  )
+
+  st.subheader("📊 Estadísticos Combinados del Portafolio Global")
+  st.dataframe(
+      df_est_global.style.format("{:.2%}"), use_container_width=True
+  )
+
+  st.subheader("📈 Distribución del Valor Final del Portafolio Global Unificado")
+  fig_g = px.histogram(
+      x=val_g_sim,
+      nbins=50,
+      labels={"x": "Valor Final en MXN"},
+      title=(
+          "Simulación Monte Carlo Combinada (México + EE. UU. + Tasas + Tipo de"
+          " Cambio)"
+      ),
+      color_discrete_sequence=["#8e44ad"],
+  )
+  fig_g.update_layout(xaxis_title="Valor Final (MXN)", template="plotly_white")
+  st.plotly_chart(fig_g, use_container_width=True)
+
+
+# ==============================================================================
+# PESTAÑA 4: SIMULACIÓN POR ENFOQUE (DINÁMICA: MÉXICO, USA O GLOBAL)
+# ==============================================================================
+with tab_port_enf:
   st.header(
       "🌐 Simulación Estocástica por Enfoque: Full México, Full EE. UU. y Unión"
       " Global"
@@ -983,6 +1057,7 @@ with tab_global:
             "Full EE. UU. (Solo Acciones USA + T-Bills + TC)",
             "Global Unificado (México + EE. UU. Combinados)",
         ],
+        key="sel_enf_dinamico",
     )
   with col_sel2:
     horiz_sel = st.selectbox(
@@ -993,15 +1068,11 @@ with tab_global:
 
   if horiz_sel == "1 año":
     s_mx, s_usa = max_mx_1, max_usa_1
-    mx_raw, usa_raw = datos_mx_1, datos_usa_1
   elif horiz_sel == "2 años":
     s_mx, s_usa = max_mx_2, max_usa_2
-    mx_raw, usa_raw = datos_mx_2, datos_usa_2
   else:
     s_mx, s_usa = max_mx_3, max_usa_3
-    mx_raw, usa_raw = datos_mx_3, data_usa_3 = datos_mx_3, datos_usa_3
 
-  # Filtrado dinámico según el selector
   if "Full México" in enfoque_sel:
     enf_key = "mexico"
     titulo_enf = "Full México ($650,000 MXN Iniciales)"
@@ -1018,16 +1089,13 @@ with tab_global:
     mostrar_mx = True
     mostrar_usa = True
 
-  # 1. Asignación de Pesos y Acciones Individuales según el filtro
   st.markdown(f"### 🎯 Asignación de Pesos y Acciones ({titulo_enf})")
 
   precios_mx_actuales = {
-      k: float(yf.download(v, period="5d", progress=False)["Close"].iloc[-1])
-      for k, v in tickers_mx.items()
+      k: obtener_precio_actual(v, 100.0) for k, v in tickers_mx.items()
   }
   precios_usa_actuales = {
-      k: float(yf.download(v, period="5d", progress=False)["Close"].iloc[-1])
-      for k, v in tickers_usa.items()
+      k: obtener_precio_actual(v, 150.0) for k, v in tickers_usa.items()
   }
 
   if mostrar_mx:
@@ -1077,7 +1145,6 @@ with tab_global:
 
   st.markdown("---")
 
-  # 2. Tabla de Estadísticos & Riesgo Estocástico
   df_est_enf, rend_enf_sim, val_enf_sim = generar_simulacion_y_estadisticos(
       s_mx, s_usa, dias_habiles, alpha_nivel, enfoque=enf_key
   )
@@ -1089,7 +1156,7 @@ with tab_global:
       use_container_width=True,
   )
 
-  # 3. Métricas Destacadas (KPI Cards)
+  # Métricas Destacadas (KPI Cards)
   col_k1, col_k2, col_k3, col_k4 = st.columns(4)
   col_k1.metric(
       "Rendimiento Esperado", f"{np.mean(rend_enf_sim)*100:.2f}%"
@@ -1102,8 +1169,6 @@ with tab_global:
   col_k4.metric("Mediana Final (Q2)", f"${np.median(val_enf_sim):,.2f} MXN")
 
   st.markdown("---")
-
-  # 4. Múltiples Gráficas de Análisis
   st.subheader(
       f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
   )
@@ -1130,7 +1195,6 @@ with tab_global:
     st.plotly_chart(fig_box, use_container_width=True)
 
   with col_g2:
-    # Gráfica de densidad / violín acumulada
     fig_violin = px.violin(
         y=val_enf_sim / 1000,
         box=True,
@@ -1142,9 +1206,10 @@ with tab_global:
     fig_violin.update_layout(template="plotly_white")
     st.plotly_chart(fig_violin, use_container_width=True)
 
-# ------------------------------------------------------------------------------
-# PESTAÑA 4: MODELO EXCEL ESTOCÁSTICO & TÍTULOS
-# ------------------------------------------------------------------------------
+
+# ==============================================================================
+# PESTAÑA 5: MODELO EXCEL ESTOCÁSTICO & TÍTULOS
+# ==============================================================================
 with tab_excel:
   st.header(
       "📑 Simulación Diaria Estocástica & Distribución de Acciones (Títulos"
@@ -1164,12 +1229,10 @@ with tab_excel:
     mx_p, usa_p = max_mx_3, max_usa_3
 
   precios_mx_actuales = {
-      k: float(yf.download(v, period="5d", progress=False)["Close"].iloc[-1])
-      for k, v in tickers_mx.items()
+      k: obtener_precio_actual(v, 100.0) for k, v in tickers_mx.items()
   }
   precios_usa_actuales = {
-      k: float(yf.download(v, period="5d", progress=False)["Close"].iloc[-1])
-      for k, v in tickers_usa.items()
+      k: obtener_precio_actual(v, 150.0) for k, v in tickers_usa.items()
   }
 
   st.subheader("🇲🇽 Asignación de Títulos - Portafolio México ($500,000 MXN)")
@@ -1306,9 +1369,10 @@ with tab_excel:
       use_container_width=True,
   )
 
-# ------------------------------------------------------------------------------
-# PESTAÑA 5: ESTADÍSTICOS & RIESGO
-# ------------------------------------------------------------------------------
+
+# ==============================================================================
+# PESTAÑA 6: ESTADÍSTICOS & RIESGO
+# ==============================================================================
 with tab_stats:
   st.header("📊 Tabla de Estadísticos & Métricas de Riesgo Estocástico")
   horizonte_stats = st.selectbox(
@@ -1355,9 +1419,10 @@ with tab_stats:
   )
   st.plotly_chart(fig_hist, use_container_width=True)
 
-# ------------------------------------------------------------------------------
-# PESTAÑA 6: ANEXO DE FÓRMULAS QUANTITATIVE
-# ------------------------------------------------------------------------------
+
+# ==============================================================================
+# PESTAÑA 7: ANEXO DE FÓRMULAS QUANTITATIVE
+# ==============================================================================
 with tab_anexo:
   st.header("📐 Anexo Cuantitativo: Fórmulas y Modelos Matemáticos")
   st.markdown(

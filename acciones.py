@@ -540,7 +540,7 @@ def resaltar_maximo_sharpe(df, col_sharpe="sharpe_ratio"):
 
 
 # ==============================================================================
-# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS (INDIVIDUAL Y GLOBAL)
+# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS
 # ==============================================================================
 def generar_simulacion_y_estadisticos(
     max_mx,
@@ -718,7 +718,7 @@ cols_sh_usa = [
 ]
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: MERCADO MEXICANO (ORDEN 1 AL 8 CORRECTO)
+# PESTAÑA 1: MERCADO MEXICANO
 # ------------------------------------------------------------------------------
 with tab_mx:
   st.header("🇲🇽 Análisis de Portafolios - Activos Mexicanos y CETES")
@@ -742,7 +742,6 @@ with tab_mx:
       lbl_tasa,
       is_mx,
   ):
-    # 1. Evolución de las acciones
     st.subheader(f"1. Evolución de las Acciones - Precios Normalizados ({titulo_h})")
     precios_norm = (datos_hist / datos_hist.iloc[0]) * 100
     fig_norm = px.line(
@@ -751,16 +750,13 @@ with tab_mx:
     )
     st.plotly_chart(fig_norm, use_container_width=True)
 
-    # 2. Tabla de cómo evolucionan las acciones en ese periodo (Yahoo)
     st.subheader(f"2. Tabla de Evolución Histórica de Precios ({titulo_h})")
     st.dataframe(datos_hist.tail(10).style.format("${:,.2f}"), use_container_width=True)
 
-    # 3. Estadísticos del rendimiento (en tabla)
     st.subheader(f"3. Estadísticos del Rendimiento Histórico ({titulo_h})")
     df_desc = datos_hist.pct_change().dropna().describe()
     st.dataframe(df_desc.style.format("{:.4f}"), use_container_width=True)
 
-    # 4. Matriz de covarianza
     st.subheader(f"4. Matriz de Covarianza Anualizada ({titulo_h})")
     fig_cov = px.imshow(
         cov_mat,
@@ -772,7 +768,6 @@ with tab_mx:
     )
     st.plotly_chart(fig_cov, use_container_width=True)
 
-    # 5. Tabla del criterio de mínima varianza (ya simulados)
     st.subheader(f"5. Portafolio de Mínima Varianza ({titulo_h})")
     cols_min = [c for c in lista_empresas + ["Rp", "vp", "des_p"]]
     st.dataframe(
@@ -782,7 +777,6 @@ with tab_mx:
         use_container_width=True,
     )
 
-    # 6. El de Sharpe Ratio y debajo su gráfica (50 pasos lentos)
     st.subheader(f"6. Optimización por Ratio de Sharpe ({titulo_h})")
     col_g, col_ctrl = st.columns([3, 1])
     with col_ctrl:
@@ -814,7 +808,6 @@ with tab_mx:
         use_container_width=True,
     )
 
-    # 7. Estadísticos importantes del Sharpe Ratio (Intervalo de confianza, etc.)
     st.subheader(f"7. Estadísticos Importantes & Intervalo de Confianza ({titulo_h})")
     vals_sharpe = t1000_data["sharpe_ratio"].values
     df_stats_sharpe = pd.DataFrame({
@@ -895,7 +888,6 @@ with tab_mx:
         ].style.format(formatos_mx),
         use_container_width=True,
     )
-
     st.markdown(
         "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
         " Años)"
@@ -908,7 +900,7 @@ with tab_mx:
     )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 2: ESTADOS UNIDOS (ORDEN 1 AL 8 CORRECTO)
+# PESTAÑA 2: ESTADOS UNIDOS
 # ------------------------------------------------------------------------------
 with tab_usa:
   st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
@@ -972,7 +964,6 @@ with tab_usa:
         ].style.format(formatos_usa),
         use_container_width=True,
     )
-
     st.markdown(
         "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
         " Años)"
@@ -985,7 +976,7 @@ with tab_usa:
     )
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: PORTAFOLIOS INDIVIDUALES (FULL MÉXICO, FULL USA) & UNIÓN GLOBAL
+# PESTAÑA 3: PORTAFOLIOS (FULL MÉXICO, FULL USA & GLOBAL)
 # ------------------------------------------------------------------------------
 with tab_global:
   st.header(
@@ -1054,7 +1045,7 @@ with tab_global:
   st.plotly_chart(fig_enf, use_container_width=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 4: MODELO EXCEL ESTOCÁSTICO & TÍTULOS
+# PESTAÑA 4: MODELO EXCEL ESTOCÁSTICO & TÍTULOS (CON LAS TABLAS RESTAURADAS)
 # ------------------------------------------------------------------------------
 with tab_excel:
   st.header(
@@ -1094,6 +1085,7 @@ with tab_excel:
     except:
       precios_usa_actuales[k] = 150.0
 
+  # TABLA 1: ASIGNACIÓN DE TÍTULOS MÉXICO
   st.subheader("🇲🇽 Asignación de Títulos - Portafolio México ($500,000 MXN)")
   pesos_mx_opt = mx_p[empresas_mx].values[0]
   capital_mx_acc = 500000.0
@@ -1108,6 +1100,7 @@ with tab_excel:
       df_titulos_mx["Capital Asignado (MXN)"]
       / df_titulos_mx["Precio Actual (MXN)"]
   ).astype(int)
+
   st.dataframe(
       df_titulos_mx.style.format({
           "Peso Óptimo": "{:.2%}",
@@ -1118,6 +1111,7 @@ with tab_excel:
       use_container_width=True,
   )
 
+  # TABLA 2: ASIGNACIÓN DE TÍTULOS EE. UU.
   st.subheader(
       "🇺🇸 Asignación de Títulos - Portafolio EE. UU. ($245,000 MXN / USD)"
   )
@@ -1135,12 +1129,100 @@ with tab_excel:
       df_titulos_usa["Capital Asignado (USD)"]
       / df_titulos_usa["Precio Actual (USD)"]
   ).astype(int)
+
   st.dataframe(
       df_titulos_usa.style.format({
           "Peso Óptimo": "{:.2%}",
           "Capital Asignado (USD)": "${:,.2f}",
           "Precio Actual (USD)": "${:,.2f}",
           "Títulos a Comprar": "{:d}",
+      }),
+      use_container_width=True,
+  )
+
+  st.markdown("---")
+  st.subheader(
+      "📈 Tabla de Simulación Diaria Estocástica (Modelo Excel Completo)"
+  )
+  dias_muestra = 15
+  fechas_m = [
+      (fecha_inicio_sim + datetime.timedelta(days=i)).strftime("%d/%m/%Y")
+      for i in range(dias_muestra)
+  ]
+
+  tc_base = 18.44
+  val_mx = 500000.0
+  val_cetes = 150000.0
+  val_usa_usd = 245000.0 / tc_base
+  val_tb_usd = 105000.0 / tc_base
+
+  filas_excel = []
+  for idx, f in enumerate(fechas_m):
+    p_cetes = np.random.uniform(0, 1)
+    tasa_c = (
+        0.078 + np.sqrt(p_cetes * 0.002 * 0.004)
+        if p_cetes < 0.5
+        else 0.082 - np.sqrt((1 - p_cetes) * 0.004 * 0.002)
+    )
+
+    p_tb = np.random.uniform(0, 1)
+    tasa_t = (
+        0.0368 + np.sqrt(p_tb * 0.0002 * 0.0004)
+        if p_tb < 0.5
+        else 0.0372 - np.sqrt((1 - p_tb) * 0.0004 * 0.0002)
+    )
+
+    rend_mx_n = np.random.normal(0.0005, 0.012)
+    rend_usa_n = np.random.normal(0.0006, 0.015)
+
+    if idx == 0:
+      tc = tc_base
+      rend_mx_n = 0.0
+      rend_usa_n = 0.0
+    else:
+      val_mx *= 1 + rend_mx_n
+      val_cetes *= 1 + tasa_c / 360
+      val_usa_usd *= 1 + rend_usa_n
+      val_tb_usd *= 1 + tasa_t / 360
+      u_w = np.random.uniform(0.3, 0.7)
+      tc = 18.32123 * (u_w / (1 - u_w)) ** (1 / 28.52977)
+
+    total_usa_mxn = (val_usa_usd + val_tb_usd) * tc
+    total_global = val_mx + val_cetes + total_usa_mxn
+
+    filas_excel.append({
+        "Fecha": f,
+        "Rend. MX (Norm)": rend_mx_n,
+        "Portafolio Acc. MX ($)": val_mx,
+        "Prob CETES": p_cetes,
+        "Tasa CETES (Triang)": tasa_c,
+        "Valor CETES ($)": val_cetes,
+        "Rend. USA (Norm)": rend_usa_n,
+        "Portafolio Acc. USA (USD)": val_usa_usd,
+        "Prob T-Bills": p_tb,
+        "Tasa T-Bills (Triang)": tasa_t,
+        "Valor T-Bills (USD)": val_tb_usd,
+        "Tipo Cambio USD/MXN": tc,
+        "Valor Total USA (MXN)": total_usa_mxn,
+        "VALOR TOTAL PORTAFOLIO GLOBAL (MXN)": total_global,
+    })
+
+  df_excel_demo = pd.DataFrame(filas_excel)
+  st.dataframe(
+      df_excel_demo.style.format({
+          "Rend. MX (Norm)": "{:.2%}",
+          "Portafolio Acc. MX ($)": "${:,.2f}",
+          "Prob CETES": "{:.4f}",
+          "Tasa CETES (Triang)": "{:.2%}",
+          "Valor CETES ($)": "${:,.2f}",
+          "Rend. USA (Norm)": "{:.2%}",
+          "Portafolio Acc. USA (USD)": "${:,.2f}",
+          "Prob T-Bills": "{:.4f}",
+          "Tasa T-Bills (Triang)": "{:.2%}",
+          "Valor T-Bills (USD)": "${:,.2f}",
+          "Tipo Cambio USD/MXN": "${:,.4f}",
+          "Valor Total USA (MXN)": "${:,.2f}",
+          "VALOR TOTAL PORTAFOLIO GLOBAL (MXN)": "${:,.2f}",
       }),
       use_container_width=True,
   )

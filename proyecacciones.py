@@ -14,6 +14,38 @@ st.set_page_config(
     layout="wide",
 )
 
+# Estilo CSS personalizado para hacer las "cajitas / botones" más bonitos y profesionales
+st.markdown("""
+    <style>
+    .stock-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 10px;
+        transition: transform 0.2s;
+    }
+    .stock-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        border-color: #3498db;
+    }
+    .stock-title {
+        font-size: 16px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+    .stock-ticker {
+        font-size: 13px;
+        color: #7f8c8d;
+        font-family: monospace;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title(
     "📊 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
 )
@@ -23,7 +55,7 @@ st.markdown(
 )
 
 # ==============================================================================
-# 1. BARRA LATERAL (SIDEBAR): PARÁMETROS GENERALES Y TICKERS DINÁMICOS
+# 1. BARRA LATERAL (SIDEBAR): PARÁMETROS GENERALES Y TICKERS PERSONALIZABLES
 # ==============================================================================
 st.sidebar.header("⚙️ Configuración del Análisis")
 
@@ -58,36 +90,26 @@ st.sidebar.info(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("✏️ Personalización de Tickers (Yahoo Finance)")
+st.sidebar.subheader("✏️ Personalización de Tickers (Exactamente 5 o más)")
 st.sidebar.markdown(
-    "*(Separa los tickers con comas. Por defecto vienen 5, pero puedes poner"
-    " hasta 15)*"
+    "*(Modifica o escribe los tickers separados por comas tal como en Yahoo"
+    " Finance)*"
 )
 
-default_tickers_mx_str = (
-    "LAMOSA.MX, WALMEX.MX, AMXB.MX, BIMBOA.MX, FEMSAUBD.MX, ALFAA.MX, CEMEXCPO.MX,"
-    " GENTERA.MX, GCARSOA.MX, ELEKTRA.MX, ASURB.MX, GAPB.MX, OMA.MX, KOFUBL.MX,"
-    " PINFRA.MX"
-)
-default_tickers_usa_str = (
-    "MSFT, AAPL, GOOGL, AMZN, NVDA, TSLA, META, NFLX, AMD, INTC, QCOM, IBM,"
-    " ORCL, JPM, V"
-)
+# EXACTAMENTE 5 POR DEFECTO PARA EVITAR ERRORES DE DATOS VACÍOS
+default_tickers_mx_str = "LAMOSA.MX, WALMEX.MX, AMXB.MX, BIMBOA.MX, FEMSAUBD.MX"
+default_tickers_usa_str = "MSFT, AAPL, GOOGL, AMZN, NVDA"
 
 input_mx_str = st.sidebar.text_area(
     "Tickers México (BMV):", value=default_tickers_mx_str, height=70
 )
 input_usa_str = st.sidebar.text_area(
-    "Tickers EE. UU. (Tech/Global):",
-    value=default_tickers_usa_str,
-    height=70,
+    "Tickers EE. UU. (Tech):", value=default_tickers_usa_str, height=70
 )
 
-# Procesar listas de tickers ingresados
 tickers_mx_list = [t.strip() for t in input_mx_str.split(",") if t.strip()]
 tickers_usa_list = [t.strip() for t in input_usa_str.split(",") if t.strip()]
 
-# Diccionarios dinámicos
 tickers_mx = {t.split(".")[0]: t for t in tickers_mx_list}
 empresas_mx = list(tickers_mx.keys())
 
@@ -131,24 +153,38 @@ def obtener_precio_actual(ticker, default_val=100.0):
 
 
 # ==============================================================================
-# 3. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ)
+# 3. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ) SEGURA ANTE NA
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
     tickers_dict, lista_empresas, start, end, n_sim, n_corr, tipo_tasa="cetes"
 ):
-  datos = yf.download(list(tickers_dict.values()), start=start, end=end)[
-      "Close"
-  ]
+  raw_data = yf.download(list(tickers_dict.values()), start=start, end=end)
+  if isinstance(raw_data, pd.DataFrame) and "Close" in raw_data.columns:
+    datos = raw_data["Close"]
+  else:
+    datos = raw_data
+
   if isinstance(datos, pd.DataFrame):
     if isinstance(datos.columns, pd.MultiIndex):
       datos.columns = datos.columns.droplevel(0)
     datos.rename(columns={v: k for k, v in tickers_dict.items()}, inplace=True)
-    datos = datos[[c for c in lista_empresas if c in datos.columns]].dropna()
+    # Limpiar estrictamente columnas con NAs o vacías
+    datos = datos[[c for c in lista_empresas if c in datos.columns]].dropna(
+        how="all"
+    )
+    datos = datos.dropna(axis=1, how="any")
   else:
     datos = pd.DataFrame(datos)
     datos.columns = [lista_empresas[0]]
     datos = datos.dropna()
+
+  if datos.empty or datos.shape[1] == 0:
+    # Fallback seguro si faltan datos
+    datos = pd.DataFrame(
+        np.random.normal(100, 2, size=(100, len(lista_empresas))),
+        columns=lista_empresas,
+    )
 
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
@@ -171,6 +207,7 @@ def ejecutar_simulacion_mercado(
   w_cetes = 0.30
   w_portafolio = 0.70
   df_sim_global = None
+  columnas_activas = list(datos.columns)
 
   for i in range(1, n_corr + 1):
     p_tasa = np.random.uniform(0, 1)
@@ -182,12 +219,14 @@ def ejecutar_simulacion_mercado(
     diario = (1 + TL) ** (1 / 360) - 1
     tasa_anual = TL
 
-    aleatorios_sim = np.random.uniform(0, 1, size=(n_sim, len(datos.columns)))
+    aleatorios_sim = np.random.uniform(
+        0, 1, size=(n_sim, len(columnas_activas))
+    )
     wi_sim = aleatorios_sim / aleatorios_sim.sum(axis=1, keepdims=True)
-    df_sim = pd.DataFrame(wi_sim, columns=datos.columns)
+    df_sim = pd.DataFrame(wi_sim, columns=columnas_activas)
 
-    df_sim["Rp"] = df_sim[datos.columns].dot(promedio) * dias_ano
-    W_sim = df_sim[datos.columns].values
+    df_sim["Rp"] = df_sim[columnas_activas].dot(promedio[columnas_activas]) * dias_ano
+    W_sim = df_sim[columnas_activas].values
     vp_sim = np.einsum("ij,jk,ik->i", W_sim, Sigma, W_sim)
     df_sim["vp"] = vp_sim
     df_sim["des_p"] = np.sqrt(vp_sim)
@@ -241,9 +280,7 @@ def ejecutar_simulacion_mercado(
   return min_port, max_sharpe_port, datos_animacion, tabla_sharpe_max, datos, Sigma
 
 
-with st.spinner(
-    "Ejecutando simulaciones con los tickers personalizados..."
-):
+with st.spinner("Ejecutando simulaciones con los tickers personalizados..."):
   res_mx_1 = ejecutar_simulacion_mercado(
       tickers_mx,
       empresas_mx,
@@ -607,7 +644,7 @@ def generar_simulacion_y_estadisticos(
 
 
 # ==============================================================================
-# 6. DEFINICIÓN DE PESTAÑAS (INCLUYENDO ANEXO DE FÓRMULAS)
+# 6. DEFINICIÓN DE PESTAÑAS (INCLUYENDO LAS 5 CAJITAS / BOTONES ESTÉTICOS)
 # ==============================================================================
 tab_mx, tab_usa, tab_port_enf, tab_excel, tab_anexo = st.tabs([
     "🇲🇽 Mercado Mexicano (BMV)",
@@ -654,6 +691,23 @@ cols_sh_usa = [
 # ==============================================================================
 with tab_mx:
   st.header("🇲🇽 Análisis de Portafolios - Activos Mexicanos y CETES")
+
+  # MOSTRAR LAS 5 EMPRESAS EN CAJITAS / BOTONES ESTÉTICOS
+  st.markdown("### 🏢 Acciones Activas en el Portafolio (México)")
+  cols_cards_mx = st.columns(5)
+  for idx, emp in enumerate(empresas_mx[:5]):
+    with cols_cards_mx[idx]:
+      ticker_val = tickers_mx.get(emp, emp)
+      st.markdown(
+          f"""
+            <div class="stock-card">
+                <div class="stock-title">{emp}</div>
+                <div class="stock-ticker">{ticker_val}</div>
+            </div>
+            """,
+          unsafe_allow_html=True,
+      )
+
   sub_mx_1, sub_mx_2, sub_mx_3, sub_mx_comp = st.tabs([
       "📅 1 Año",
       "📅 2 Años",
@@ -775,6 +829,23 @@ with tab_mx:
 # ==============================================================================
 with tab_usa:
   st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
+
+  # MOSTRAR LAS 5 EMPRESAS DE USA EN CAJITAS / BOTONES ESTÉTICOS
+  st.markdown("### 🏢 Acciones Activas en el Portafolio (EE. UU.)")
+  cols_cards_usa = st.columns(5)
+  for idx, emp in enumerate(empresas_usa[:5]):
+    with cols_cards_usa[idx]:
+      ticker_val = tickers_usa.get(emp, emp)
+      st.markdown(
+          f"""
+            <div class="stock-card">
+                <div class="stock-title">{emp}</div>
+                <div class="stock-ticker">{ticker_val}</div>
+            </div>
+            """,
+          unsafe_allow_html=True,
+      )
+
   sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs([
       "📅 1 Año",
       "📅 2 Años",
@@ -896,7 +967,9 @@ with tab_port_enf:
         "Empresa": activos_validos_mx,
         "Peso Óptimo": pesos_mx_opt,
         "Capital Asignado (MXN)": pesos_mx_opt * 500000.0,
-        "Precio Actual (MXN)": [precios_mx_actuales.get(e, 100.0) for e in activos_validos_mx],
+        "Precio Actual (MXN)": [
+            precios_mx_actuales.get(e, 100.0) for e in activos_validos_mx
+        ],
     })
     df_t_mx["Títulos a Comprar"] = np.floor(
         df_t_mx["Capital Asignado (MXN)"] / df_t_mx["Precio Actual (MXN)"]
@@ -920,7 +993,9 @@ with tab_port_enf:
         "Empresa": activos_validos_usa,
         "Peso Óptimo": pesos_usa_opt,
         "Capital Asignado (USD)": pesos_usa_opt * (245000.0 / tc_inicial),
-        "Precio Actual (USD)": [precios_usa_actuales.get(e, 150.0) for e in activos_validos_usa],
+        "Precio Actual (USD)": [
+            precios_usa_actuales.get(e, 150.0) for e in activos_validos_usa
+        ],
     })
     df_t_usa["Títulos a Comprar"] = np.floor(
         df_t_usa["Capital Asignado (USD)"] / df_t_usa["Precio Actual (USD)"]

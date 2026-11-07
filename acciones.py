@@ -132,9 +132,7 @@ def ejecutar_simulacion_mercado(
   k = (b - a) / (c - a)
   mejores_sharpe = []
   datos_animacion = []
-  n_animacion_pasos = min(
-      50, n_corr
-  )  # Ampliado a 50 pasos para mayor detalle
+  n_animacion_pasos = min(50, n_corr)
   colores_anim = px.colors.sample_colorscale(
       "turbo", np.linspace(0.1, 0.9, n_animacion_pasos)
   )
@@ -469,10 +467,7 @@ def construir_figura_animada_con_minima(
                   "args": [
                       None,
                       {
-                          "frame": {
-                              "duration": 500,
-                              "redraw": False,
-                          },  # Duración mayor para movimiento más lento
+                          "frame": {"duration": 500, "redraw": False},
                           "fromcurrent": True,
                       },
                   ],
@@ -545,7 +540,7 @@ def resaltar_maximo_sharpe(df, col_sharpe="sharpe_ratio"):
 
 
 # ==============================================================================
-# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS (GLOBAL / POR PAÍS)
+# 4. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS (INDIVIDUAL Y GLOBAL)
 # ==============================================================================
 def generar_simulacion_y_estadisticos(
     max_mx,
@@ -681,12 +676,12 @@ def generar_simulacion_y_estadisticos(
 
 
 # ==============================================================================
-# 5. INTERFAZ EN PESTAÑAS PRINCIPALES (CON ORDEN EXACTO DE LOS 8 PUNTOS)
+# 5. INTERFAZ EN PESTAÑAS PRINCIPALES
 # ==============================================================================
 tab_mx, tab_usa, tab_global, tab_excel, tab_stats, tab_anexo = st.tabs([
     "🇲🇽 Mercado Mexicano (BMV)",
     "🇺🇸 Mercado EE. UU. (Tech)",
-    "🌐 Portafolio Global (Unión)",
+    "🌐 Portafolios (Full México, Full USA & Global)",
     "📑 Modelo Excel Estocástico & Títulos",
     "📊 Estadísticos & Riesgo",
     "📐 Anexo de Fórmulas Quantitative",
@@ -723,13 +718,16 @@ cols_sh_usa = [
 ]
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: MERCADO MEXICANO (ORDEN 1 AL 7)
+# PESTAÑA 1: MERCADO MEXICANO (ORDEN 1 AL 8 CORRECTO)
 # ------------------------------------------------------------------------------
 with tab_mx:
   st.header("🇲🇽 Análisis de Portafolios - Activos Mexicanos y CETES")
-  sub_mx_1, sub_mx_2, sub_mx_3, sub_mx_comp = st.tabs(
-      ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas (MX)"]
-  )
+  sub_mx_1, sub_mx_2, sub_mx_3, sub_mx_comp = st.tabs([
+      "📅 1 Año",
+      "📅 2 Años",
+      "📅 3 Años",
+      "📋 Tablas Comparativas (Mínima Varianza y Sharpe)",
+  ])
 
 
   def renderizar_bloque_pais(
@@ -744,7 +742,7 @@ with tab_mx:
       lbl_tasa,
       is_mx,
   ):
-    # 1. Evolución de las acciones (Gráfica Base 100)
+    # 1. Evolución de las acciones
     st.subheader(f"1. Evolución de las Acciones - Precios Normalizados ({titulo_h})")
     precios_norm = (datos_hist / datos_hist.iloc[0]) * 100
     fig_norm = px.line(
@@ -753,7 +751,7 @@ with tab_mx:
     )
     st.plotly_chart(fig_norm, use_container_width=True)
 
-    # 2. Tabla de cómo evolucionan las acciones en ese período (Yahoo)
+    # 2. Tabla de cómo evolucionan las acciones en ese periodo (Yahoo)
     st.subheader(f"2. Tabla de Evolución Histórica de Precios ({titulo_h})")
     st.dataframe(datos_hist.tail(10).style.format("${:,.2f}"), use_container_width=True)
 
@@ -784,12 +782,12 @@ with tab_mx:
         use_container_width=True,
     )
 
-    # 6. El de Sharpe Ratio y debajo su gráfica (con 50 pasos lentos)
+    # 6. El de Sharpe Ratio y debajo su gráfica (50 pasos lentos)
     st.subheader(f"6. Optimización por Ratio de Sharpe ({titulo_h})")
     col_g, col_ctrl = st.columns([3, 1])
     with col_ctrl:
       st.subheader("🎛️ Controles")
-      st.info("Simulación Monte Carlo (50 pasos de avance gradual).")
+      st.info("Simulación Monte Carlo (50 pasos lentos y fluidos).")
     with col_g:
       st.plotly_chart(
           construir_figura_animada_con_minima(
@@ -887,7 +885,10 @@ with tab_mx:
     )
 
   with sub_mx_comp:
-    st.subheader("📋 Tablas Comparativas (México)")
+    st.subheader("📋 Tablas Comparativas de los 3 Años (México)")
+    st.markdown(
+        "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
+    )
     st.dataframe(
         pd.concat([min_mx_1, min_mx_2, min_mx_3])[
             [c for c in cols_min_mx if c in min_mx_1.columns]
@@ -895,14 +896,28 @@ with tab_mx:
         use_container_width=True,
     )
 
+    st.markdown(
+        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
+        " Años)"
+    )
+    st.dataframe(
+        pd.concat([max_mx_1, max_mx_2, max_mx_3])[
+            [c for c in cols_sh_mx if c in max_mx_1.columns]
+        ].style.format(formatos_mx),
+        use_container_width=True,
+    )
+
 # ------------------------------------------------------------------------------
-# PESTAÑA 2: ESTADOS UNIDOS (ORDEN 1 AL 7)
+# PESTAÑA 2: ESTADOS UNIDOS (ORDEN 1 AL 8 CORRECTO)
 # ------------------------------------------------------------------------------
 with tab_usa:
   st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
-  sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs(
-      ["📅 1 Año", "📅 2 Años", "📅 3 Años", "📋 Tablas Comparativas (USA)"]
-  )
+  sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs([
+      "📅 1 Año",
+      "📅 2 Años",
+      "📅 3 Años",
+      "📋 Tablas Comparativas (Mínima Varianza y Sharpe)",
+  ])
 
   with sub_usa_1:
     renderizar_bloque_pais(
@@ -947,7 +962,10 @@ with tab_usa:
     )
 
   with sub_usa_comp:
-    st.subheader("📋 Tablas Comparativas (EE. UU.)")
+    st.subheader("📋 Tablas Comparativas de los 3 Años (EE. UU.)")
+    st.markdown(
+        "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
+    )
     st.dataframe(
         pd.concat([min_usa_1, min_usa_2, min_usa_3])[
             [c for c in cols_min_usa if c in min_usa_1.columns]
@@ -955,52 +973,85 @@ with tab_usa:
         use_container_width=True,
     )
 
+    st.markdown(
+        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
+        " Años)"
+    )
+    st.dataframe(
+        pd.concat([max_usa_1, max_usa_2, max_usa_3])[
+            [c for c in cols_sh_usa if c in max_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: PORTAFOLIO GLOBAL (UNIÓN DE MÉXICO Y EE. UU.)
+# PESTAÑA 3: PORTAFOLIOS INDIVIDUALES (FULL MÉXICO, FULL USA) & UNIÓN GLOBAL
 # ------------------------------------------------------------------------------
 with tab_global:
   st.header(
-      "🌐 Portafolio Global unificado (Integración de México y EE. UU.)"
+      "🌐 Simulación Estocástica por Enfoque: Full México, Full EE. UU. y Unión"
+      " Global"
   )
   st.markdown(
-      "Aquí se unen los enfoques óptimos de ambos países bajo una simulación"
-      " conjunta estocástica."
+      "Aquí puedes simular y comparar los resultados desagregados por país o"
+      " unidos en el portafolio global."
   )
 
-  horiz_global = st.selectbox(
-      "Selecciona el horizonte para la simulación global unida:",
+  enfoque_sel = st.selectbox(
+      "Selecciona el enfoque de simulación:",
+      [
+          "Full México (Solo Acciones MX + CETES)",
+          "Full EE. UU. (Solo Acciones USA + T-Bills + TC)",
+          "Global Unificado (México + EE. UU. Combinados)",
+      ],
+  )
+  horiz_sel = st.selectbox(
+      "Selecciona el horizonte temporal:",
       ["1 año", "2 años", "3 años"],
-      key="sel_global",
+      key="sel_h_enfoque",
   )
-  if horiz_global == "1 año":
-    g_mx, g_usa = max_mx_1, max_usa_1
-  elif horiz_global == "2 años":
-    g_mx, g_usa = max_mx_2, max_usa_2
+
+  if horiz_sel == "1 año":
+    s_mx, s_usa = max_mx_1, max_usa_1
+  elif horiz_sel == "2 años":
+    s_mx, s_usa = max_mx_2, max_usa_2
   else:
-    g_mx, g_usa = max_mx_3, max_usa_3
+    s_mx, s_usa = max_mx_3, max_usa_3
 
-  df_est_global, rend_g_sim, val_g_sim = generar_simulacion_y_estadisticos(
-      g_mx, g_usa, dias_habiles, alpha_nivel, enfoque="global"
+  if "Full México" in enfoque_sel:
+    enf_key = "mexico"
+    titulo_enf = "Full México ($650,000 MXN Iniciales)"
+  elif "Full EE. UU." in enfoque_sel:
+    enf_key = "usa"
+    titulo_enf = "Full EE. UU. ($350,000 MXN Equiv. en USD)"
+  else:
+    enf_key = "global"
+    titulo_enf = "Portafolio Global Unificado ($1,000,000 MXN Iniciales)"
+
+  df_est_enf, rend_enf_sim, val_enf_sim = generar_simulacion_y_estadisticos(
+      s_mx, s_usa, dias_habiles, alpha_nivel, enfoque=enf_key
   )
 
-  st.subheader("📊 Estadísticos Combinados del Portafolio Global")
+  st.subheader(f"📊 Tabla de Estadísticos & Riesgo Estocástico ({titulo_enf})")
   st.dataframe(
-      df_est_global.style.format("{:.2%}"), use_container_width=True
+      df_est_enf.style.format(
+          {col: "{:.2%}" for col in df_est_enf.columns}
+      ),
+      use_container_width=True,
   )
 
-  st.subheader("📈 Distribución del Valor Final del Portafolio Global Unificado")
-  fig_g = px.histogram(
-      x=val_g_sim,
+  st.subheader(
+      f"📈 Gráfica de Distribución del Valor Final ({titulo_enf})"
+  )
+  fig_enf = px.histogram(
+      x=val_enf_sim,
       nbins=50,
       labels={"x": "Valor Final en MXN"},
-      title=(
-          "Simulación Monte Carlo Combinada (México + EE. UU. + Tasas + Tipo de"
-          " Cambio)"
-      ),
-      color_discrete_sequence=["#8e44ad"],
+      title=f"Simulación Estocástica a 1 Año - {titulo_enf}",
+      color_discrete_sequence=["#2980b9"],
   )
-  fig_g.update_layout(xaxis_title="Valor Final (MXN)", template="plotly_white")
-  st.plotly_chart(fig_g, use_container_width=True)
+  fig_enf.update_layout(xaxis_title="Valor Final (MXN)", template="plotly_white")
+  st.plotly_chart(fig_enf, use_container_width=True)
 
 # ------------------------------------------------------------------------------
 # PESTAÑA 4: MODELO EXCEL ESTOCÁSTICO & TÍTULOS

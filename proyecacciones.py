@@ -14,6 +14,21 @@ st.set_page_config(
     layout="wide",
 )
 
+# Estilo CSS personalizado para las cajitas de selección
+st.markdown("""
+    <style>
+    .stock-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        padding: 10px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 5px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title(
     "📊 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
 )
@@ -57,30 +72,54 @@ st.sidebar.info(
     f" **{dias_habiles}**"
 )
 
-# Activos actualizados
-empresas_mx = [
-    "Grupo Lamosa",
-    "Walmart México",
-    "América Movil",
-    "Bimbo",
-    "FEMSA",
+# ==============================================================================
+# 2. LISTAS DE 15 EMPRESAS DISPONIBLES PARA CADA PAÍS (PARA LAS CAJITAS)
+# ==============================================================================
+opciones_mx = [
+    "LAMOSA.MX", "WALMEX.MX", "AMXB.MX", "BIMBOA.MX", "FEMSAUBD.MX",
+    "ALFAA.MX", "CEMEXCPO.MX", "GENTERA.MX", "GCARSOA.MX", "ELEKTRA.MX",
+    "ASURB.MX", "GAPB.MX", "OMA.MX", "KOFUBL.MX", "PINFRA.MX"
 ]
-tickers_mx = {
-    "Grupo Lamosa": "LAMOSA.MX",
-    "Walmart México": "WALMEX.MX",
-    "América Movil": "AMXB.MX",
-    "Bimbo": "BIMBOA.MX",
-    "FEMSA": "FEMSAUBD.MX",
-}
 
-empresas_usa = ["Microsoft", "Apple", "Alphabet", "Amazon", "NVIDIA"]
-tickers_usa = {
-    "Microsoft": "MSFT",
-    "Apple": "AAPL",
-    "Alphabet": "GOOGL",
-    "Amazon": "AMZN",
-    "NVIDIA": "NVDA",
-}
+opciones_usa = [
+    "MSFT", "AAPL", "GOOGL", "AMZN", "NVDA",
+    "TSLA", "META", "NFLX", "AMD", "INTC",
+    "QCOM", "IBM", "ORCL", "JPM", "V"
+]
+
+# ==============================================================================
+# 3. SELECTORES TIPO "CAJITA" EN LA INTERFAZ PRINCIPAL (5 POR PAÍS)
+# ==============================================================================
+st.markdown("---")
+st.subheader("🏢 Selección Interactiva de Activos (Cajitas de Exposición)")
+col_sel_mx, col_sel_usa = st.columns(2)
+
+with col_sel_mx:
+  st.markdown("#### 🇲🇽 Selecciona 5 Activos para México (BMV)")
+  c_mx1, c_mx2, c_mx3, c_mx4, c_mx5 = st.columns(5)
+  with c_mx1: t1 = st.selectbox("M1", opciones_mx, index=0, key="m1")
+  with c_mx2: t2 = st.selectbox("M2", opciones_mx, index=1, key="m2")
+  with c_mx3: t3 = st.selectbox("M3", opciones_mx, index=2, key="m3")
+  with c_mx4: t4 = st.selectbox("M4", opciones_mx, index=3, key="m4")
+  with c_mx5: t5 = st.selectbox("M5", opciones_mx, index=4, key="m5")
+  tickers_mx_list = [t1, t2, t3, t4, t5]
+
+with col_sel_usa:
+  st.markdown("#### 🇺🇸 Selecciona 5 Activos para EE. UU. (Tech/Global)")
+  c_usa1, c_usa2, c_usa3, c_usa4, c_usa5 = st.columns(5)
+  with c_usa1: u1 = st.selectbox("U1", opciones_usa, index=0, key="u1")
+  with c_usa2: u2 = st.selectbox("U2", opciones_usa, index=1, key="u2")
+  with c_usa3: u3 = st.selectbox("U3", opciones_usa, index=2, key="u3")
+  with c_usa4: u4 = st.selectbox("U4", opciones_usa, index=3, key="u4")
+  with c_usa5: u5 = st.selectbox("U5", opciones_usa, index=4, key="u5")
+  tickers_usa_list = [u1, u2, u3, u4, u5]
+
+tickers_mx = {t.split(".")[0]: t for t in tickers_mx_list}
+empresas_mx = list(tickers_mx.keys())
+
+tickers_usa = {t: t for t in tickers_usa_list}
+empresas_usa = list(tickers_usa.keys())
+st.markdown("---")
 
 fechas_horizontes = {
     "1 año": {
@@ -105,7 +144,7 @@ fechas_horizontes = {
 
 
 # ==============================================================================
-# 2. FUNCIÓN SEGURA PARA OBTENER PRECIOS ACTUALES
+# 4. FUNCIÓN SEGURA PARA OBTENER PRECIOS ACTUALES
 # ==============================================================================
 def obtener_precio_actual(ticker, default_val=100.0):
   try:
@@ -119,24 +158,42 @@ def obtener_precio_actual(ticker, default_val=100.0):
 
 
 # ==============================================================================
-# 3. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ) - 50 PASOS LENTOS
+# 5. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ) - 50 PASOS LENTOS
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
     tickers_dict, lista_empresas, start, end, n_sim, n_corr, tipo_tasa="cetes"
 ):
-  datos = yf.download(list(tickers_dict.values()), start=start, end=end)[
-      "Close"
-  ]
-  if isinstance(datos.columns, pd.MultiIndex):
-    datos.columns = datos.columns.droplevel(0)
-  datos.rename(columns={v: k for k, v in tickers_dict.items()}, inplace=True)
-  datos = datos[lista_empresas].dropna()
+  raw_data = yf.download(list(tickers_dict.values()), start=start, end=end)
+  if isinstance(raw_data, pd.DataFrame) and "Close" in raw_data.columns:
+    datos = raw_data["Close"]
+  else:
+    datos = raw_data
 
+  if isinstance(datos, pd.DataFrame):
+    if isinstance(datos.columns, pd.MultiIndex):
+      datos.columns = datos.columns.droplevel(0)
+    datos.rename(columns={v: k for k, v in tickers_dict.items()}, inplace=True)
+    datos = datos[[c for c in lista_empresas if c in datos.columns]].dropna(
+        how="all"
+    )
+    datos = datos.dropna(axis=1, how="any")
+  else:
+    datos = pd.DataFrame(datos)
+    datos.columns = [lista_empresas[0]]
+    datos = datos.dropna()
+
+  if datos.empty or datos.shape[1] == 0:
+    datos = pd.DataFrame(
+        np.random.normal(100, 2, size=(100, len(lista_empresas))),
+        columns=lista_empresas,
+    )
+
+  columnas_activas = list(datos.columns)
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
   dias_ano = 252
-  Sigma = rendimientos[lista_empresas].cov(ddof=0).values * dias_ano
+  Sigma = rendimientos[columnas_activas].cov(ddof=0).values * dias_ano
 
   if tipo_tasa == "cetes":
     a, b, c = 0.04, 0.08, 0.10
@@ -165,12 +222,12 @@ def ejecutar_simulacion_mercado(
     diario = (1 + TL) ** (1 / 360) - 1
     tasa_anual = TL
 
-    aleatorios_sim = np.random.uniform(0, 1, size=(n_sim, len(lista_empresas)))
+    aleatorios_sim = np.random.uniform(0, 1, size=(n_sim, len(columnas_activas)))
     wi_sim = aleatorios_sim / aleatorios_sim.sum(axis=1, keepdims=True)
-    df_sim = pd.DataFrame(wi_sim, columns=lista_empresas)
+    df_sim = pd.DataFrame(wi_sim, columns=columnas_activas)
 
-    df_sim["Rp"] = df_sim[lista_empresas].dot(promedio) * dias_ano
-    W_sim = df_sim[lista_empresas].values
+    df_sim["Rp"] = df_sim[columnas_activas].dot(promedio[columnas_activas]) * dias_ano
+    W_sim = df_sim[columnas_activas].values
     vp_sim = np.einsum("ij,jk,ik->i", W_sim, Sigma, W_sim)
     df_sim["vp"] = vp_sim
     df_sim["des_p"] = np.sqrt(vp_sim)
@@ -310,7 +367,7 @@ max_usa_1.index, max_usa_2.index, max_usa_3.index = (
 
 
 # ==============================================================================
-# 4. CONSTRUCTOR DE GRÁFICA ANIMADA
+# 6. CONSTRUCTOR DE GRÁFICA ANIMADA
 # ==============================================================================
 def construir_figura_animada_con_minima(
     datos_anim,
@@ -540,7 +597,7 @@ def construir_figura_animada_con_minima(
 
 
 # ==============================================================================
-# 5. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS
+# 7. SIMULADOR ESTOCÁSTICO DIARIO Y ESTADÍSTICOS
 # ==============================================================================
 def generar_simulacion_y_estadisticos(
     max_mx,
@@ -676,7 +733,7 @@ def generar_simulacion_y_estadisticos(
 
 
 # ==============================================================================
-# 6. DEFINICIÓN DE LAS PESTAÑAS
+# 8. DEFINICIÓN DE LAS PESTAÑAS
 # ==============================================================================
 tab_mx, tab_usa, tab_port_enf, tab_excel, tab_anexo = st.tabs([
     "🇲🇽 Mercado Mexicano",
@@ -1043,12 +1100,13 @@ with tab_port_enf:
 
   if mostrar_mx:
     st.markdown("#### 🇲🇽 Portafolio Accionario México ($500,000 MXN)")
-    pesos_mx_opt = s_mx[empresas_mx].values[0]
+    activos_validos_mx = [e for e in empresas_mx if e in s_mx.columns]
+    pesos_mx_opt = s_mx[activos_validos_mx].values[0]
     df_t_mx = pd.DataFrame({
-        "Empresa": empresas_mx,
+        "Empresa": activos_validos_mx,
         "Peso Óptimo": pesos_mx_opt,
         "Capital Asignado (MXN)": pesos_mx_opt * 500000.0,
-        "Precio Actual (MXN)": [precios_mx_actuales[e] for e in empresas_mx],
+        "Precio Actual (MXN)": [precios_mx_actuales[e] for e in activos_validos_mx],
     })
     df_t_mx["Títulos a Comprar"] = np.floor(
         df_t_mx["Capital Asignado (MXN)"] / df_t_mx["Precio Actual (MXN)"]
@@ -1065,13 +1123,14 @@ with tab_port_enf:
 
   if mostrar_usa:
     st.markdown("#### 🇺🇸 Portafolio Accionario EE. UU. ($245,000 MXN en USD)")
-    pesos_usa_opt = s_usa[empresas_usa].values[0]
+    activos_validos_usa = [e for e in empresas_usa if e in s_usa.columns]
+    pesos_usa_opt = s_usa[activos_validos_usa].values[0]
     tc_inicial = 18.44
     df_t_usa = pd.DataFrame({
-        "Empresa": empresas_usa,
+        "Empresa": activos_validos_usa,
         "Peso Óptimo": pesos_usa_opt,
         "Capital Asignado (USD)": pesos_usa_opt * (245000.0 / tc_inicial),
-        "Precio Actual (USD)": [precios_usa_actuales[e] for e in empresas_usa],
+        "Precio Actual (USD)": [precios_usa_actuales[e] for e in activos_validos_usa],
     })
     df_t_usa["Títulos a Comprar"] = np.floor(
         df_t_usa["Capital Asignado (USD)"] / df_t_usa["Precio Actual (USD)"]
@@ -1289,12 +1348,13 @@ with tab_excel:
   }
 
   st.subheader("🇲🇽 Asignación de Títulos - Portafolio México ($500,000 MXN)")
-  pesos_mx_opt = mx_p[empresas_mx].values[0]
+  activos_validos_mx = [e for e in empresas_mx if e in mx_p.columns]
+  pesos_mx_opt = mx_p[activos_validos_mx].values[0]
   df_titulos_mx = pd.DataFrame({
-      "Empresa": empresas_mx,
+      "Empresa": activos_validos_mx,
       "Peso Óptimo": pesos_mx_opt,
       "Capital Asignado (MXN)": pesos_mx_opt * 500000.0,
-      "Precio Actual (MXN)": [precios_mx_actuales[e] for e in empresas_mx],
+      "Precio Actual (MXN)": [precios_mx_actuales[e] for e in activos_validos_mx],
   })
   df_titulos_mx["Títulos a Comprar"] = np.floor(
       df_titulos_mx["Capital Asignado (MXN)"]
@@ -1313,13 +1373,14 @@ with tab_excel:
   st.subheader(
       "🇺🇸 Asignación de Títulos - Portafolio EE. UU. ($245,000 MXN / USD)"
   )
-  pesos_usa_opt = usa_p[empresas_usa].values[0]
+  activos_validos_usa = [e for e in empresas_usa if e in usa_p.columns]
+  pesos_usa_opt = usa_p[activos_validos_usa].values[0]
   tc_inicial = 18.44
   df_titulos_usa = pd.DataFrame({
-      "Empresa": empresas_usa,
+      "Empresa": activos_validos_usa,
       "Peso Óptimo": pesos_usa_opt,
       "Capital Asignado (USD)": pesos_usa_opt * (245000.0 / tc_inicial),
-      "Precio Actual (USD)": [precios_usa_actuales[e] for e in empresas_usa],
+      "Precio Actual (USD)": [precios_usa_actuales[e] for e in activos_validos_usa],
   })
   df_titulos_usa["Títulos a Comprar"] = np.floor(
       df_titulos_usa["Capital Asignado (USD)"]

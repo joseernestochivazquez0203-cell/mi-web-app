@@ -78,7 +78,7 @@ st.sidebar.info(
 opciones_mx = [
     "LAMOSA.MX", "WALMEX.MX", "AMXB.MX", "BIMBOA.MX", "FEMSAUBD.MX",
     "ALFAA.MX", "CEMEXCPO.MX", "GENTERA.MX", "GCARSOA.MX", "ELEKTRA.MX",
-    "ASURB.MX", "GAPB.MX", "OMA.MX", "KOFUBL.MX", "PINFRA.MX"
+    "ASURB.MX", "GAPB.MX", "OMAB.MX", "KOFUBL.MX", "PINFRA.MX"
 ]
 
 opciones_usa = [

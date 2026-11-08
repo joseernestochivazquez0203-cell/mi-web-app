@@ -576,7 +576,7 @@ with tab_global:
 
 
 # ==============================================================================
-# PESTAÑA 4: SIMULACIÓN POR ENFOQUE (CON TODOS LOS COMPONENTES RESTAURADOS)
+# PESTAÑA 4: SIMULACIÓN POR ENFOQUE
 # ==============================================================================
 with tab_port_enf:
   st.header("🌐 Simulación Estocástica por Enfoque")
@@ -698,14 +698,34 @@ with tab_port_enf:
 
 
 # ==============================================================================
-# PESTAÑA 5: MODELO EXCEL & TÍTULOS
+# PESTAÑA 5: MODELO EXCEL & TÍTULOS (CON MÉXICO Y EE. UU. COMPLETOS)
 # ==============================================================================
 with tab_excel:
   st.header("📑 Modelo Excel Estocástico & Títulos Enteros")
-  horizonte_excel = st.selectbox("Horizonte:", ["1 año", "2 años", "3 años"], key="sel_excel")
+  horizonte_excel = st.selectbox("Horizonte para títulos:", ["1 año", "2 años", "3 años"], key="sel_excel")
   mx_p, usa_p = (max_mx_1, max_usa_1) if horizonte_excel == "1 año" else (max_mx_2, max_usa_2) if horizonte_excel == "2 años" else (max_mx_3, max_usa_3)
-  st.markdown("### 🇲🇽 México")
-  st.dataframe(pd.DataFrame({"Empresa": empresas_mx, "Peso": mx_p[empresas_mx].values[0]}).style.format({"Peso": "{:.2%}"}), use_container_width=True)
+  
+  st.markdown("### 🇲🇽 México (BMV)")
+  act_mx_val = [e for e in empresas_mx if e in mx_p.columns]
+  st.dataframe(
+      pd.DataFrame({
+          "Empresa": act_mx_val,
+          "Peso Óptimo": mx_p[act_mx_val].values[0],
+          "Capital Asignado (MXN)": mx_p[act_mx_val].values[0] * 500000.0,
+      }).style.format({"Peso Óptimo": "{:.2%}", "Capital Asignado (MXN)": "${:,.2f}"}),
+      use_container_width=True,
+  )
+
+  st.markdown("### 🇺🇸 EE. UU. (Tech/Global)")
+  act_usa_val = [e for e in empresas_usa if e in usa_p.columns]
+  st.dataframe(
+      pd.DataFrame({
+          "Empresa": act_usa_val,
+          "Peso Óptimo": usa_p[act_usa_val].values[0],
+          "Capital Asignado (USD)": usa_p[act_usa_val].values[0] * (245000.0 / 18.44),
+      }).style.format({"Peso Óptimo": "{:.2%}", "Capital Asignado (USD)": "${:,.2f}"}),
+      use_container_width=True,
+  )
 
 
 # ==============================================================================
@@ -720,19 +740,43 @@ with tab_stats:
 
 
 # ==============================================================================
-# PESTAÑA 7: ANEXO DE FÓRMULAS & PARÁMETROS QUANT
+# PESTAÑA 7: ANEXO DE FÓRMULAS & PARÁMETROS QUANT (COMPLETO)
 # ==============================================================================
 with tab_anexo:
   st.header("📐 Anexo Cuantitativo: Fórmulas y Parámetros Utilizados")
+  st.markdown("Demostración formal y algebraica exacta de los modelos matemáticos implementados en todo el simulador:")
+
   col1, col2 = st.columns(2)
+
   with col1:
-    st.markdown("### 1. Modelo de Markowitz")
+    st.markdown("### 1. Modelo de Markowitz (Teoría de Portafolios)")
+    st.markdown("**Rendimiento Esperado del Portafolio ($R_p$):** Promedio ponderado de los rendimientos logarítmicos anualizados.")
     st.latex(r"R_p = \sum_{i=1}^{n} w_i \cdot \mu_i = \mathbf{w}^T \boldsymbol{\mu}")
+
+    st.markdown("**Varianza y Volatilidad del Portafolio ($\sigma_p^2$ y $\sigma_p$):** Mide el riesgo considerando la covarianza entre los activos.")
+    st.latex(r"\sigma_p^2 = \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} = \sum_{i=1}^n \sum_{j=1}^n w_i w_j \sigma_{ij}")
     st.latex(r"\sigma_p = \sqrt{\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}}")
-    st.markdown("### 2. Ratio de Sharpe")
+
+    st.markdown("### 2. Ratio de Sharpe y Línea de Asignación (CAL)")
+    st.markdown("Exceso de rendimiento por unidad de riesgo total frente a la tasa libre de riesgo ($R_f$).")
     st.latex(r"Sharpe = \frac{R_p - R_f}{\sigma_p}")
+    st.latex(r"E(R_c) = R_f + Sharpe \cdot \sigma_c")
+
   with col2:
-    st.markdown("### 3. Distribución Triangular (CETES/T-Bills)")
-    st.latex(r"T_L = \begin{cases} a + \sqrt{U(b-a)(c-a)} & \text{si } U < k \\ c - \sqrt{(1-U)(c-a)(c-b)} & \text{si } U \ge k \end{cases}")
-    st.markdown("### 4. VaR y Cutoff")
+    st.markdown("### 3. Simulación Estocástica de Tasas (Distribución Triangular)")
+    st.markdown("Modela tasas de CETES y T-Bills delimitadas por un mínimo ($a$), moda ($b$) y máximo ($c$). Con $k = \frac{b-a}{c-a}$:")
+    st.latex(r"""
+        T_L = \begin{cases} 
+        a + \sqrt{U \cdot (b - a)(c - a)} & \text{si } U < k \\ 
+        c - \sqrt{(1 - U)(c - a)(c - b)} & \text{si } U \ge k 
+        \end{cases}
+        """)
+
+    st.markdown("### 4. Tipo de Cambio Estocástico (Distribución Weibull)")
+    st.markdown("Modela la volatilidad cambiaria USD/MXN mediante escala ($\lambda = 18.32$) y forma ($k = 28.53$):")
+    st.latex(r"TC = \lambda \cdot \left( \frac{U}{1 - U} \right)^{\frac{1}{k}}")
+
+    st.markdown("### 5. Métricas de Riesgo Estocástico (Cutoff & VaR)")
+    st.markdown("Value at Risk ($VaR$) al nivel de significancia $\alpha$:")
+    st.latex(r"Cutoff_{\alpha} = Q_{\alpha}(R_{global})")
     st.latex(r"VaR_{\alpha} = \mu_{global} - Cutoff_{\alpha}")

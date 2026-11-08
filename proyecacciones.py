@@ -158,7 +158,7 @@ def obtener_precio_actual(ticker, default_val=100.0):
 
 
 # ==============================================================================
-# 5. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ) - 50 PASOS LENTOS
+# 5. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ)
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
@@ -815,15 +815,18 @@ with tab_mx:
     st.dataframe(df_desc.style.format("{:.4f}"), use_container_width=True)
 
     st.subheader(f"4. Matriz de Covarianza Anualizada ({titulo_h})")
-    fig_cov = px.imshow(
-        cov_mat,
-        x=lista_empresas,
-        y=lista_empresas,
-        color_continuous_scale="Viridis",
-        text_auto=".4f",
-        title="Matriz de Covarianza (Sigma)",
-    )
-    st.plotly_chart(fig_cov, use_container_width=True)
+    if isinstance(cov_mat, np.ndarray) and cov_mat.shape[0] > 1 and cov_mat.shape[1] > 1:
+      fig_cov = px.imshow(
+          cov_mat,
+          x=lista_empresas,
+          y=lista_empresas,
+          color_continuous_scale="Viridis",
+          text_auto=".4f",
+          title="Matriz de Covarianza (Sigma)",
+      )
+      st.plotly_chart(fig_cov, use_container_width=True)
+    else:
+      st.warning("⚠️ No hay suficientes datos válidos para calcular la matriz de covarianza.")
 
     st.subheader(f"5. Portafolio de Mínima Varianza ({titulo_h})")
     cols_min = [c for c in lista_empresas + ["Rp", "vp", "des_p"]]

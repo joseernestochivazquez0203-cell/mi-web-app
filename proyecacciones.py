@@ -576,10 +576,11 @@ with tab_global:
 
 
 # ==============================================================================
-# PESTAÑA 4: SIMULACIÓN POR ENFOQUE
+# PESTAÑA 4: SIMULACIÓN POR ENFOQUE (CON TODOS LOS COMPONENTES RESTAURADOS)
 # ==============================================================================
 with tab_port_enf:
   st.header("🌐 Simulación Estocástica por Enfoque")
+  
   col_sel1, col_sel2 = st.columns(2)
   with col_sel1:
     enfoque_sel = st.selectbox("Enfoque:", ["Full México", "Full EE. UU.", "Global Unificado"], key="sel_enf_dinamico")
@@ -589,10 +590,111 @@ with tab_port_enf:
   s_mx, s_usa = (max_mx_1, max_usa_1) if horiz_sel == "1 año" else (max_mx_2, max_usa_2) if horiz_sel == "2 años" else (max_mx_3, max_usa_3)
   enf_key = "mexico" if "Full México" in enfoque_sel else "usa" if "Full EE. UU." in enfoque_sel else "global"
   mostrar_mx, mostrar_usa = ("Full EE. UU." not in enfoque_sel), ("Full México" not in enfoque_sel)
-  titulo_enf = "Portafolio Seleccionado"
+  titulo_enf = "Full México ($650,000 MXN Iniciales)" if enf_key == "mexico" else "Full EE. UU. ($350,000 MXN Equiv. en USD)" if enf_key == "usa" else "Portafolio Global Unificado ($1,000,000 MXN Iniciales)"
 
+  precios_mx_actuales = {k: obtener_precio_actual(v, 100.0) for k, v in tickers_mx.items()}
+  precios_usa_actuales = {k: obtener_precio_actual(v, 150.0) for k, v in tickers_usa.items()}
+
+  if mostrar_mx:
+    st.markdown("#### 🇲🇽 Portafolio Accionario México ($500,000 MXN)")
+    activos_validos_mx = [e for e in empresas_mx if e in s_mx.columns]
+    pesos_mx_opt = s_mx[activos_validos_mx].values[0]
+    df_t_mx = pd.DataFrame({
+        "Empresa": activos_validos_mx,
+        "Peso Óptimo": pesos_mx_opt,
+        "Capital Asignado (MXN)": pesos_mx_opt * 500000.0,
+        "Precio Actual (MXN)": [precios_mx_actuales.get(e, 100.0) for e in activos_validos_mx],
+    })
+    df_t_mx["Títulos a Comprar"] = np.floor(df_t_mx["Capital Asignado (MXN)"] / df_t_mx["Precio Actual (MXN)"]).astype(int)
+    st.dataframe(df_t_mx.style.format({"Peso Óptimo": "{:.2%}", "Capital Asignado (MXN)": "${:,.2f}", "Precio Actual (MXN)": "${:,.2f}", "Títulos a Comprar": "{:d}"}), use_container_width=True)
+
+  if mostrar_usa:
+    st.markdown("#### 🇺🇸 Portafolio Accionario EE. UU. ($245,000 MXN en USD)")
+    activos_validos_usa = [e for e in empresas_usa if e in s_usa.columns]
+    pesos_usa_opt = s_usa[activos_validos_usa].values[0]
+    tc_inicial = 18.44
+    df_t_usa = pd.DataFrame({
+        "Empresa": activos_validos_usa,
+        "Peso Óptimo": pesos_usa_opt,
+        "Capital Asignado (USD)": pesos_usa_opt * (245000.0 / tc_inicial),
+        "Precio Actual (USD)": [precios_usa_actuales.get(e, 150.0) for e in activos_validos_usa],
+    })
+    df_t_usa["Títulos a Comprar"] = np.floor(df_t_usa["Capital Asignado (USD)"] / df_t_usa["Precio Actual (USD)"]).astype(int)
+    st.dataframe(df_t_usa.style.format({"Peso Óptimo": "{:.2%}", "Capital Asignado (USD)": "${:,.2f}", "Precio Actual (USD)": "${:,.2f}", "Títulos a Comprar": "{:d}"}), use_container_width=True)
+
+  st.markdown("---")
   df_est_enf, rend_enf_sim, val_enf_sim = generar_simulacion_y_estadisticos(s_mx, s_usa, dias_habiles, alpha_nivel, enfoque=enf_key)
+  st.subheader(f"📊 Tabla de Estadísticos & Riesgo Estocástico ({titulo_enf})")
   st.dataframe(df_est_enf.style.format({col: "{:.2%}" for col in df_est_enf.columns}), use_container_width=True)
+
+  # Tarjetas de Métricas (KPI Cards)
+  col_k1, col_k2, col_k3, col_k4 = st.columns(4)
+  col_k1.metric("Rendimiento Esperado", f"{np.mean(rend_enf_sim)*100:.2f}%")
+  col_k2.metric("Volatilidad (Riesgo)", f"{np.std(rend_enf_sim)*100:.2f}%")
+  col_k3.metric(f"VaR ({alpha_nivel*100:.1f}%)", f"{(np.mean(rend_enf_sim) - np.percentile(rend_enf_sim, alpha_nivel*100))*100:.2f}%")
+  col_k4.metric("Mediana Final (Q2)", f"${np.median(val_enf_sim):,.2f} MXN")
+
+  st.markdown("---")
+  st.subheader(f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})")
+
+  fig_hist = px.histogram(x=val_enf_sim, nbins=50, labels={"x": "Valor Final en MXN"}, title=f"Distribución de Probabilidad del Valor Final - {titulo_enf}", color_discrete_sequence=["#2980b9"])
+  fig_hist.update_layout(xaxis_title="Valor Final (MXN)", template="plotly_white")
+  st.plotly_chart(fig_hist, use_container_width=True)
+
+  col_g1, col_g2 = st.columns(2)
+  with col_g1:
+    fig_box = px.box(y=rend_enf_sim * 100, title="Diagrama de Caja (Boxplot) - Rendimientos Simulados", labels={"y": "Rendimiento (%)"}, color_discrete_sequence=["#e74c3c"])
+    fig_box.update_layout(template="plotly_white")
+    st.plotly_chart(fig_box, use_container_width=True)
+
+  with col_g2:
+    fig_violin = px.violin(y=val_enf_sim / 1000, box=True, points="all", title="Violin Plot - Dispersión del Valor Final (Miles MXN)", labels={"y": "Valor Final (Miles MXN)"}, color_discrete_sequence=["#27ae60"])
+    fig_violin.update_layout(template="plotly_white")
+    st.plotly_chart(fig_violin, use_container_width=True)
+
+  st.markdown("---")
+  st.subheader(f"📈 Tabla de Simulación Diaria Estocástica ({titulo_enf})")
+  dias_muestra = 15
+  fechas_m = [(fecha_inicio_sim + datetime.timedelta(days=i)).strftime("%d/%m/%Y") for i in range(dias_muestra)]
+  tc_base = 18.44
+  val_mx = 500000.0
+  val_cetes = 150000.0
+  val_usa_usd = 245000.0 / tc_base
+  val_tb_usd = 105000.0 / tc_base
+
+  filas_excel = []
+  for idx, f in enumerate(fechas_m):
+    p_cetes = np.random.uniform(0, 1)
+    tasa_c = 0.08
+    p_tb = np.random.uniform(0, 1)
+    tasa_t = 0.037
+    rend_mx_n = np.random.normal(0.0005, 0.012)
+    rend_usa_n = np.random.normal(0.0006, 0.015)
+
+    if idx > 0:
+      val_mx *= 1 + rend_mx_n
+      val_cetes *= 1 + tasa_c / 360
+      val_usa_usd *= 1 + rend_usa_n
+      val_tb_usd *= 1 + tasa_t / 360
+      tc = tc_base * (1 + np.random.normal(0, 0.002))
+    else:
+      tc = tc_base
+      rend_mx_n, rend_usa_n = 0.0, 0.0
+
+    total_usa_mxn = (val_usa_usd + val_tb_usd) * tc
+    total_global = val_mx + val_cetes + total_usa_mxn
+
+    fila_dict = {"Fecha": f}
+    if mostrar_mx:
+      fila_dict.update({"Rend. MX (Norm)": rend_mx_n, "Portafolio Acc. MX ($)": val_mx, "Tasa CETES": tasa_c, "Valor CETES ($)": val_cetes})
+    if mostrar_usa:
+      fila_dict.update({"Rend. USA (Norm)": rend_usa_n, "Portafolio Acc. USA (USD)": val_usa_usd, "Tasa T-Bills": tasa_t, "Tipo Cambio": tc, "Total USA (MXN)": total_usa_mxn})
+    if enf_key == "global":
+      fila_dict["VALOR TOTAL GLOBAL (MXN)"] = total_global
+    filas_excel.append(fila_dict)
+
+  df_excel_demo = pd.DataFrame(filas_excel)
+  st.dataframe(df_excel_demo.style.format(na_rep="-"), use_container_width=True)
 
 
 # ==============================================================================

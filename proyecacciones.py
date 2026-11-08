@@ -193,7 +193,10 @@ def ejecutar_simulacion_mercado(
   rendimientos = np.log(datos / datos.shift(1)).dropna()
   promedio = rendimientos.mean()
   dias_ano = 252
-  Sigma = rendimientos[columnas_activas].cov(ddof=0).values * dias_ano
+  
+  # Forzar matriz Sigma limpia en formato numpy 2D
+  cov_df = rendimientos[columnas_activas].cov(ddof=0) * dias_ano
+  Sigma = cov_df.values
 
   if tipo_tasa == "cetes":
     a, b, c = 0.04, 0.08, 0.10
@@ -278,7 +281,7 @@ def ejecutar_simulacion_mercado(
   idx_max_global = tabla_sharpe_max["sharpe_ratio"].idxmax()
   max_sharpe_port = tabla_sharpe_max.loc[[idx_max_global]].copy()
 
-  return min_port, max_sharpe_port, datos_animacion, tabla_sharpe_max, datos, Sigma
+  return min_port, max_sharpe_port, datos_animacion, tabla_sharpe_max, datos, Sigma, columnas_activas
 
 
 with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
@@ -338,19 +341,13 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       "tbills",
   )
 
-  min_mx_1, max_mx_1, anim_mx_1, t1000_mx_1, datos_mx_1, cov_mx_1 = res_mx_1
-  min_mx_2, max_mx_2, anim_mx_2, t1000_mx_2, datos_mx_2, cov_mx_2 = res_mx_2
-  min_mx_3, max_mx_3, anim_mx_3, t1000_mx_3, datos_mx_3, cov_mx_3 = res_mx_3
+  min_mx_1, max_mx_1, anim_mx_1, t1000_mx_1, datos_mx_1, cov_mx_1, cols_activas_mx_1 = res_mx_1
+  min_mx_2, max_mx_2, anim_mx_2, t1000_mx_2, datos_mx_2, cov_mx_2, cols_activas_mx_2 = res_mx_2
+  min_mx_3, max_mx_3, anim_mx_3, t1000_mx_3, datos_mx_3, cov_mx_3, cols_activas_mx_3 = res_mx_3
 
-  min_usa_1, max_usa_1, anim_usa_1, t1000_usa_1, datos_usa_1, cov_usa_1 = (
-      res_usa_1
-  )
-  min_usa_2, max_usa_2, anim_usa_2, t1000_usa_2, datos_usa_2, cov_usa_2 = (
-      res_usa_2
-  )
-  min_usa_3, max_usa_3, anim_usa_3, t1000_usa_3, datos_usa_3, cov_usa_3 = (
-      res_usa_3
-  )
+  min_usa_1, max_usa_1, anim_usa_1, t1000_usa_1, datos_usa_1, cov_usa_1, cols_activas_usa_1 = res_usa_1
+  min_usa_2, max_usa_2, anim_usa_2, t1000_usa_2, datos_usa_2, cov_usa_2, cols_activas_usa_2 = res_usa_2
+  min_usa_3, max_usa_3, anim_usa_3, t1000_usa_3, datos_usa_3, cov_usa_3, cols_activas_usa_3 = res_usa_3
 
 min_mx_1.index, min_mx_2.index, min_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
 max_mx_1.index, max_mx_2.index, max_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
@@ -795,6 +792,7 @@ with tab_mx:
       anim_data,
       t1000_data,
       lista_empresas,
+      cols_activas,
       titulo_h,
       lbl_tasa,
       is_mx,
@@ -815,21 +813,24 @@ with tab_mx:
     st.dataframe(df_desc.style.format("{:.4f}"), use_container_width=True)
 
     st.subheader(f"4. Matriz de Covarianza Anualizada ({titulo_h})")
-    if isinstance(cov_mat, np.ndarray) and cov_mat.shape[0] > 1 and cov_mat.shape[1] > 1:
+    
+    # Convertir a matriz numpy limpia para evitar errores en px.imshow
+    matriz_limpia = np.array(cov_mat, dtype=float)
+    if matriz_limpia.ndim == 2 and matriz_limpia.shape[0] > 1 and matriz_limpia.shape[1] > 1:
       fig_cov = px.imshow(
-          cov_mat,
-          x=lista_empresas,
-          y=lista_empresas,
+          matriz_limpia,
+          x=cols_activas,
+          y=cols_activas,
           color_continuous_scale="Viridis",
           text_auto=".4f",
           title="Matriz de Covarianza (Sigma)",
       )
       st.plotly_chart(fig_cov, use_container_width=True)
     else:
-      st.warning("⚠️ No hay suficientes datos válidos para calcular la matriz de covarianza.")
+      st.warning("⚠️ No hay suficientes activos válidos para calcular la matriz de covarianza.")
 
     st.subheader(f"5. Portafolio de Mínima Varianza ({titulo_h})")
-    cols_min = [c for c in lista_empresas + ["Rp", "vp", "des_p"]]
+    cols_min = [c for c in cols_activas + ["Rp", "vp", "des_p"]]
     st.dataframe(
         min_port[[c for c in cols_min if c in min_port.columns]].style.format(
             formatos_mx if is_mx else formatos_usa
@@ -847,7 +848,7 @@ with tab_mx:
           construir_figura_animada_con_minima(
               anim_data,
               min_port,
-              lista_empresas,
+              cols_activas,
               titulo_h,
               lbl_tasa,
               is_mx=is_mx,
@@ -858,7 +859,7 @@ with tab_mx:
     st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     cols_sh = [
         c
-        for c in lista_empresas
+        for c in cols_activas
         + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]
     ]
     st.dataframe(
@@ -904,6 +905,7 @@ with tab_mx:
         anim_mx_1,
         t1000_mx_1,
         empresas_mx,
+        cols_activas_mx_1,
         "1 Año (México)",
         "CETES",
         True,
@@ -918,6 +920,7 @@ with tab_mx:
         anim_mx_2,
         t1000_mx_2,
         empresas_mx,
+        cols_activas_mx_2,
         "2 Años (México)",
         "CETES",
         True,
@@ -932,6 +935,7 @@ with tab_mx:
         anim_mx_3,
         t1000_mx_3,
         empresas_mx,
+        cols_activas_mx_3,
         "3 Años (México)",
         "CETES",
         True,
@@ -981,6 +985,7 @@ with tab_usa:
         anim_usa_1,
         t1000_usa_1,
         empresas_usa,
+        cols_activas_usa_1,
         "1 Año (EE. UU.)",
         "T-Bills",
         False,
@@ -995,6 +1000,7 @@ with tab_usa:
         anim_usa_2,
         t1000_usa_2,
         empresas_usa,
+        cols_activas_usa_2,
         "2 Años (EE. UU.)",
         "T-Bills",
         False,
@@ -1009,6 +1015,7 @@ with tab_usa:
         anim_usa_3,
         t1000_usa_3,
         empresas_usa,
+        cols_activas_usa_3,
         "3 Años (EE. UU.)",
         "T-Bills",
         False,

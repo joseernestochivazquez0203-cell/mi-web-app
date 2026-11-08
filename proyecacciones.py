@@ -460,7 +460,7 @@ def generar_simulacion_y_estadisticos(
 
 
 # ==============================================================================
-# 7. DEFINICIÓN DE PESTAÑAS (MÉXICO, USA, GLOBAL, ENFOQUE, EXCEL, ANEXO)
+# 7. DEFINICIÓN DE PESTAÑAS COMPLETAS
 # ==============================================================================
 (
     tab_mx,
@@ -698,7 +698,7 @@ with tab_port_enf:
 
 
 # ==============================================================================
-# PESTAÑA 5: MODELO EXCEL & TÍTULOS (CON MÉXICO Y EE. UU. COMPLETOS)
+# PESTAÑA 5: MODELO EXCEL & TÍTULOS (MÉXICO Y EE. UU. COMPLETOS)
 # ==============================================================================
 with tab_excel:
   st.header("📑 Modelo Excel Estocástico & Títulos Enteros")

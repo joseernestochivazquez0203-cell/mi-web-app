@@ -34,7 +34,7 @@ st.title(
 )
 st.markdown(
     "Modelo cuantitativo multianual con Markowitz, Frontera Eficiente, Simulación"
-    " Monte Carlo y Bootstrapping."
+    " Monte Carlo, Bootstrapping y Métricas de Riesgo."
 )
 
 # ==============================================================================
@@ -73,7 +73,7 @@ st.sidebar.info(
 )
 
 # ==============================================================================
-# 2. LISTAS DE 15 EMPRESAS DISPONIBLES PARA CADA PAÍS
+# 2. LISTAS DE 15 EMPRESAS DISPONIBLES PARA CADA PAÍS (PARA LAS CAJITAS)
 # ==============================================================================
 opciones_mx = [
     "LAMOSA.MX", "WALMEX.MX", "AMXB.MX", "BIMBOA.MX", "FEMSAUBD.MX",
@@ -285,35 +285,59 @@ def ejecutar_simulacion_mercado(
 
 with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
   res_mx_1 = ejecutar_simulacion_mercado(
-      tickers_mx, empresas_mx,
-      fechas_horizontes["1 año"]["inicio"], fechas_horizontes["1 año"]["fin"],
-      n_simulaciones, n_corridas, "cetes"
+      tickers_mx,
+      empresas_mx,
+      fechas_horizontes["1 año"]["inicio"],
+      fechas_horizontes["1 año"]["fin"],
+      n_simulaciones,
+      n_corridas,
+      "cetes",
   )
   res_mx_2 = ejecutar_simulacion_mercado(
-      tickers_mx, empresas_mx,
-      fechas_horizontes["2 años"]["inicio"], fechas_horizontes["2 años"]["fin"],
-      n_simulaciones, n_corridas, "cetes"
+      tickers_mx,
+      empresas_mx,
+      fechas_horizontes["2 años"]["inicio"],
+      fechas_horizontes["2 años"]["fin"],
+      n_simulaciones,
+      n_corridas,
+      "cetes",
   )
   res_mx_3 = ejecutar_simulacion_mercado(
-      tickers_mx, empresas_mx,
-      fechas_horizontes["3 años"]["inicio"], fechas_horizontes["3 años"]["fin"],
-      n_simulaciones, n_corridas, "cetes"
+      tickers_mx,
+      empresas_mx,
+      fechas_horizontes["3 años"]["inicio"],
+      fechas_horizontes["3 años"]["fin"],
+      n_simulaciones,
+      n_corridas,
+      "cetes",
   )
 
   res_usa_1 = ejecutar_simulacion_mercado(
-      tickers_usa, empresas_usa,
-      fechas_horizontes["1 año"]["inicio"], fechas_horizontes["1 año"]["fin"],
-      n_simulaciones, n_corridas, "tbills"
+      tickers_usa,
+      empresas_usa,
+      fechas_horizontes["1 año"]["inicio"],
+      fechas_horizontes["1 año"]["fin"],
+      n_simulaciones,
+      n_corridas,
+      "tbills",
   )
   res_usa_2 = ejecutar_simulacion_mercado(
-      tickers_usa, empresas_usa,
-      fechas_horizontes["2 años"]["inicio"], fechas_horizontes["2 años"]["fin"],
-      n_simulaciones, n_corridas, "tbills"
+      tickers_usa,
+      empresas_usa,
+      fechas_horizontes["2 años"]["inicio"],
+      fechas_horizontes["2 años"]["fin"],
+      n_simulaciones,
+      n_corridas,
+      "tbills",
   )
   res_usa_3 = ejecutar_simulacion_mercado(
-      tickers_usa, empresas_usa,
-      fechas_horizontes["3 años"]["inicio"], fechas_horizontes["3 años"]["fin"],
-      n_simulaciones, n_corridas, "tbills"
+      tickers_usa,
+      empresas_usa,
+      fechas_horizontes["3 años"]["inicio"],
+      fechas_horizontes["3 años"]["fin"],
+      n_simulaciones,
+      n_corridas,
+      "tbills",
   )
 
   min_mx_1, max_mx_1, anim_mx_1, t1000_mx_1, datos_mx_1, cov_mx_1, cols_activas_mx_1 = res_mx_1
@@ -326,41 +350,140 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
 
 min_mx_1.index, min_mx_2.index, min_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
 max_mx_1.index, max_mx_2.index, max_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
-min_usa_1.index, min_usa_2.index, min_usa_3.index = ["1 año"], ["2 años"], ["3 años"]
-max_usa_1.index, max_usa_2.index, max_usa_3.index = ["1 año"], ["2 años"], ["3 años"]
+min_usa_1.index, min_usa_2.index, min_usa_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
+max_usa_1.index, max_usa_2.index, max_usa_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
 
 
 # ==============================================================================
 # 6. CONSTRUCTOR DE GRÁFICA ANIMADA
 # ==============================================================================
 def construir_figura_animada_con_minima(
-    datos_anim, min_port_df, lista_empresas, titulo_horizonte, lbl_tasa="CETES", is_mx=False
+    datos_anim,
+    min_port_df,
+    lista_empresas,
+    titulo_horizonte,
+    lbl_tasa="CETES",
+    is_mx=False,
 ):
   fig = go.Figure()
   n_pasos = len(datos_anim)
 
-  fig.add_trace(go.Scatter(x=[], y=[], mode="markers", marker=dict(size=3.5, color="#3498db", opacity=0.4), name="Portafolios Simulados"))
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(size=3.5, color="#3498db", opacity=0.4),
+          name="Portafolios Simulados",
+      )
+  )
   for j in range(n_pasos):
-    fig.add_trace(go.Scatter(x=[], y=[], mode="lines", line=dict(color="rgba(231, 76, 60, 0.3)", width=1), showlegend=False))
-  fig.add_trace(go.Scatter(x=[], y=[], mode="markers", marker=dict(size=10, color="gold", symbol="star", line=dict(width=1, color="black")), name="Máximo Sharpe (Iteraciones)"))
-  fig.add_trace(go.Scatter(x=[], y=[], mode="markers", marker=dict(size=15, color="#e74c3c", symbol="star", line=dict(width=1.5, color="black")), name="★ Máximo Sharpe Absoluto (Global)"))
-  fig.add_trace(go.Scatter(x=[], y=[], mode="markers", marker=dict(size=8, color="#27ae60", symbol="diamond", line=dict(width=1, color="black")), name=f"Mix 30% {lbl_tasa} / 70% Portafolio"))
-  fig.add_trace(go.Scatter(x=[], y=[], mode="markers", marker=dict(size=8, color="darkred", symbol="circle"), name=lbl_tasa))
+    fig.add_trace(
+        go.Scatter(
+            x=[],
+            y=[],
+            mode="lines",
+            line=dict(color="rgba(231, 76, 60, 0.3)", width=1),
+            showlegend=False,
+        )
+    )
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(
+              size=10,
+              color="gold",
+              symbol="star",
+              line=dict(width=1, color="black"),
+          ),
+          name="Máximo Sharpe (Iteraciones)",
+      )
+  )
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(
+              size=15,
+              color="#e74c3c",
+              symbol="star",
+              line=dict(width=1.5, color="black"),
+          ),
+          name="★ Máximo Sharpe Absoluto (Global)",
+      )
+  )
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(
+              size=8,
+              color="#27ae60",
+              symbol="diamond",
+              line=dict(width=1, color="black"),
+          ),
+          name=f"Mix 30% {lbl_tasa} / 70% Portafolio",
+      )
+  )
+  fig.add_trace(
+      go.Scatter(
+          x=[],
+          y=[],
+          mode="markers",
+          marker=dict(size=8, color="darkred", symbol="circle"),
+          name=lbl_tasa,
+      )
+  )
 
   min_x = min_port_df["des_p"].values[0]
   min_y = min_port_df["Rp"].values[0]
-  fig.add_trace(go.Scatter(x=[min_x], y=[min_y], mode="markers", marker=dict(size=12, color="blue", symbol="circle", line=dict(width=1.5, color="black")), name="🔵 Mínima Varianza"))
+  fig.add_trace(
+      go.Scatter(
+          x=[min_x],
+          y=[min_y],
+          mode="markers",
+          marker=dict(
+              size=12,
+              color="blue",
+              symbol="circle",
+              line=dict(width=1.5, color="black"),
+          ),
+          name="🔵 Mínima Varianza",
+      )
+  )
 
   frames = []
-  best_global_idx = max(range(len(datos_anim)), key=lambda idx: datos_anim[idx]["star_sharpe"])
+  best_global_idx = max(
+      range(len(datos_anim)), key=lambda idx: datos_anim[idx]["star_sharpe"]
+  )
 
   for f_idx in range(n_pasos):
     f_data = []
     curr = datos_anim[f_idx]
-    f_data.append(go.Scatter(x=curr["nube_x"], y=curr["nube_y"], marker=dict(size=3.5, color="#3498db")))
+    f_data.append(
+        go.Scatter(
+            x=curr["nube_x"],
+            y=curr["nube_y"],
+            marker=dict(size=3.5, color="#3498db"),
+        )
+    )
     for j in range(n_pasos):
       if j <= f_idx:
-        f_data.append(go.Scatter(x=datos_anim[j]["x_cal"], y=datos_anim[j]["y_cal"]))
+        f_data.append(
+            go.Scatter(x=datos_anim[j]["x_cal"], y=datos_anim[j]["y_cal"])
+        )
       else:
         f_data.append(go.Scatter(x=[], y=[]))
 
@@ -372,11 +495,21 @@ def construir_figura_animada_con_minima(
     f_data.append(go.Scatter(x=stars_x, y=stars_y))
 
     if f_idx >= best_global_idx:
-      f_data.append(go.Scatter(x=[datos_anim[best_global_idx]["star_x"]], y=[datos_anim[best_global_idx]["star_y"]]))
+      f_data.append(
+          go.Scatter(
+              x=[datos_anim[best_global_idx]["star_x"]],
+              y=[datos_anim[best_global_idx]["star_y"]],
+          )
+      )
     else:
       f_data.append(go.Scatter(x=[], y=[]))
 
-    f_data.append(go.Scatter(x=[datos_anim[j]["mix_x"] for j in range(f_idx + 1)], y=[datos_anim[j]["mix_y"] for j in range(f_idx + 1)]))
+    f_data.append(
+        go.Scatter(
+            x=[datos_anim[j]["mix_x"] for j in range(f_idx + 1)],
+            y=[datos_anim[j]["mix_y"] for j in range(f_idx + 1)],
+        )
+    )
     f_data.append(go.Scatter(x=[0], y=[curr["tasa_anual"]]))
     f_data.append(go.Scatter(x=[min_x], y=[min_y]))
     frames.append(go.Frame(data=f_data, name=f"Paso {f_idx + 1}"))
@@ -385,23 +518,37 @@ def construir_figura_animada_con_minima(
     fig.data[idx].x = t_data.x
     fig.data[idx].y = t_data.y
 
+  y_range = [-0.5, 0.5]
+
   fig.update_layout(
       title=f"Simulación Monte Carlo Paso a Paso ({titulo_horizonte})",
       template="plotly_white",
       xaxis=dict(title="Volatility (Riesgo Anual)", range=[0, 1.2]),
-      yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.5, 0.5]),
+      yaxis=dict(title="Return (Rendimiento Anual)", range=y_range),
       updatemenus=[{
           "type": "buttons",
           "buttons": [
               {
                   "label": "▶ Reproducir",
                   "method": "animate",
-                  "args": [None, {"frame": {"duration": 500, "redraw": False}, "fromcurrent": True}],
+                  "args": [
+                      None,
+                      {
+                          "frame": {"duration": 500, "redraw": False},
+                          "fromcurrent": True,
+                      },
+                  ],
               },
               {
                   "label": "⏸ Pausa",
                   "method": "animate",
-                  "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}],
+                  "args": [
+                      [None],
+                      {
+                          "frame": {"duration": 0, "redraw": False},
+                          "mode": "immediate",
+                      },
+                  ],
               },
           ],
           "direction": "left",
@@ -415,14 +562,25 @@ def construir_figura_animada_con_minima(
           "active": 0,
           "yanchor": "top",
           "xanchor": "left",
-          "currentvalue": {"font": {"size": 13}, "prefix": "Iteración: ", "visible": True, "xanchor": "right"},
+          "currentvalue": {
+              "font": {"size": 13},
+              "prefix": "Iteración: ",
+              "visible": True,
+              "xanchor": "right",
+          },
           "pad": {"b": 10, "t": 50},
           "len": 0.9,
           "x": 0.1,
           "y": 0,
           "steps": [
               {
-                  "args": [[f"Paso {k}"], {"frame": {"duration": 300, "redraw": False}, "mode": "immediate"}],
+                  "args": [
+                      [f"Paso {k}"],
+                      {
+                          "frame": {"duration": 300, "redraw": False},
+                          "mode": "immediate",
+                      },
+                  ],
                   "label": f"#{k}",
                   "method": "animate",
               }
@@ -435,11 +593,18 @@ def construir_figura_animada_con_minima(
 
 
 # ==============================================================================
-# 7. SIMULADOR ESTOCÁSTICO DIARIO CON BOOTSTRAP PARA EL PORTAFOLIO
+# 7. SIMULADOR ESTOCÁSTICO DIARIO CON BOOTSTRAPPING Y STOP-LOSS (-10%)
 # ==============================================================================
 def generar_simulacion_y_estadisticos(
-    max_mx, max_usa, n_dias, alpha, num_simulaciones_futuras=1000, enfoque="global",
-    datos_mx=None, datos_usa=None
+    max_mx,
+    max_usa,
+    n_dias,
+    alpha,
+    num_simulaciones_futuras=1000,
+    enfoque="global",
+    datos_mx=None,
+    datos_usa=None,
+    stop_loss=-0.10,
 ):
   tc_inicial = 18.44
   shape_k = 28.52977
@@ -454,25 +619,46 @@ def generar_simulacion_y_estadisticos(
   if capital_total == 0:
     capital_total = 1000000.0
 
-  # --- BOOTSTRAP PARA MÉXICO ---
-  if datos_mx is not None and not datos_mx.empty:
-    rend_hist_mx = np.log(datos_mx / datos_mx.shift(1)).dropna()
-    activos_validos_mx = [e for e in empresas_mx if e in max_mx.columns and e in rend_hist_mx.columns]
-    if len(activos_validos_mx) > 0:
-      pesos_mx = max_mx[activos_validos_mx].values[0]
-      port_hist_mx = rend_hist_mx[activos_validos_mx].dot(pesos_mx).values
-      indices_mx = np.random.choice(len(port_hist_mx), size=(num_simulaciones_futuras, n_dias), replace=True)
-      rend_sim_mx = port_hist_mx[indices_mx]
+  # --- BOOTSTRAPPING + STOP-LOSS (-10%) PARA MÉXICO ---
+  val_final_mx_acc = np.zeros(num_simulaciones_futuras)
+  sl_mx_count = 0
+  if monto_mx_acc > 0:
+    if datos_mx is not None and not datos_mx.empty:
+      rend_hist_mx = np.log(datos_mx / datos_mx.shift(1)).dropna()
+      activos_validos_mx = [
+          e for e in empresas_mx if e in max_mx.columns and e in rend_hist_mx.columns
+      ]
+      if len(activos_validos_mx) > 0:
+        pesos_mx = max_mx[activos_validos_mx].values[0]
+        port_hist_mx = rend_hist_mx[activos_validos_mx].dot(pesos_mx).values
+        idx_mx = np.random.choice(
+            len(port_hist_mx), size=(num_simulaciones_futuras, n_dias), replace=True
+        )
+        rend_sim_mx = port_hist_mx[idx_mx]
+      else:
+        rend_sim_mx = np.zeros((num_simulaciones_futuras, n_dias))
     else:
-      rend_sim_mx = np.zeros((num_simulaciones_futuras, n_dias))
-  else:
-    mu_mx = max_mx["Rp"].values[0] / 252
-    sigma_mx = max_mx["des_p"].values[0] / np.sqrt(252)
-    rend_sim_mx = np.random.normal(mu_mx, sigma_mx, size=(num_simulaciones_futuras, n_dias))
+      mu_mx = max_mx["Rp"].values[0] / 252
+      sigma_mx = max_mx["des_p"].values[0] / np.sqrt(252)
+      rend_sim_mx = np.random.normal(
+          mu_mx, sigma_mx, size=(num_simulaciones_futuras, n_dias)
+      )
 
-  val_final_mx_acc = monto_mx_acc * np.exp(np.sum(rend_sim_mx, axis=1))
+    for s in range(num_simulaciones_futuras):
+      rend_acum = 0.0
+      en_mercado = True
+      for r in rend_sim_mx[s]:
+        rend_acum += r
+        if rend_acum <= stop_loss:
+          en_mercado = False
+          sl_mx_count += 1
+          break
+      if en_mercado:
+        val_final_mx_acc[s] = monto_mx_acc * np.exp(rend_acum)
+      else:
+        val_final_mx_acc[s] = monto_mx_acc * (1 + stop_loss)
 
-  # CETES (Triangular)
+  # --- CETES (Triangular) ---
   a_c, b_c, c_c = 0.07, 0.08, 0.09
   k_c = (b_c - a_c) / (c_c - a_c)
   u_c = np.random.uniform(0, 1, size=(num_simulaciones_futuras, n_dias))
@@ -484,26 +670,47 @@ def generar_simulacion_y_estadisticos(
   factor_cetes = np.prod(1 + tasas_cetes / 360, axis=1)
   val_final_cetes = monto_cetes * factor_cetes
 
-  # --- BOOTSTRAP PARA ESTADOS UNIDOS ---
+  # --- BOOTSTRAPPING + STOP-LOSS (-10%) PARA EE. UU. ---
   monto_usa_acc_usd = monto_usa_acc_mxn / tc_inicial
-  if datos_usa is not None and not datos_usa.empty:
-    rend_hist_usa = np.log(datos_usa / datos_usa.shift(1)).dropna()
-    activos_validos_usa = [e for e in empresas_usa if e in max_usa.columns and e in rend_hist_usa.columns]
-    if len(activos_validos_usa) > 0:
-      pesos_usa = max_usa[activos_validos_usa].values[0]
-      port_hist_usa = rend_hist_usa[activos_validos_usa].dot(pesos_usa).values
-      indices_usa = np.random.choice(len(port_hist_usa), size=(num_simulaciones_futuras, n_dias), replace=True)
-      rend_sim_usa = port_hist_usa[indices_usa]
+  val_final_usa_acc_usd = np.zeros(num_simulaciones_futuras)
+  sl_usa_count = 0
+  if monto_usa_acc_usd > 0:
+    if datos_usa is not None and not datos_usa.empty:
+      rend_hist_usa = np.log(datos_usa / datos_usa.shift(1)).dropna()
+      activos_validos_usa = [
+          e for e in empresas_usa if e in max_usa.columns and e in rend_hist_usa.columns
+      ]
+      if len(activos_validos_usa) > 0:
+        pesos_usa = max_usa[activos_validos_usa].values[0]
+        port_hist_usa = rend_hist_usa[activos_validos_usa].dot(pesos_usa).values
+        idx_usa = np.random.choice(
+            len(port_hist_usa), size=(num_simulaciones_futuras, n_dias), replace=True
+        )
+        rend_sim_usa = port_hist_usa[idx_usa]
+      else:
+        rend_sim_usa = np.zeros((num_simulaciones_futuras, n_dias))
     else:
-      rend_sim_usa = np.zeros((num_simulaciones_futuras, n_dias))
-  else:
-    mu_usa = max_usa["Rp"].values[0] / 252
-    sigma_usa = max_usa["des_p"].values[0] / np.sqrt(252)
-    rend_sim_usa = np.random.normal(mu_usa, sigma_usa, size=(num_simulaciones_futuras, n_dias))
+      mu_usa = max_usa["Rp"].values[0] / 252
+      sigma_usa = max_usa["des_p"].values[0] / np.sqrt(252)
+      rend_sim_usa = np.random.normal(
+          mu_usa, sigma_usa, size=(num_simulaciones_futuras, n_dias)
+      )
 
-  val_final_usa_acc_usd = monto_usa_acc_usd * np.exp(np.sum(rend_sim_usa, axis=1))
+    for s in range(num_simulaciones_futuras):
+      rend_acum = 0.0
+      en_mercado = True
+      for r in rend_sim_usa[s]:
+        rend_acum += r
+        if rend_acum <= stop_loss:
+          en_mercado = False
+          sl_usa_count += 1
+          break
+      if en_mercado:
+        val_final_usa_acc_usd[s] = monto_usa_acc_usd * np.exp(rend_acum)
+      else:
+        val_final_usa_acc_usd[s] = monto_usa_acc_usd * (1 + stop_loss)
 
-  # T-Bills (Triangular)
+  # --- T-Bills (Triangular) ---
   monto_tbills_usd = monto_tbills_mxn / tc_inicial
   a_t, b_t, c_t = 0.0365, 0.0370, 0.0375
   k_t = (b_t - a_t) / (c_t - a_t)
@@ -516,17 +723,33 @@ def generar_simulacion_y_estadisticos(
   factor_tbills = np.prod(1 + tasas_tbills / 360, axis=1)
   val_final_tbills_usd = monto_tbills_usd * factor_tbills
 
-  # Tipo de cambio Weibull
+  # --- Tipo de Cambio (Weibull) ---
   u_tc = np.random.uniform(0.001, 0.999, size=num_simulaciones_futuras)
   tc_final = scale_lambda * (u_tc / (1 - u_tc)) ** (1 / shape_k)
 
-  val_final_usa_total_mxn = (val_final_usa_acc_usd + val_final_tbills_usd) * tc_final
-  val_final_global_mxn = val_final_mx_acc + val_final_cetes + val_final_usa_total_mxn
+  val_final_usa_total_mxn = (
+      val_final_usa_acc_usd + val_final_tbills_usd
+  ) * tc_final
+  val_final_global_mxn = (
+      val_final_mx_acc + val_final_cetes + val_final_usa_total_mxn
+  )
 
   rend_global = (val_final_global_mxn - capital_total) / capital_total
-  rend_mx_acc = (val_final_mx_acc - monto_mx_acc) / monto_mx_acc if monto_mx_acc > 0 else np.zeros_like(rend_global)
-  rend_usa_usd = (val_final_usa_acc_usd - monto_usa_acc_usd) / monto_usa_acc_usd if monto_usa_acc_usd > 0 else np.zeros_like(rend_global)
-  rend_cetes = (val_final_cetes - monto_cetes) / monto_cetes if monto_cetes > 0 else np.zeros_like(rend_global)
+  rend_mx_acc = (
+      (val_final_mx_acc - monto_mx_acc) / monto_mx_acc
+      if monto_mx_acc > 0
+      else np.zeros_like(rend_global)
+  )
+  rend_usa_usd = (
+      (val_final_usa_acc_usd - monto_usa_acc_usd) / monto_usa_acc_usd
+      if monto_usa_acc_usd > 0
+      else np.zeros_like(rend_global)
+  )
+  rend_cetes = (
+      (val_final_cetes - monto_cetes) / monto_cetes
+      if monto_cetes > 0
+      else np.zeros_like(rend_global)
+  )
   rend_cambiario = (tc_final - tc_inicial) / tc_inicial
 
   def calcular_fila_stats(arr):
@@ -559,11 +782,18 @@ def generar_simulacion_y_estadisticos(
           "ganancia por rendimiento cambiario",
       ],
       columns=[
-          "rendimiento", "riesgo", f"{alpha*100:.1f}% CUTOFF",
-          f"{alpha*100:.1f}% VAR", "Q1", "Q2", "Q3", "max", "min",
+          "rendimiento",
+          "riesgo",
+          f"{alpha*100:.1f}% CUTOFF",
+          f"{alpha*100:.1f}% VAR",
+          "Q1",
+          "Q2",
+          "Q3",
+          "max",
+          "min",
       ],
   )
-  return df_estadisticos, rend_global, val_final_global_mxn
+  return df_estadisticos, rend_global, val_final_global_mxn, sl_mx_count, sl_usa_count
 
 
 # ==============================================================================
@@ -579,19 +809,33 @@ tab_mx, tab_usa, tab_port_enf, tab_excel, tab_anexo = st.tabs([
 
 formatos_mx = {c: "{:.2%}" for c in empresas_mx}
 formatos_mx.update({
-    "Rp": "{:.4%}", "des_p": "{:.4%}", "Tasa_diaria": "{:.4%}",
-    "Tasa_anual": "{:.2%}", "sharpe_ratio": "{:.4f}",
+    "Rp": "{:.4%}",
+    "des_p": "{:.4%}",
+    "Tasa_diaria": "{:.4%}",
+    "Tasa_anual": "{:.2%}",
+    "sharpe_ratio": "{:.4f}",
 })
 cols_min_mx = [c for c in empresas_mx + ["Rp", "vp", "des_p"]]
-cols_sh_mx = [c for c in empresas_mx + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]]
+cols_sh_mx = [
+    c
+    for c in empresas_mx
+    + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]
+]
 
 formatos_usa = {c: "{:.2%}" for c in empresas_usa}
 formatos_usa.update({
-    "Rp": "{:.4%}", "des_p": "{:.4%}", "Tasa_diaria": "{:.4%}",
-    "Tasa_anual": "{:.4%}", "sharpe_ratio": "{:.4f}",
+    "Rp": "{:.4%}",
+    "des_p": "{:.4%}",
+    "Tasa_diaria": "{:.4%}",
+    "Tasa_anual": "{:.4%}",
+    "sharpe_ratio": "{:.4f}",
 })
 cols_min_usa = [c for c in empresas_usa + ["Rp", "vp", "des_p"]]
-cols_sh_usa = [c for c in empresas_usa + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]]
+cols_sh_usa = [
+    c
+    for c in empresas_usa
+    + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]
+]
 
 
 # ==============================================================================
@@ -600,17 +844,32 @@ cols_sh_usa = [c for c in empresas_usa + ["Rp", "vp", "des_p", "Tasa_diaria", "T
 with tab_mx:
   st.header("🇲🇽 Análisis de Portafolios - Activos Mexicanos y CETES")
   sub_mx_1, sub_mx_2, sub_mx_3, sub_mx_comp = st.tabs([
-      "📅 1 Año", "📅 2 Años", "📅 3 Años",
+      "📅 1 Año",
+      "📅 2 Años",
+      "📅 3 Años",
       "📋 Tablas Comparativas (Mínima Varianza y Sharpe)",
   ])
 
+
   def renderizar_bloque_pais(
-      datos_hist, cov_mat, min_port, max_port, anim_data, t1000_data,
-      lista_empresas, cols_activas, titulo_h, lbl_tasa, is_mx
+      datos_hist,
+      cov_mat,
+      min_port,
+      max_port,
+      anim_data,
+      t1000_data,
+      lista_empresas,
+      cols_activas,
+      titulo_h,
+      lbl_tasa,
+      is_mx,
   ):
     st.subheader(f"1. Evolución de las Acciones - Precios Normalizados ({titulo_h})")
     precios_norm = (datos_hist / datos_hist.iloc[0]) * 100
-    fig_norm = px.line(precios_norm, title=f"Evolución Comparativa de Precios Escalados ({titulo_h})")
+    fig_norm = px.line(
+        precios_norm,
+        title=f"Evolución Comparativa de Precios Escalados ({titulo_h})",
+    )
     st.plotly_chart(fig_norm, use_container_width=True)
 
     st.subheader(f"2. Tabla de Evolución Histórica de Precios ({titulo_h})")
@@ -624,8 +883,11 @@ with tab_mx:
     matriz_limpia = np.array(cov_mat, dtype=float)
     if matriz_limpia.ndim == 2 and matriz_limpia.shape[0] > 1 and matriz_limpia.shape[1] > 1:
       fig_cov = px.imshow(
-          matriz_limpia, x=cols_activas, y=cols_activas,
-          color_continuous_scale="Viridis", text_auto=".4f",
+          matriz_limpia,
+          x=cols_activas,
+          y=cols_activas,
+          color_continuous_scale="Viridis",
+          text_auto=".4f",
           title="Matriz de Covarianza (Sigma)",
       )
       st.plotly_chart(fig_cov, use_container_width=True)
@@ -649,13 +911,22 @@ with tab_mx:
     with col_g:
       st.plotly_chart(
           construir_figura_animada_con_minima(
-              anim_data, min_port, cols_activas, titulo_h, lbl_tasa, is_mx=is_mx
+              anim_data,
+              min_port,
+              cols_activas,
+              titulo_h,
+              lbl_tasa,
+              is_mx=is_mx,
           ),
           use_container_width=True,
       )
 
     st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
-    cols_sh = [c for c in cols_activas + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]]
+    cols_sh = [
+        c
+        for c in cols_activas
+        + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]
+    ]
     st.dataframe(
         max_port[[c for c in cols_sh if c in max_port.columns]].style.format(
             formatos_mx if is_mx else formatos_usa
@@ -667,32 +938,63 @@ with tab_mx:
     vals_sharpe = t1000_data["sharpe_ratio"].values
     df_stats_sharpe = pd.DataFrame({
         "Métrica": [
-            "Media Sharpe", "Desviación Estándar Sharpe", "Mediana (Q2)",
-            f"IC Inf ({ (1-alpha_nivel)*100:.1f}%)", f"IC Sup ({alpha_nivel*100:.1f}%)",
-            "Máximo Sharpe", "Mínimo Sharpe",
+            "Media Sharpe",
+            "Desviación Estándar Sharpe",
+            "Mediana (Q2)",
+            f"IC Inf ({ (1-alpha_nivel)*100:.1f}%)",
+            f"IC Sup ({alpha_nivel*100:.1f}%)",
+            "Máximo Sharpe",
+            "Mínimo Sharpe",
         ],
         "Valor": [
-            np.mean(vals_sharpe), np.std(vals_sharpe), np.median(vals_sharpe),
+            np.mean(vals_sharpe),
+            np.std(vals_sharpe),
+            np.median(vals_sharpe),
             np.percentile(vals_sharpe, alpha_nivel * 50),
             np.percentile(vals_sharpe, (1 - alpha_nivel / 2) * 100),
-            np.max(vals_sharpe), np.min(vals_sharpe),
+            np.max(vals_sharpe),
+            np.min(vals_sharpe),
         ],
     })
-    st.dataframe(df_stats_sharpe.style.format({"Valor": "{:.4f}"}), use_container_width=True)
+    st.dataframe(
+        df_stats_sharpe.style.format({"Valor": "{:.4f}"}), use_container_width=True
+    )
+
 
   with sub_mx_1:
-    renderizar_bloque_pais(datos_mx_1, cov_mx_1, min_mx_1, max_mx_1, anim_mx_1, t1000_mx_1, empresas_mx, cols_activas_mx_1, "1 Año (México)", "CETES", True)
+    renderizar_bloque_pais(
+        datos_mx_1, cov_mx_1, min_mx_1, max_mx_1, anim_mx_1, t1000_mx_1,
+        empresas_mx, cols_activas_mx_1, "1 Año (México)", "CETES", True,
+    )
+
   with sub_mx_2:
-    renderizar_bloque_pais(datos_mx_2, cov_mx_2, min_mx_2, max_mx_2, anim_mx_2, t1000_mx_2, empresas_mx, cols_activas_mx_2, "2 Años (México)", "CETES", True)
+    renderizar_bloque_pais(
+        datos_mx_2, cov_mx_2, min_mx_2, max_mx_2, anim_mx_2, t1000_mx_2,
+        empresas_mx, cols_activas_mx_2, "2 Años (México)", "CETES", True,
+    )
+
   with sub_mx_3:
-    renderizar_bloque_pais(datos_mx_3, cov_mx_3, min_mx_3, max_mx_3, anim_mx_3, t1000_mx_3, empresas_mx, cols_activas_mx_3, "3 Años (México)", "CETES", True)
+    renderizar_bloque_pais(
+        datos_mx_3, cov_mx_3, min_mx_3, max_mx_3, anim_mx_3, t1000_mx_3,
+        empresas_mx, cols_activas_mx_3, "3 Años (México)", "CETES", True,
+    )
 
   with sub_mx_comp:
     st.subheader("📋 Tablas Comparativas de los 3 Años (México)")
     st.markdown("### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)")
-    st.dataframe(pd.concat([min_mx_1, min_mx_2, min_mx_3])[[c for c in cols_min_mx if c in min_mx_1.columns]].style.format(formatos_mx), use_container_width=True)
+    st.dataframe(
+        pd.concat([min_mx_1, min_mx_2, min_mx_3])[
+            [c for c in cols_min_mx if c in min_mx_1.columns]
+        ].style.format(formatos_mx),
+        use_container_width=True,
+    )
     st.markdown("### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3 Años)")
-    st.dataframe(pd.concat([max_mx_1, max_mx_2, max_mx_3])[[c for c in cols_sh_mx if c in max_mx_1.columns]].style.format(formatos_mx), use_container_width=True)
+    st.dataframe(
+        pd.concat([max_mx_1, max_mx_2, max_mx_3])[
+            [c for c in cols_sh_mx if c in max_mx_1.columns]
+        ].style.format(formatos_mx),
+        use_container_width=True,
+    )
 
 
 # ==============================================================================
@@ -701,27 +1003,50 @@ with tab_mx:
 with tab_usa:
   st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
   sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs([
-      "📅 1 Año", "📅 2 Años", "📅 3 Años",
+      "📅 1 Año",
+      "📅 2 Años",
+      "📅 3 Años",
       "📋 Tablas Comparativas (Mínima Varianza y Sharpe)",
   ])
 
   with sub_usa_1:
-    renderizar_bloque_pais(datos_usa_1, cov_usa_1, min_usa_1, max_usa_1, anim_usa_1, t1000_usa_1, empresas_usa, cols_activas_usa_1, "1 Año (EE. UU.)", "T-Bills", False)
+    renderizar_bloque_pais(
+        datos_usa_1, cov_usa_1, min_usa_1, max_usa_1, anim_usa_1, t1000_usa_1,
+        empresas_usa, cols_activas_usa_1, "1 Año (EE. UU.)", "T-Bills", False,
+    )
+
   with sub_usa_2:
-    renderizar_bloque_pais(datos_usa_2, cov_usa_2, min_usa_2, max_usa_2, anim_usa_2, t1000_usa_2, empresas_usa, cols_activas_usa_2, "2 Años (EE. UU.)", "T-Bills", False)
+    renderizar_bloque_pais(
+        datos_usa_2, cov_usa_2, min_usa_2, max_usa_2, anim_usa_2, t1000_usa_2,
+        empresas_usa, cols_activas_usa_2, "2 Años (EE. UU.)", "T-Bills", False,
+    )
+
   with sub_usa_3:
-    renderizar_bloque_pais(datos_usa_3, cov_usa_3, min_usa_3, max_usa_3, anim_usa_3, t1000_usa_3, empresas_usa, cols_activas_usa_3, "3 Años (EE. UU.)", "T-Bills", False)
+    renderizar_bloque_pais(
+        datos_usa_3, cov_usa_3, min_usa_3, max_usa_3, anim_usa_3, t1000_usa_3,
+        empresas_usa, cols_activas_usa_3, "3 Años (EE. UU.)", "T-Bills", False,
+    )
 
   with sub_usa_comp:
     st.subheader("📋 Tablas Comparativas de los 3 Años (EE. UU.)")
     st.markdown("### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)")
-    st.dataframe(pd.concat([min_usa_1, min_usa_2, min_usa_3])[[c for c in cols_min_usa if c in min_usa_1.columns]].style.format(formatos_usa), use_container_width=True)
+    st.dataframe(
+        pd.concat([min_usa_1, min_usa_2, min_usa_3])[
+            [c for c in cols_min_usa if c in min_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
     st.markdown("### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3 Años)")
-    st.dataframe(pd.concat([max_usa_1, max_usa_2, max_usa_3])[[c for c in cols_sh_usa if c in max_usa_1.columns]].style.format(formatos_usa), use_container_width=True)
+    st.dataframe(
+        pd.concat([max_usa_1, max_usa_2, max_usa_3])[
+            [c for c in cols_sh_usa if c in max_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
 
 
 # ==============================================================================
-# PESTAÑA 3: SIMULACIÓN POR ENFOQUE (DINÁMICA CON BOOTSTRAP)
+# PESTAÑA 3: SIMULACIÓN POR ENFOQUE (DINÁMICA CON BOOTSTRAPPING + STOP-LOSS 10%)
 # ==============================================================================
 with tab_port_enf:
   st.header(
@@ -730,8 +1055,8 @@ with tab_port_enf:
   )
   st.markdown(
       "Selecciona el enfoque para visualizar las tablas de títulos, métricas"
-      " de riesgo, gráficas estocásticas y la tabla de simulación diaria"
-      " con Bootstrapping."
+      " de riesgo (con Bootstrapping y Stop-Loss del 10%), gráficas estocásticas"
+      " y la tabla de simulación diaria correspondiente."
   )
 
   col_sel1, col_sel2 = st.columns(2)
@@ -747,7 +1072,7 @@ with tab_port_enf:
     )
   with col_sel2:
     horiz_sel = st.selectbox(
-        "Selecciona los pesos Wi de qué año deseas para (SHARPE RATIO):",
+        "Selecciona los pesos Wi de que año deseas para (SHARE RATIO):",
         ["1 año", "2 años", "3 años"],
         key="sel_h_enfoque",
     )
@@ -780,8 +1105,12 @@ with tab_port_enf:
 
   st.markdown(f"### 🎯 Asignación de Pesos y Acciones ({titulo_enf})")
 
-  precios_mx_actuales = {k: obtener_precio_actual(v, 100.0) for k, v in tickers_mx.items()}
-  precios_usa_actuales = {k: obtener_precio_actual(v, 150.0) for k, v in tickers_usa.items()}
+  precios_mx_actuales = {
+      k: obtener_precio_actual(v, 100.0) for k, v in tickers_mx.items()
+  }
+  precios_usa_actuales = {
+      k: obtener_precio_actual(v, 150.0) for k, v in tickers_usa.items()
+  }
 
   if mostrar_mx:
     st.markdown("#### 🇲🇽 Portafolio Accionario México ($500,000 MXN)")
@@ -798,8 +1127,10 @@ with tab_port_enf:
     ).astype(int)
     st.dataframe(
         df_t_mx.style.format({
-            "Peso Óptimo": "{:.2%}", "Capital Asignado (MXN)": "${:,.2f}",
-            "Precio Actual (MXN)": "${:,.2f}", "Títulos a Comprar": "{:d}",
+            "Peso Óptimo": "{:.2%}",
+            "Capital Asignado (MXN)": "${:,.2f}",
+            "Precio Actual (MXN)": "${:,.2f}",
+            "Títulos a Comprar": "{:d}",
         }),
         use_container_width=True,
     )
@@ -820,24 +1151,35 @@ with tab_port_enf:
     ).astype(int)
     st.dataframe(
         df_t_usa.style.format({
-            "Peso Óptimo": "{:.2%}", "Capital Asignado (USD)": "${:,.2f}",
-            "Precio Actual (USD)": "${:,.2f}", "Títulos a Comprar": "{:d}",
+            "Peso Óptimo": "{:.2%}",
+            "Capital Asignado (USD)": "${:,.2f}",
+            "Precio Actual (USD)": "${:,.2f}",
+            "Títulos a Comprar": "{:d}",
         }),
         use_container_width=True,
     )
 
   st.markdown("---")
 
-  # 1. LLAMADA A LA SIMULACIÓN CON BOOTSTRAP HISTÓRICO
-  df_est_enf, rend_enf_sim, val_enf_sim = generar_simulacion_y_estadisticos(
+  # 1. TABLA DE ESTADÍSTICOS & METRICAS (CON BOOTSTRAP + STOP-LOSS 10%)
+  df_est_enf, rend_enf_sim, val_enf_sim, sl_mx_c, sl_usa_c = generar_simulacion_y_estadisticos(
       s_mx, s_usa, dias_habiles, alpha_nivel, enfoque=enf_key,
-      datos_mx=d_mx, datos_usa=d_usa
+      datos_mx=d_mx, datos_usa=d_usa, stop_loss=-0.10
   )
-  st.subheader(f"📊 Tabla de Estadísticos & Riesgo (Bootstrapping) ({titulo_enf})")
+  st.subheader(f"📊 Tabla de Estadísticos & Riesgo (Bootstrapping + Stop-Loss 10%) ({titulo_enf})")
   st.dataframe(
-      df_est_enf.style.format({col: "{:.2%}" for col in df_est_enf.columns}),
+      df_est_enf.style.format(
+          {col: "{:.2%}" for col in df_est_enf.columns}
+      ),
       use_container_width=True,
   )
+
+  if mostrar_mx and mostrar_usa:
+    st.info(f"🛡️ **Regla Stop-Loss (-10%):** Se activó en **{sl_mx_c}** de 1,000 simulaciones en México y en **{sl_usa_c}** de 1,000 simulaciones en EE. UU.")
+  elif mostrar_mx:
+    st.info(f"🛡️ **Regla Stop-Loss (-10%):** Se activó en **{sl_mx_c}** de 1,000 simulaciones en México.")
+  elif mostrar_usa:
+    st.info(f"🛡️ **Regla Stop-Loss (-10%):** Se activó en **{sl_usa_c}** de 1,000 simulaciones en EE. UU.")
 
   # Tarjetas de Métricas (KPI Cards)
   col_k1, col_k2, col_k3, col_k4 = st.columns(4)
@@ -855,7 +1197,8 @@ with tab_port_enf:
   st.subheader(f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})")
 
   fig_hist = px.histogram(
-      x=val_enf_sim, nbins=50,
+      x=val_enf_sim,
+      nbins=50,
       labels={"x": "Valor Final en MXN"},
       title=f"Distribución de Probabilidad del Valor Final (Bootstrapping) - {titulo_enf}",
       color_discrete_sequence=["#2980b9"],
@@ -868,23 +1211,27 @@ with tab_port_enf:
     fig_box = px.box(
         y=rend_enf_sim * 100,
         title="Diagrama de Caja (Boxplot) - Rendimientos Simulados",
-        labels={"y": "Rendimiento (%)"}, color_discrete_sequence=["#e74c3c"],
+        labels={"y": "Rendimiento (%)"},
+        color_discrete_sequence=["#e74c3c"],
     )
     fig_box.update_layout(template="plotly_white")
     st.plotly_chart(fig_box, use_container_width=True)
 
   with col_g2:
     fig_violin = px.violin(
-        y=val_enf_sim / 1000, box=True, points="all",
+        y=val_enf_sim / 1000,
+        box=True,
+        points="all",
         title="Violin Plot - Dispersión del Valor Final (Miles MXN)",
-        labels={"y": "Valor Final (Miles MXN)"}, color_discrete_sequence=["#27ae60"],
+        labels={"y": "Valor Final (Miles MXN)"},
+        color_discrete_sequence=["#27ae60"],
     )
     fig_violin.update_layout(template="plotly_white")
     st.plotly_chart(fig_violin, use_container_width=True)
 
   st.markdown("---")
 
-  # 3. TABLA DE SIMULACIÓN DIARIA ESTOCÁSTICA FILTRADA POR ENFOQUE
+  # 3. TABLA DE SIMULACIÓN DIARIA ESTOCÁSTICA (CON BOOTSTRAPPING)
   st.subheader(f"📈 Tabla de Simulación Diaria Estocástica ({titulo_enf})")
   dias_muestra = 15
   fechas_m = [
@@ -898,33 +1245,38 @@ with tab_port_enf:
   val_usa_usd = 245000.0 / tc_base
   val_tb_usd = 105000.0 / tc_base
 
-  # Muestreo histórico auxiliar para la tabla de ejemplo si existe
-  port_hist_mx_demo = np.log(d_mx / d_mx.shift(1)).dropna().mean(axis=1).values if d_mx is not None and not d_mx.empty else np.zeros(10)
-  port_hist_usa_demo = np.log(d_usa / d_usa.shift(1)).dropna().mean(axis=1).values if d_usa is not None and not d_usa.empty else np.zeros(10)
+  # Series históricas ponderadas para el Bootstrapping de la tabla diaria
+  rend_h_mx = np.log(d_mx / d_mx.shift(1)).dropna()
+  act_mx_d = [e for e in empresas_mx if e in s_mx.columns and e in rend_h_mx.columns]
+  port_hist_mx_demo = rend_h_mx[act_mx_d].dot(s_mx[act_mx_d].values[0]).values if len(act_mx_d) > 0 else np.zeros(10)
+
+  rend_h_usa = np.log(d_usa / d_usa.shift(1)).dropna()
+  act_usa_d = [e for e in empresas_usa if e in s_usa.columns and e in rend_h_usa.columns]
+  port_hist_usa_demo = rend_h_usa[act_usa_d].dot(s_usa[act_usa_d].values[0]).values if len(act_usa_d) > 0 else np.zeros(10)
 
   filas_excel = []
   for idx, f in enumerate(fechas_m):
     p_cetes = np.random.uniform(0, 1)
     tasa_c = (
-        0.078 + np.sqrt(p_cetes * 0.002 * 0.004) if p_cetes < 0.5
+        0.078 + np.sqrt(p_cetes * 0.002 * 0.004)
+        if p_cetes < 0.5
         else 0.082 - np.sqrt((1 - p_cetes) * 0.004 * 0.002)
     )
 
     p_tb = np.random.uniform(0, 1)
     tasa_t = (
-        0.0368 + np.sqrt(p_tb * 0.0002 * 0.0004) if p_tb < 0.5
+        0.0368 + np.sqrt(p_tb * 0.0002 * 0.0004)
+        if p_tb < 0.5
         else 0.0372 - np.sqrt((1 - p_tb) * 0.0004 * 0.0002)
     )
-
-    # Bootstrapping muestreado de la historia real para la tabla de muestra
-    rend_mx_n = float(np.random.choice(port_hist_mx_demo)) if len(port_hist_mx_demo) > 0 else 0.0005
-    rend_usa_n = float(np.random.choice(port_hist_usa_demo)) if len(port_hist_usa_demo) > 0 else 0.0006
 
     if idx == 0:
       tc = tc_base
       rend_mx_n = 0.0
       rend_usa_n = 0.0
     else:
+      rend_mx_n = float(np.random.choice(port_hist_mx_demo))
+      rend_usa_n = float(np.random.choice(port_hist_usa_demo))
       val_mx *= 1 + rend_mx_n
       val_cetes *= 1 + tasa_c / 360
       val_usa_usd *= 1 + rend_usa_n
@@ -939,7 +1291,7 @@ with tab_port_enf:
 
     if mostrar_mx:
       fila_dict.update({
-          "Rend. MX (Bootstrap)": rend_mx_n,
+          "Rend. MX (Boot)": rend_mx_n,
           "Portafolio Acc. MX ($)": val_mx,
           "Prob CETES": p_cetes,
           "Tasa CETES (Triang)": tasa_c,
@@ -948,7 +1300,7 @@ with tab_port_enf:
 
     if mostrar_usa:
       fila_dict.update({
-          "Rend. USA (Bootstrap)": rend_usa_n,
+          "Rend. USA (Boot)": rend_usa_n,
           "Portafolio Acc. USA (USD)": val_usa_usd,
           "Prob T-Bills": p_tb,
           "Tasa T-Bills (Triang)": tasa_t,
@@ -969,12 +1321,12 @@ with tab_port_enf:
   df_excel_demo = pd.DataFrame(filas_excel)
 
   formatos_tabla = {
-      "Rend. MX (Bootstrap)": "{:.2%}",
+      "Rend. MX (Boot)": "{:.2%}",
       "Portafolio Acc. MX ($)": "${:,.2f}",
       "Prob CETES": "{:.4f}",
       "Tasa CETES (Triang)": "{:.2%}",
       "Valor CETES ($)": "${:,.2f}",
-      "Rend. USA (Bootstrap)": "{:.2%}",
+      "Rend. USA (Boot)": "{:.2%}",
       "Portafolio Acc. USA (USD)": "${:,.2f}",
       "Prob T-Bills": "{:.4f}",
       "Tasa T-Bills (Triang)": "{:.2%}",
@@ -985,8 +1337,12 @@ with tab_port_enf:
       "VALOR TOTAL MÉXICO (MXN)": "${:,.2f}",
   }
 
-  formatos_aplicables = {c: v for c, v in formatos_tabla.items() if c in df_excel_demo.columns}
-  st.dataframe(df_excel_demo.style.format(formatos_aplicables), use_container_width=True)
+  formatos_aplicables = {
+      c: v for c, v in formatos_tabla.items() if c in df_excel_demo.columns
+  }
+  st.dataframe(
+      df_excel_demo.style.format(formatos_aplicables), use_container_width=True
+  )
 
 
 # ==============================================================================
@@ -1010,8 +1366,12 @@ with tab_excel:
   else:
     mx_p, usa_p = max_mx_3, max_usa_3
 
-  precios_mx_actuales = {k: obtener_precio_actual(v, 100.0) for k, v in tickers_mx.items()}
-  precios_usa_actuales = {k: obtener_precio_actual(v, 150.0) for k, v in tickers_usa.items()}
+  precios_mx_actuales = {
+      k: obtener_precio_actual(v, 100.0) for k, v in tickers_mx.items()
+  }
+  precios_usa_actuales = {
+      k: obtener_precio_actual(v, 150.0) for k, v in tickers_usa.items()
+  }
 
   st.subheader("🇲🇽 Asignación de Títulos - Portafolio México ($500,000 MXN)")
   activos_validos_mx = [e for e in empresas_mx if e in mx_p.columns]
@@ -1023,17 +1383,22 @@ with tab_excel:
       "Precio Actual (MXN)": [precios_mx_actuales[e] for e in activos_validos_mx],
   })
   df_titulos_mx["Títulos a Comprar"] = np.floor(
-      df_titulos_mx["Capital Asignado (MXN)"] / df_titulos_mx["Precio Actual (MXN)"]
+      df_titulos_mx["Capital Asignado (MXN)"]
+      / df_titulos_mx["Precio Actual (MXN)"]
   ).astype(int)
   st.dataframe(
       df_titulos_mx.style.format({
-          "Peso Óptimo": "{:.2%}", "Capital Asignado (MXN)": "${:,.2f}",
-          "Precio Actual (MXN)": "${:,.2f}", "Títulos a Comprar": "{:d}",
+          "Peso Óptimo": "{:.2%}",
+          "Capital Asignado (MXN)": "${:,.2f}",
+          "Precio Actual (MXN)": "${:,.2f}",
+          "Títulos a Comprar": "{:d}",
       }),
       use_container_width=True,
   )
 
-  st.subheader("🇺🇸 Asignación de Títulos - Portafolio EE. UU. ($245,000 MXN / USD)")
+  st.subheader(
+      "🇺🇸 Asignación de Títulos - Portafolio EE. UU. ($245,000 MXN / USD)"
+  )
   activos_validos_usa = [e for e in empresas_usa if e in usa_p.columns]
   pesos_usa_opt = usa_p[activos_validos_usa].values[0]
   tc_inicial = 18.44
@@ -1044,12 +1409,15 @@ with tab_excel:
       "Precio Actual (USD)": [precios_usa_actuales[e] for e in activos_validos_usa],
   })
   df_titulos_usa["Títulos a Comprar"] = np.floor(
-      df_titulos_usa["Capital Asignado (USD)"] / df_titulos_usa["Precio Actual (USD)"]
+      df_titulos_usa["Capital Asignado (USD)"]
+      / df_titulos_usa["Precio Actual (USD)"]
   ).astype(int)
   st.dataframe(
       df_titulos_usa.style.format({
-          "Peso Óptimo": "{:.2%}", "Capital Asignado (USD)": "${:,.2f}",
-          "Precio Actual (USD)": "${:,.2f}", "Títulos a Comprar": "{:d}",
+          "Peso Óptimo": "{:.2%}",
+          "Capital Asignado (USD)": "${:,.2f}",
+          "Precio Actual (USD)": "${:,.2f}",
+          "Títulos a Comprar": "{:d}",
       }),
       use_container_width=True,
   )
@@ -1060,14 +1428,20 @@ with tab_excel:
 # ==============================================================================
 with tab_anexo:
   st.header("📐 Anexo Cuantitativo: Fórmulas y Modelos Matemáticos")
-  st.markdown("Resumen técnico de las ecuaciones fundamentales implementadas en la aplicación.")
+  st.markdown(
+      "Resumen técnico de las ecuaciones fundamentales implementadas en la"
+      " aplicación."
+  )
 
   col1, col2 = st.columns(2)
 
   with col1:
     st.markdown("### 1. Rendimiento y Volatilidad del Portafolio")
     st.latex(r"R_p = \sum_{i=1}^{n} w_i \cdot \mu_i = \mathbf{w}^T \boldsymbol{\mu}")
-    st.latex(r"\sigma_p^2 = \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} = \sum_{i=1}^n \sum_{j=1}^n w_i w_j \sigma_{ij}")
+    st.latex(
+        r"\sigma_p^2 = \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} = \sum_{i=1}^n"
+        r" \sum_{j=1}^n w_i w_j \sigma_{ij}"
+    )
     st.latex(r"\sigma_p = \sqrt{\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}}")
 
     st.markdown("### 2. Ratio de Sharpe & Línea de Asignación de Capital (CAL)")
@@ -1091,3 +1465,19 @@ with tab_anexo:
   st.markdown("---")
   st.markdown("### 5. Tipo de Cambio Estocástico (Distribución Weibull)")
   st.latex(r"TC = \lambda \cdot \left( \frac{U}{1 - U} \right)^{\frac{1}{k}}")
+
+  st.markdown("---")
+  st.markdown("### 6. Bootstrapping No Paramétrico & Regla de Salida (Stop-Loss 10%)")
+  st.markdown("**Paso 1 (Rendimientos Históricos):**")
+  st.latex(r"r_{i,t} = \ln\left(\frac{P_{i,t}}{P_{i,t-1}}\right)")
+  st.markdown("**Paso 2 (Serie Histórica Ponderada del Portafolio Óptimo):**")
+  st.latex(r"R_{p,t} = \sum_{i=1}^{n} w_i \cdot r_{i,t}")
+  st.markdown("**Paso 3 (Remuestreo Aleatorio con Reemplazo):**")
+  st.latex(r"\tilde{R}_{p,d} = R_{p, I_d}, \quad I_d \sim \text{UniformeDiscreto}(1, T)")
+  st.markdown("**Paso 4 (Regla de Salida / Stop-Loss del 10%):**")
+  st.latex(r"""
+      V_{\text{final}} = \begin{cases} 
+      V_0 \cdot (1 - 0.10) & \text{si } \sum_{d=1}^{t} \tilde{R}_{p,d} \le -0.10 \text{ en algún } t \\ 
+      V_0 \cdot \exp\left(\sum_{d=1}^{D} \tilde{R}_{p,d}\right) & \text{en otro caso}
+      \end{cases}
+      """)

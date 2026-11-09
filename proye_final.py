@@ -1547,17 +1547,9 @@ with tab_port_enf:
   fig_hist.update_layout(xaxis_title="Valor Final (MXN)", template="plotly_white")
   st.plotly_chart(fig_hist, use_container_width=True)
 
+  # VIOLIN PLOT Y GRÁFICA DE RENDIMIENTOS (LADO A LADO)
   col_g1, col_g2 = st.columns(2)
   with col_g1:
-    fig_box = px.box(
-        y=rend_enf_sim * 100,
-        title="Diagrama de Caja (Boxplot) - Rendimientos Simulados",
-        labels={"y": "Rendimiento (%)"},
-        color_discrete_sequence=["#e74c3c"],
-    )
-    fig_box.update_layout(template="plotly_white")
-    st.plotly_chart(fig_box, use_container_width=True)
-  with col_g2:
     fig_violin = px.violin(
         y=val_enf_sim / 1000,
         box=True,
@@ -1569,8 +1561,50 @@ with tab_port_enf:
     fig_violin.update_layout(template="plotly_white")
     st.plotly_chart(fig_violin, use_container_width=True)
 
+  with col_g2:
+    media_r = np.mean(rend_enf_sim) * 100
+    cutoff_r = np.percentile(rend_enf_sim, alpha_nivel * 100) * 100
+
+    fig_10k_mov = go.Figure()
+    fig_10k_mov.add_trace(
+        go.Scatter(
+            x=np.arange(1, len(rend_enf_sim) + 1),
+            y=rend_enf_sim * 100,
+            mode="markers",
+            marker=dict(
+                size=4,
+                color=rend_enf_sim * 100,
+                colorscale="Viridis",
+                opacity=0.6,
+            ),
+            name="Rendimiento (%)",
+        )
+    )
+    fig_10k_mov.add_hline(
+        y=media_r,
+        line_dash="solid",
+        line_color="#27ae60",
+        annotation_text=f"Media: {media_r:.2f}%",
+        annotation_position="top right",
+    )
+    fig_10k_mov.add_hline(
+        y=cutoff_r,
+        line_dash="dash",
+        line_color="#e74c3c",
+        annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): {cutoff_r:.2f}%",
+        annotation_position="bottom right",
+    )
+    fig_10k_mov.update_layout(
+        title="Rendimientos en las 10,000 Simulaciones",
+        xaxis_title="Simulación (#1 a #10,000)",
+        yaxis_title="Rendimiento Final (%)",
+        template="plotly_white",
+        showlegend=False,
+    )
+    st.plotly_chart(fig_10k_mov, use_container_width=True)
+
   # ============================================================================
-  # GRÁFICA DE RATIO DE SHARPE COMBINADO (EN PUNTOS Y SIN EMPALME DE LEYENDA)
+  # GRÁFICA DE RATIO DE SHARPE COMBINADO (EN PUNTOS Y LEYENDA SUPERIOR)
   # ============================================================================
   st.markdown("---")
   st.subheader(
@@ -1582,7 +1616,6 @@ with tab_port_enf:
   rp_usa_anual = s_usa["Rp"].values[0]
   desv_usa_anual = s_usa["des_p"].values[0]
 
-  # Usamos 60 puntos espaciados para que se distingan claramente como puntos
   w_grid = np.linspace(0, 1, 60)
   ret_comb_grid = w_grid * rp_mx_anual + (1 - w_grid) * rp_usa_anual
   riesgo_comb_grid = np.sqrt(
@@ -1651,8 +1684,6 @@ with tab_port_enf:
           name="Línea de Asignación de Capital (CAL)",
       )
   )
-
-  # Leyenda horizontal arriba para evitar que choque con la barra de Sharpe
   fig_sh_global.update_layout(
       title="Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)",
       xaxis_title="Volatilidad (Riesgo Anual)",
@@ -1668,47 +1699,6 @@ with tab_port_enf:
       margin=dict(t=90, r=80),
   )
   st.plotly_chart(fig_sh_global, use_container_width=True)
-
-  # ============================================================================
-  # GRÁFICA DE CÓMO SE MOVIERON LOS RENDIMIENTOS EN LAS 10,000 SIMULACIONES
-  # ============================================================================
-  st.markdown("---")
-  st.subheader("📉 Comportamiento de los Rendimientos en las 10,000 Simulaciones")
-
-  media_r = np.mean(rend_enf_sim) * 100
-  cutoff_r = np.percentile(rend_enf_sim, alpha_nivel * 100) * 100
-
-  fig_10k_mov = go.Figure()
-  fig_10k_mov.add_trace(
-      go.Scatter(
-          x=np.arange(1, len(rend_enf_sim) + 1),
-          y=rend_enf_sim * 100,
-          mode="markers",
-          marker=dict(size=3, color="#2980b9", opacity=0.45),
-          name="Rendimiento por Simulación (%)",
-      )
-  )
-  fig_10k_mov.add_hline(
-      y=media_r,
-      line_dash="solid",
-      line_color="#27ae60",
-      annotation_text=f"Media: {media_r:.2f}%",
-      annotation_position="top right",
-  )
-  fig_10k_mov.add_hline(
-      y=cutoff_r,
-      line_dash="dash",
-      line_color="#e74c3c",
-      annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): {cutoff_r:.2f}%",
-      annotation_position="bottom right",
-  )
-  fig_10k_mov.update_layout(
-      title="Dispersión de Rendimientos Globales (Simulación #1 a #10,000)",
-      xaxis_title="Número de Simulación",
-      yaxis_title="Rendimiento Final (%)",
-      template="plotly_white",
-  )
-  st.plotly_chart(fig_10k_mov, use_container_width=True)
 
   # TABLA DE SIMULACIÓN DIARIA ESTOCÁSTICA (CON CAPITALES DINÁMICOS)
   st.markdown("---")

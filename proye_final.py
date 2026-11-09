@@ -893,11 +893,21 @@ def generar_simulacion_y_estadisticos(
   )
   rend_cambiario = (tc_final - tc_inicial) / tc_inicial
 
-  def calcular_fila_stats(arr):
+  # --- CÁLCULO EN PESOS ($) PARA CUTOFF Y VAR ---
+  # Cutoff monetario: Percentil del valor final en pesos
+  cutoff_val_pesos = np.percentile(val_final_global_mxn, alpha * 100)
+  # VaR monetario: Capital inicial - Cutoff monetario (o pérdida monetaria en ese cuantil)
+  var_val_pesos = capital_total - cutoff_val_pesos
+
+  def calcular_fila_stats(arr, val_arr=None):
     rend = np.mean(arr)
     riesgo = np.std(arr)
-    cutoff = np.percentile(arr, alpha * 100)
-    var_alpha = rend - cutoff
+    if val_arr is not None:
+      cutoff = np.percentile(val_arr, alpha * 100)
+      var_alpha = np.mean(val_arr) - cutoff
+    else:
+      cutoff = np.percentile(arr, alpha * 100)
+      var_alpha = rend - cutoff
     q1 = np.percentile(arr, 25)
     q2 = np.median(arr)
     q3 = np.percentile(arr, 75)
@@ -914,7 +924,7 @@ def generar_simulacion_y_estadisticos(
     ]
 
   filas_stats = [
-      calcular_fila_stats(rend_global),
+      calcular_fila_stats(rend_global, val_arr=val_final_global_mxn),
       calcular_fila_stats(rend_mx_acc),
       calcular_fila_stats(rend_usa_usd),
       calcular_fila_stats(rend_cetes),
@@ -924,11 +934,11 @@ def generar_simulacion_y_estadisticos(
   df_estadisticos = pd.DataFrame(
       filas_stats,
       index=[
-          "portafolio final",
-          "portafolio pesos",
-          "portafolio dolares",
-          "portafolio pesos (cetes)",
-          "ganancia por rendimiento cambiario",
+          "Portafolio Global Final",
+          "Portafolio Renta Variable México",
+          "Portafolio Renta Variable EE. UU.",
+          "Portafolio Renta Fija (CETES)",
+          "Efecto Rendimiento Cambiario",
       ],
       columns=[
           "rendimiento",
@@ -1461,8 +1471,20 @@ with tab_port_enf:
       "📊 Tabla de Estadísticos & Riesgo (10,000 Simulaciones Bootstrapping +"
       " Stop-Loss Individual 10%)"
   )
+  
+  # Formato personalizado: Las primeras dos filas de Cutoff y VaR (índice 0) van en moneda ($), el resto en porcentaje (%)
+  def formateador_tabla_riesgo(val, col_name):
+    if isinstance(val, (int, float)):
+      if "CUTOFF" in col_name or "VAR" in col_name:
+        return f"${val:,.2f}"
+      else:
+        return f"{val:.2%}"
+    return val
+
   st.dataframe(
-      df_est_enf.style.format({col: "{:.2%}" for col in df_est_enf.columns}),
+      df_est_enf.style.format(
+          {col: lambda v, c=col: formateador_tabla_riesgo(v, c) for col in df_est_enf.columns}
+      ),
       use_container_width=True,
   )
 
@@ -1471,7 +1493,7 @@ with tab_port_enf:
   col_k2.metric("Volatilidad (Riesgo)", f"{np.std(rend_enf_sim)*100:.2f}%")
   col_k3.metric(
       f"VaR ({alpha_nivel*100:.1f}%)",
-      f"{(np.mean(rend_enf_sim) - np.percentile(rend_enf_sim, alpha_nivel*100))*100:.2f}%",
+      f"${capital_total_input - np.percentile(val_enf_sim, alpha_nivel*100):,.2f} MXN",
   )
   col_k4.metric("Mediana Final (Q2)", f"${np.median(val_enf_sim):,.2f} MXN")
 

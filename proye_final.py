@@ -30,7 +30,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title(
-    "📊 Simulador de Portafolios"
+    "📊 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
 )
 st.markdown(
     "Modelo cuantitativo multianual con Markowitz, Frontera Eficiente, Simulación"
@@ -106,11 +106,11 @@ opciones_usa = [
 # 3. SELECTORES TIPO "CAJITA" EN LA INTERFAZ PRINCIPAL (5 POR PAÍS)
 # ==============================================================================
 st.markdown("---")
-st.subheader("🏢 Selección Interactiva de Activos")
+st.subheader("🏢 Selección Interactiva de Activos (Cajitas de Exposición)")
 col_sel_mx, col_sel_usa = st.columns(2)
 
 with col_sel_mx:
-  st.markdown("#### Selecciona 5 Activos para México (BMV)")
+  st.markdown("#### 🇲🇽 Selecciona 5 Activos para México (BMV)")
   c_mx1, c_mx2, c_mx3, c_mx4, c_mx5 = st.columns(5)
   with c_mx1:
     t1 = st.selectbox("M1", opciones_mx, index=0, key="m1")
@@ -125,7 +125,7 @@ with col_sel_mx:
   tickers_mx_list = [t1, t2, t3, t4, t5]
 
 with col_sel_usa:
-  st.markdown("#### Selecciona 5 Activos para EE. UU. (Tech/Global)")
+  st.markdown("#### 🇺🇸 Selecciona 5 Activos para EE. UU. (Tech/Global)")
   c_usa1, c_usa2, c_usa3, c_usa4, c_usa5 = st.columns(5)
   with c_usa1:
     u1 = st.selectbox("U1", opciones_usa, index=0, key="u1")
@@ -177,7 +177,7 @@ def obtener_precio_actual(ticker, default_val=100.0):
 
 
 # ==============================================================================
-# 5. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ)
+# 5. FUNCIÓN DE SIMULACIÓN Y OPTIMIZACIÓN (MARKOWITZ) - CON MÍNIMA VARIANZA GLOBAL REAL
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
@@ -233,7 +233,9 @@ def ejecutar_simulacion_mercado(
 
   w_cetes = 0.30
   w_portafolio = 0.70
-  df_sim_global = None
+
+  min_port = None
+  min_desp_val = float('inf')
 
   for i in range(1, n_corr + 1):
     p_tasa = np.random.uniform(0, 1)
@@ -260,8 +262,12 @@ def ejecutar_simulacion_mercado(
     df_sim["des_p"] = np.sqrt(vp_sim)
     df_sim["sharpe_ratio"] = (df_sim["Rp"] - tasa_anual) / df_sim["des_p"]
 
-    if i == 1:
-      df_sim_global = df_sim.copy()
+    # RASTREAR LA MÍNIMA VARIANZA GLOBAL REAL EN TODAS LAS CORRIDAS
+    idx_min_local = df_sim["des_p"].idxmin()
+    val_min_local = df_sim.loc[idx_min_local, "des_p"]
+    if val_min_local < min_desp_val:
+      min_desp_val = val_min_local
+      min_port = df_sim.loc[[idx_min_local]].copy()
 
     idx_max_sharpe = df_sim["sharpe_ratio"].idxmax()
     mejor_fila = df_sim.loc[[idx_max_sharpe]].copy()
@@ -299,9 +305,6 @@ def ejecutar_simulacion_mercado(
       })
 
   tabla_sharpe_max = pd.concat(mejores_sharpe)
-  idx_min_desp = df_sim_global["des_p"].idxmin()
-  min_port = df_sim_global.loc[[idx_min_desp]].copy()
-
   idx_max_global = tabla_sharpe_max["sharpe_ratio"].idxmax()
   max_sharpe_port = tabla_sharpe_max.loc[[idx_max_global]].copy()
 
@@ -496,7 +499,7 @@ def calcular_capitales_dinamicos(
 
 
 # ==============================================================================
-# 6. CONSTRUCTOR DE GRÁFICA ANIMADA
+# 6. CONSTRUCTOR DE GRÁFICA ANIMADA (CON ALTURA DE 700px Y SIN BARRA LATERAL)
 # ==============================================================================
 def construir_figura_animada_con_minima(
     datos_anim,
@@ -519,7 +522,6 @@ def construir_figura_animada_con_minima(
               color=[],
               colorscale="Viridis",
               showscale=False,
-              colorbar=dict(title="Retorno", len=0.7),
               opacity=0.6,
           ),
           name="Portafolios Simulados",
@@ -616,6 +618,7 @@ def construir_figura_animada_con_minima(
         go.Scatter(
             x=curr["nube_x"],
             y=curr["nube_y"],
+            mode="markers",
             marker=dict(
               size=4, color=curr["nube_y"], colorscale="Viridis", showscale=False
           ),
@@ -778,6 +781,19 @@ def generar_simulacion_y_estadisticos(
   factor_cetes_full = np.prod(1 + tasas_cetes / 360, axis=1)
   val_final_cetes_base = monto_cetes * factor_cetes_full
 
+  # --- TASAS DIARIAS T-BILLS (Triangular) ---
+  a_t, b_t, c_t = 0.0365, 0.0370, 0.0375
+  k_t = (b_t - a_t) / (c_t - a_t)
+  u_t = np.random.uniform(0, 1, size=(num_simulaciones_futuras, n_dias))
+  tasas_tbills = np.where(
+      u_t < k_t,
+      a_t + np.sqrt(u_t * (b_t - a_t) * (c_t - a_t)),
+      c_t - np.sqrt((1 - u_t) * (c_t - a_t) * (c_t - b_t)),
+  )
+  val_final_tbills_usd = (monto_tbills_mxn / tc_inicial) * np.prod(
+      1 + tasas_tbills / 360, axis=1
+  )
+
   # --- BOOTSTRAPPING + STOP-LOSS INDIVIDUAL (-10%) PARA MÉXICO ---
   val_final_mx_acc = np.zeros(num_simulaciones_futuras)
   val_extra_cetes_mx = np.zeros(num_simulaciones_futuras)
@@ -818,10 +834,10 @@ def generar_simulacion_y_estadisticos(
       val_final_mx_acc += np.where(salio, 0.0, val_no_salio)
       val_extra_cetes_mx += np.where(salio, cap_refugiado, 0.0)
 
-  # --- BOOTSTRAPPING + STOP-LOSS INDIVIDUAL (-10%) PARA EE. UU. ---
+  # --- BOOTSTRAPPING + STOP-LOSS INDIVIDUAL (-10%) PARA EE. UU. (REFUGIO EN T-BILLS) ---
   monto_usa_acc_usd = monto_usa_acc_mxn / tc_inicial
   val_final_usa_acc_usd = np.zeros(num_simulaciones_futuras)
-  val_extra_cetes_usa_mxn = np.zeros(num_simulaciones_futuras)
+  val_extra_tbills_usa_mxn = np.zeros(num_simulaciones_futuras)
   conteo_salidas_usa = {}
 
   if monto_usa_acc_usd > 0:
@@ -840,7 +856,7 @@ def generar_simulacion_y_estadisticos(
     )
     sim_usa = mat_usa[idx_usa]
 
-    tasa_prom_cetes = np.mean(tasas_cetes, axis=1)
+    tasa_prom_tbills = np.mean(tasas_tbills, axis=1)
     for j, emp in enumerate(activos_usa):
       cap_emp_usd = monto_usa_acc_usd * pesos_usa[j]
       if cap_emp_usd <= 0:
@@ -854,37 +870,26 @@ def generar_simulacion_y_estadisticos(
       val_no_salio = cap_emp_usd * np.exp(r_acum[:, -1])
 
       dias_restantes = np.maximum(0, n_dias - dia_salida)
+      # Refugio en T-Bills expresado en MXN (con su respectiva tasa y tipo de cambio)
       cap_refugiado_mxn = ((cap_emp_usd * tc_inicial) * (1 + stop_loss)) * (
-          (1 + tasa_prom_cetes / 360) ** dias_restantes
+          (1 + tasa_prom_tbills / 360) ** dias_restantes
       )
 
       val_final_usa_acc_usd += np.where(salio, 0.0, val_no_salio)
-      val_extra_cetes_usa_mxn += np.where(salio, cap_refugiado_mxn, 0.0)
-
-  # --- T-Bills (Triangular) ---
-  monto_tbills_usd = monto_tbills_mxn / tc_inicial
-  a_t, b_t, c_t = 0.0365, 0.0370, 0.0375
-  k_t = (b_t - a_t) / (c_t - a_t)
-  u_t = np.random.uniform(0, 1, size=(num_simulaciones_futuras, n_dias))
-  tasas_tbills = np.where(
-      u_t < k_t,
-      a_t + np.sqrt(u_t * (b_t - a_t) * (c_t - a_t)),
-      c_t - np.sqrt((1 - u_t) * (c_t - a_t) * (c_t - b_t)),
-  )
-  val_final_tbills_usd = monto_tbills_usd * np.prod(
-      1 + tasas_tbills / 360, axis=1
-  )
+      val_extra_tbills_usa_mxn += np.where(salio, cap_refugiado_mxn, 0.0)
 
   # --- Tipo de Cambio (Weibull) ---
   u_tc = np.random.uniform(0.001, 0.999, size=num_simulaciones_futuras)
   tc_final = scale_lambda * (u_tc / (1 - u_tc)) ** (1 / shape_k)
 
   val_final_usa_total_mxn = (
-      val_final_usa_acc_usd + val_final_tbills_usd
-  ) * tc_final
+      val_final_usa_acc_usd * tc_final
+  ) + val_final_tbills_usd * tc_final + val_extra_tbills_usa_mxn
+  
   val_final_cetes_total = (
-      val_final_cetes_base + val_extra_cetes_mx + val_extra_cetes_usa_mxn
+      val_final_cetes_base + val_extra_cetes_mx
   )
+  
   val_final_global_mxn = (
       val_final_mx_acc + val_final_cetes_total + val_final_usa_total_mxn
   )
@@ -896,8 +901,8 @@ def generar_simulacion_y_estadisticos(
       else np.zeros_like(rend_global)
   )
   
-  # CORRECCIÓN DE RENDIMIENTO EN DÓLARES (INCLUYENDO CETES REFUGIO)
-  val_usa_total_neto = val_final_usa_acc_usd + (val_extra_cetes_usa_mxn / tc_inicial)
+  # CORRECCIÓN DE RENDIMIENTO EN DÓLARES (INCLUYENDO T-BILLS REFUGIO)
+  val_usa_total_neto = val_final_usa_acc_usd + (val_extra_tbills_usa_mxn / tc_inicial)
   rend_usa_usd = (
       (val_usa_total_neto - monto_usa_acc_usd) / monto_usa_acc_usd
       if monto_usa_acc_usd > 0
@@ -915,9 +920,9 @@ def generar_simulacion_y_estadisticos(
   val_mx_total_mxn = val_final_mx_acc + val_extra_cetes_mx
   val_usa_total_mxn_val = (
       val_final_usa_acc_usd * tc_final
-  ) + val_extra_cetes_usa_mxn
+  ) + val_extra_tbills_usa_mxn
   val_cetes_total_mxn = val_final_cetes_base
-  val_cambiario_mxn = (monto_usa_acc_usd + monto_tbills_usd) * tc_final
+  val_cambiario_mxn = (monto_usa_acc_usd + (monto_tbills_mxn / tc_inicial)) * tc_final
 
   def calcular_fila_stats(arr, val_arr):
     rend = np.mean(arr)
@@ -1112,17 +1117,16 @@ with tab_mx:
     )
 
     st.subheader(f"6. Optimización por Ratio de Sharpe ({titulo_h})")
-    col_g, col_ctrl = st.columns([3, 1])
-    with col_ctrl:
-      st.subheader("🎛️ Controles")
-      st.info("Simulación Monte Carlo (50 pasos lentos y fluidos).")
-    with col_g:
-      st.plotly_chart(
-          construir_figura_animada_con_minima(
-              anim_data, min_port, cols_activas, titulo_h, lbl_tasa, is_mx=is_mx
-          ),
-          use_container_width=True,
-      )
+    st.info(
+        "ℹ️ Simulación Monte Carlo paso a paso (50 iteraciones fluidas con"
+        " animación)."
+    )
+    st.plotly_chart(
+        construir_figura_animada_con_minima(
+            anim_data, min_port, cols_activas, titulo_h, lbl_tasa, is_mx=is_mx
+        ),
+        use_container_width=True,
+    )
 
     st.markdown("#### Portafolio Óptimo Global (Máximo Sharpe Absoluto)")
     cols_sh = [
@@ -1519,7 +1523,7 @@ with tab_port_enf:
 
   # TABLA DE ACCIONES QUE SALIERON MÁS (STOP-LOSS -10% INDIVIDUAL)
   st.subheader(
-      "🛡️ Ranking de Salidas por Stop-Loss (-10% Individual → Refugio en CETES)"
+      "🛡️ Ranking de Salidas por Stop-Loss (-10% Individual → Refugio en CETES / T-Bills)"
   )
   filas_sl = []
   for emp, cnt in sl_mx_c.items():
@@ -2009,7 +2013,7 @@ with tab_anexo:
   )
   st.latex(
       r"V_{i,\text{final}} = \begin{cases} C_{i,0} (1 - 0.10) \cdot"
-      r" \left(1 + \frac{\bar{r}_{\text{CETES}}}{360}\right)^{D - t^*} &"
+      r" \left(1 + \frac{\bar{r}_{\text{CETES/T-Bills}}}{360}\right)^{D - t^*} &"
       r" \text{si } \sum_{d=1}^{t^*} \tilde{r}_{i,d} \le -0.10 \\ C_{i,0}"
       r" \cdot \exp\left(\sum_{d=1}^{D} \tilde{r}_{i,d}\right) & \text{en"
       r" otro caso} \end{cases}"

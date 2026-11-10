@@ -518,7 +518,7 @@ def construir_figura_animada_con_minima(
               size=4,
               color=[],
               colorscale="Viridis",
-              showscale=True,
+              showscale=False,
               colorbar=dict(title="Retorno", len=0.7),
               opacity=0.6,
           ),

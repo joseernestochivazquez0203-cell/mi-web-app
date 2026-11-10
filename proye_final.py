@@ -15,7 +15,8 @@ st.set_page_config(
 )
 
 # Estilo CSS personalizado para las cajitas de selección
-st.markdown("""
+st.markdown(
+    """
     <style>
     .stock-card {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -27,14 +28,17 @@ st.markdown("""
         margin-bottom: 5px;
     }
     </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 st.title(
     "📊 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
 )
 st.markdown(
     "Modelo cuantitativo multianual con Markowitz, Frontera Eficiente, Simulación"
-    " Monte Carlo, Bootstrapping (10,000 corridas), Stop-Loss Individual y Métricas de Riesgo."
+    " Monte Carlo, Bootstrapping (10,000 corridas), Stop-Loss Individual y"
+    " Métricas de Riesgo."
 )
 
 # ==============================================================================
@@ -91,15 +95,39 @@ st.sidebar.info(
 # 2. LISTAS DE 15 EMPRESAS DISPONIBLES PARA CADA PAÍS (PARA LAS CAJITAS)
 # ==============================================================================
 opciones_mx = [
-    "LAMOSA.MX", "WALMEX.MX", "AMXB.MX", "BIMBOA.MX", "FEMSAUBD.MX",
-    "ALFAA.MX", "CEMEXCPO.MX", "GENTERA.MX", "GCARSOA.MX", "ELEKTRA.MX",
-    "ASURB.MX", "GAPB.MX", "OMAB.MX", "KOFUBL.MX", "PINFRA.MX",
+    "LAMOSA.MX",
+    "WALMEX.MX",
+    "AMXB.MX",
+    "BIMBOA.MX",
+    "FEMSAUBD.MX",
+    "ALFAA.MX",
+    "CEMEXCPO.MX",
+    "GENTERA.MX",
+    "GCARSOA.MX",
+    "ELEKTRA.MX",
+    "ASURB.MX",
+    "GAPB.MX",
+    "OMAB.MX",
+    "KOFUBL.MX",
+    "PINFRA.MX",
 ]
 
 opciones_usa = [
-    "MSFT", "AAPL", "GOOGL", "AMZN", "NVDA",
-    "TSLA", "META", "NFLX", "AMD", "INTC",
-    "QCOM", "IBM", "ORCL", "JPM", "V",
+    "MSFT",
+    "AAPL",
+    "GOOGL",
+    "AMZN",
+    "NVDA",
+    "TSLA",
+    "META",
+    "NFLX",
+    "AMD",
+    "INTC",
+    "QCOM",
+    "IBM",
+    "ORCL",
+    "JPM",
+    "V",
 ]
 
 # ==============================================================================
@@ -148,15 +176,21 @@ st.markdown("---")
 
 fechas_horizontes = {
     "1 año": {
-        "inicio": (fecha_inicio_sim - datetime.timedelta(days=365)).strftime("%Y-%m-%d"),
+        "inicio": (fecha_inicio_sim - datetime.timedelta(days=365)).strftime(
+            "%Y-%m-%d"
+        ),
         "fin": fecha_inicio_sim.strftime("%Y-%m-%d"),
     },
     "2 años": {
-        "inicio": (fecha_inicio_sim - datetime.timedelta(days=730)).strftime("%Y-%m-%d"),
+        "inicio": (fecha_inicio_sim - datetime.timedelta(days=730)).strftime(
+            "%Y-%m-%d"
+        ),
         "fin": fecha_inicio_sim.strftime("%Y-%m-%d"),
     },
     "3 años": {
-        "inicio": (fecha_inicio_sim - datetime.timedelta(days=1095)).strftime("%Y-%m-%d"),
+        "inicio": (fecha_inicio_sim - datetime.timedelta(days=1095)).strftime(
+            "%Y-%m-%d"
+        ),
         "fin": fecha_inicio_sim.strftime("%Y-%m-%d"),
     },
 }
@@ -429,10 +463,26 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       cols_activas_usa_3,
   ) = res_usa_3
 
-min_mx_1.index, min_mx_2.index, min_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
-max_mx_1.index, max_mx_2.index, max_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
-min_usa_1.index, min_usa_2.index, min_usa_3.index = ["1 año"], ["2 años"], ["3 años"]
-max_usa_1.index, max_usa_2.index, max_usa_3.index = ["1 año"], ["2 años"], ["3 años"]
+min_mx_1.index, min_mx_2.index, min_mx_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
+max_mx_1.index, max_mx_2.index, max_mx_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
+min_usa_1.index, min_usa_2.index, min_usa_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
+max_usa_1.index, max_usa_2.index, max_usa_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
 
 
 # ==============================================================================
@@ -861,13 +911,17 @@ def generar_simulacion_y_estadisticos(
       a_t + np.sqrt(u_t * (b_t - a_t) * (c_t - a_t)),
       c_t - np.sqrt((1 - u_t) * (c_t - a_t) * (c_t - b_t)),
   )
-  val_final_tbills_usd = monto_tbills_usd * np.prod(1 + tasas_tbills / 360, axis=1)
+  val_final_tbills_usd = monto_tbills_usd * np.prod(
+      1 + tasas_tbills / 360, axis=1
+  )
 
   # --- Tipo de Cambio (Weibull) ---
   u_tc = np.random.uniform(0.001, 0.999, size=num_simulaciones_futuras)
   tc_final = scale_lambda * (u_tc / (1 - u_tc)) ** (1 / shape_k)
 
-  val_final_usa_total_mxn = (val_final_usa_acc_usd + val_final_tbills_usd) * tc_final
+  val_final_usa_total_mxn = (
+      val_final_usa_acc_usd + val_final_tbills_usd
+  ) * tc_final
   val_final_cetes_total = (
       val_final_cetes_base + val_extra_cetes_mx + val_extra_cetes_usa_mxn
   )
@@ -893,21 +947,19 @@ def generar_simulacion_y_estadisticos(
   )
   rend_cambiario = (tc_final - tc_inicial) / tc_inicial
 
-  # --- CÁLCULO EN PESOS ($) PARA CUTOFF Y VAR ---
-  # Cutoff monetario: Percentil del valor final en pesos
-  cutoff_val_pesos = np.percentile(val_final_global_mxn, alpha * 100)
-  # VaR monetario: Capital inicial - Cutoff monetario (o pérdida monetaria en ese cuantil)
-  var_val_pesos = capital_total - cutoff_val_pesos
+  # --- VALORES FINALES EN PESOS (MXN) PARA CADA COMPONENTE ---
+  val_mx_total_mxn = val_final_mx_acc + val_extra_cetes_mx
+  val_usa_total_mxn = (
+      val_final_usa_acc_usd * tc_final
+  ) + val_extra_cetes_usa_mxn
+  val_cetes_total_mxn = val_final_cetes_base
+  val_cambiario_mxn = (monto_usa_acc_usd + monto_tbills_usd) * tc_final
 
-  def calcular_fila_stats(arr, val_arr=None):
+  def calcular_fila_stats(arr, val_arr):
     rend = np.mean(arr)
     riesgo = np.std(arr)
-    if val_arr is not None:
-      cutoff = np.percentile(val_arr, alpha * 100)
-      var_alpha = np.mean(val_arr) - cutoff
-    else:
-      cutoff = np.percentile(arr, alpha * 100)
-      var_alpha = rend - cutoff
+    cutoff = np.percentile(val_arr, alpha * 100)
+    var_alpha = np.mean(val_arr) - cutoff
     q1 = np.percentile(arr, 25)
     q2 = np.median(arr)
     q3 = np.percentile(arr, 75)
@@ -924,11 +976,11 @@ def generar_simulacion_y_estadisticos(
     ]
 
   filas_stats = [
-      calcular_fila_stats(rend_global, val_arr=val_final_global_mxn),
-      calcular_fila_stats(rend_mx_acc),
-      calcular_fila_stats(rend_usa_usd),
-      calcular_fila_stats(rend_cetes),
-      calcular_fila_stats(rend_cambiario),
+      calcular_fila_stats(rend_global, val_final_global_mxn),
+      calcular_fila_stats(rend_mx_acc, val_mx_total_mxn),
+      calcular_fila_stats(rend_usa_usd, val_usa_total_mxn),
+      calcular_fila_stats(rend_cetes, val_cetes_total_mxn),
+      calcular_fila_stats(rend_cambiario, val_cambiario_mxn),
   ]
 
   df_estadisticos = pd.DataFrame(
@@ -1204,7 +1256,8 @@ with tab_mx:
         use_container_width=True,
     )
     st.markdown(
-        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3 Años)"
+        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
+        " Años)"
     )
     st.dataframe(
         pd.concat([max_mx_1, max_mx_2, max_mx_3])[
@@ -1280,7 +1333,8 @@ with tab_usa:
         use_container_width=True,
     )
     st.markdown(
-        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3 Años)"
+        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
+        " Años)"
     )
     st.dataframe(
         pd.concat([max_usa_1, max_usa_2, max_usa_3])[
@@ -1471,8 +1525,7 @@ with tab_port_enf:
       "📊 Tabla de Estadísticos & Riesgo (10,000 Simulaciones Bootstrapping +"
       " Stop-Loss Individual 10%)"
   )
-  
-  # Formato personalizado: Las primeras dos filas de Cutoff y VaR (índice 0) van en moneda ($), el resto en porcentaje (%)
+
   def formateador_tabla_riesgo(val, col_name):
     if isinstance(val, (int, float)):
       if "CUTOFF" in col_name or "VAR" in col_name:
@@ -1482,9 +1535,10 @@ with tab_port_enf:
     return val
 
   st.dataframe(
-      df_est_enf.style.format(
-          {col: lambda v, c=col: formateador_tabla_riesgo(v, c) for col in df_est_enf.columns}
-      ),
+      df_est_enf.style.format({
+          col: lambda v, c=col: formateador_tabla_riesgo(v, c)
+          for col in df_est_enf.columns
+      }),
       use_container_width=True,
   )
 
@@ -1566,7 +1620,9 @@ with tab_port_enf:
       ),
       color_discrete_sequence=["#2980b9"],
   )
-  fig_hist.update_layout(xaxis_title="Valor Final (MXN)", template="plotly_white")
+  fig_hist.update_layout(
+      xaxis_title="Valor Final (MXN)", template="plotly_white"
+  )
   st.plotly_chart(fig_hist, use_container_width=True)
 
   # VIOLIN PLOT Y GRÁFICA DE RENDIMIENTOS (LADO A LADO)
@@ -1970,8 +2026,8 @@ with tab_anexo:
         r" \end{cases}"
     )
     st.markdown("### 4. Métricas de Riesgo (Cutoff & VaR)")
-    st.latex(r"Cutoff_{\alpha} = Q_{\alpha}(R_{global})")
-    st.latex(r"VaR_{\alpha} = \mu_{global} - Cutoff_{\alpha}")
+    st.latex(r"Cutoff_{\alpha} = Q_{\alpha}(V_{final})")
+    st.latex(r"VaR_{\alpha} = \mathbb{E}[V_{final}] - Cutoff_{\alpha}")
 
   st.markdown("---")
   st.markdown("### 5. Tipo de Cambio Estocástico (Distribución Weibull)")

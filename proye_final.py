@@ -499,7 +499,7 @@ def calcular_capitales_dinamicos(
 
 
 # ==============================================================================
-# 6. CONSTRUCTOR DE GRÁFICA ANIMADA (CON ALTURA DE 700px Y SIN BARRA LATERAL)
+# 6. CONSTRUCTOR DE GRÁFICA ANIMADA 
 # ==============================================================================
 def construir_figura_animada_con_minima(
     datos_anim,
@@ -1117,10 +1117,6 @@ with tab_mx:
     )
 
     st.subheader(f"6. Optimización por Ratio de Sharpe ({titulo_h})")
-    st.info(
-        "ℹ️ Simulación Monte Carlo paso a paso (50 iteraciones fluidas con"
-        " animación)."
-    )
     st.plotly_chart(
         construir_figura_animada_con_minima(
             anim_data, min_port, cols_activas, titulo_h, lbl_tasa, is_mx=is_mx

@@ -15,8 +15,7 @@ st.set_page_config(
 )
 
 # Estilo CSS personalizado para las cajitas de selección
-st.markdown(
-    """
+st.markdown("""
     <style>
     .stock-card {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -28,17 +27,14 @@ st.markdown(
         margin-bottom: 5px;
     }
     </style>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
 st.title(
     "📊 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
 )
 st.markdown(
     "Modelo cuantitativo multianual con Markowitz, Frontera Eficiente, Simulación"
-    " Monte Carlo, Bootstrapping (10,000 corridas), Stop-Loss Individual y"
-    " Métricas de Riesgo."
+    " Monte Carlo, Bootstrapping (10,000 corridas), Stop-Loss Individual y Métricas de Riesgo."
 )
 
 # ==============================================================================
@@ -95,39 +91,15 @@ st.sidebar.info(
 # 2. LISTAS DE 15 EMPRESAS DISPONIBLES PARA CADA PAÍS (PARA LAS CAJITAS)
 # ==============================================================================
 opciones_mx = [
-    "LAMOSA.MX",
-    "WALMEX.MX",
-    "AMXB.MX",
-    "BIMBOA.MX",
-    "FEMSAUBD.MX",
-    "ALFAA.MX",
-    "CEMEXCPO.MX",
-    "GENTERA.MX",
-    "GCARSOA.MX",
-    "ELEKTRA.MX",
-    "ASURB.MX",
-    "GAPB.MX",
-    "OMAB.MX",
-    "KOFUBL.MX",
-    "PINFRA.MX",
+    "LAMOSA.MX", "WALMEX.MX", "AMXB.MX", "BIMBOA.MX", "FEMSAUBD.MX",
+    "ALFAA.MX", "CEMEXCPO.MX", "GENTERA.MX", "GCARSOA.MX", "ELEKTRA.MX",
+    "ASURB.MX", "GAPB.MX", "OMAB.MX", "KOFUBL.MX", "PINFRA.MX",
 ]
 
 opciones_usa = [
-    "MSFT",
-    "AAPL",
-    "GOOGL",
-    "AMZN",
-    "NVDA",
-    "TSLA",
-    "META",
-    "NFLX",
-    "AMD",
-    "INTC",
-    "QCOM",
-    "IBM",
-    "ORCL",
-    "JPM",
-    "V",
+    "MSFT", "AAPL", "GOOGL", "AMZN", "NVDA",
+    "TSLA", "META", "NFLX", "AMD", "INTC",
+    "QCOM", "IBM", "ORCL", "JPM", "V",
 ]
 
 # ==============================================================================
@@ -176,21 +148,15 @@ st.markdown("---")
 
 fechas_horizontes = {
     "1 año": {
-        "inicio": (fecha_inicio_sim - datetime.timedelta(days=365)).strftime(
-            "%Y-%m-%d"
-        ),
+        "inicio": (fecha_inicio_sim - datetime.timedelta(days=365)).strftime("%Y-%m-%d"),
         "fin": fecha_inicio_sim.strftime("%Y-%m-%d"),
     },
     "2 años": {
-        "inicio": (fecha_inicio_sim - datetime.timedelta(days=730)).strftime(
-            "%Y-%m-%d"
-        ),
+        "inicio": (fecha_inicio_sim - datetime.timedelta(days=730)).strftime("%Y-%m-%d"),
         "fin": fecha_inicio_sim.strftime("%Y-%m-%d"),
     },
     "3 años": {
-        "inicio": (fecha_inicio_sim - datetime.timedelta(days=1095)).strftime(
-            "%Y-%m-%d"
-        ),
+        "inicio": (fecha_inicio_sim - datetime.timedelta(days=1095)).strftime("%Y-%m-%d"),
         "fin": fecha_inicio_sim.strftime("%Y-%m-%d"),
     },
 }
@@ -463,26 +429,10 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       cols_activas_usa_3,
   ) = res_usa_3
 
-min_mx_1.index, min_mx_2.index, min_mx_3.index = (
-    ["1 año"],
-    ["2 años"],
-    ["3 años"],
-)
-max_mx_1.index, max_mx_2.index, max_mx_3.index = (
-    ["1 año"],
-    ["2 años"],
-    ["3 años"],
-)
-min_usa_1.index, min_usa_2.index, min_usa_3.index = (
-    ["1 año"],
-    ["2 años"],
-    ["3 años"],
-)
-max_usa_1.index, max_usa_2.index, max_usa_3.index = (
-    ["1 año"],
-    ["2 años"],
-    ["3 años"],
-)
+min_mx_1.index, min_mx_2.index, min_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
+max_mx_1.index, max_mx_2.index, max_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
+min_usa_1.index, min_usa_2.index, min_usa_3.index = ["1 año"], ["2 años"], ["3 años"]
+max_usa_1.index, max_usa_2.index, max_usa_3.index = ["1 año"], ["2 años"], ["3 años"]
 
 
 # ==============================================================================
@@ -935,11 +885,15 @@ def generar_simulacion_y_estadisticos(
       if monto_mx_acc > 0
       else np.zeros_like(rend_global)
   )
+  
+  # CORRECCIÓN DE RENDIMIENTO EN DÓLARES (INCLUYENDO CETES REFUGIO)
+  val_usa_total_neto = val_final_usa_acc_usd + (val_extra_cetes_usa_mxn / tc_inicial)
   rend_usa_usd = (
-      (val_final_usa_acc_usd - monto_usa_acc_usd) / monto_usa_acc_usd
+      (val_usa_total_neto - monto_usa_acc_usd) / monto_usa_acc_usd
       if monto_usa_acc_usd > 0
       else np.zeros_like(rend_global)
   )
+  
   rend_cetes = (
       (val_final_cetes_base - monto_cetes) / monto_cetes
       if monto_cetes > 0
@@ -949,7 +903,7 @@ def generar_simulacion_y_estadisticos(
 
   # --- VALORES FINALES EN PESOS (MXN) PARA CADA COMPONENTE ---
   val_mx_total_mxn = val_final_mx_acc + val_extra_cetes_mx
-  val_usa_total_mxn = (
+  val_usa_total_mxn_val = (
       val_final_usa_acc_usd * tc_final
   ) + val_extra_cetes_usa_mxn
   val_cetes_total_mxn = val_final_cetes_base
@@ -978,7 +932,7 @@ def generar_simulacion_y_estadisticos(
   filas_stats = [
       calcular_fila_stats(rend_global, val_final_global_mxn),
       calcular_fila_stats(rend_mx_acc, val_mx_total_mxn),
-      calcular_fila_stats(rend_usa_usd, val_usa_total_mxn),
+      calcular_fila_stats(rend_usa_usd, val_usa_total_mxn_val),
       calcular_fila_stats(rend_cetes, val_cetes_total_mxn),
       calcular_fila_stats(rend_cambiario, val_cambiario_mxn),
   ]

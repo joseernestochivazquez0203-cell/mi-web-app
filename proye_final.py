@@ -30,7 +30,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title(
-    "📊 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
+    "📊 Simulador de Portafolios"
 )
 st.markdown(
     "Modelo cuantitativo multianual con Markowitz, Frontera Eficiente, Simulación"
@@ -106,11 +106,11 @@ opciones_usa = [
 # 3. SELECTORES TIPO "CAJITA" EN LA INTERFAZ PRINCIPAL (5 POR PAÍS)
 # ==============================================================================
 st.markdown("---")
-st.subheader("🏢 Selección Interactiva de Activos (Cajitas de Exposición)")
+st.subheader("🏢 Selección Interactiva de Activos")
 col_sel_mx, col_sel_usa = st.columns(2)
 
 with col_sel_mx:
-  st.markdown("#### 🇲🇽 Selecciona 5 Activos para México (BMV)")
+  st.markdown("#### Selecciona 5 Activos para México (BMV)")
   c_mx1, c_mx2, c_mx3, c_mx4, c_mx5 = st.columns(5)
   with c_mx1:
     t1 = st.selectbox("M1", opciones_mx, index=0, key="m1")
@@ -125,7 +125,7 @@ with col_sel_mx:
   tickers_mx_list = [t1, t2, t3, t4, t5]
 
 with col_sel_usa:
-  st.markdown("#### 🇺🇸 Selecciona 5 Activos para EE. UU. (Tech/Global)")
+  st.markdown("#### Selecciona 5 Activos para EE. UU. (Tech/Global)")
   c_usa1, c_usa2, c_usa3, c_usa4, c_usa5 = st.columns(5)
   with c_usa1:
     u1 = st.selectbox("U1", opciones_usa, index=0, key="u1")
@@ -654,8 +654,9 @@ def construir_figura_animada_con_minima(
   fig.update_layout(
       title=f"Simulación Monte Carlo Paso a Paso ({titulo_horizonte})",
       template="plotly_white",
+      height=700,
       xaxis=dict(title="Volatility (Riesgo Anual)", range=[0, 1.2]),
-      yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.5, 0.5]),
+      yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.1, 0.4]),
       updatemenus=[{
           "type": "buttons",
           "buttons": [

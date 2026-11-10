@@ -654,7 +654,7 @@ def construir_figura_animada_con_minima(
   fig.update_layout(
       title=f"Simulación Monte Carlo Paso a Paso ({titulo_horizonte})",
       template="plotly_white",
-      height=300,
+      height=500,
       xaxis=dict(title="Volatility (Riesgo Anual)", range=[0, 1.2]),
       yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.1, 0.4]),
       updatemenus=[{

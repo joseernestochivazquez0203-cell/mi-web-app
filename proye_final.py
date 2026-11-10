@@ -514,7 +514,14 @@ def construir_figura_animada_con_minima(
           x=[],
           y=[],
           mode="markers",
-          marker=dict(size=3.5, color="#3498db", opacity=0.4),
+          marker=dict(
+              size=4,
+              color=[],
+              colorscale="Viridis",
+              showscale=True,
+              colorbar=dict(title="Retorno", len=0.7),
+              opacity=0.6,
+          ),
           name="Portafolios Simulados",
       )
   )
@@ -609,7 +616,9 @@ def construir_figura_animada_con_minima(
         go.Scatter(
             x=curr["nube_x"],
             y=curr["nube_y"],
-            marker=dict(size=3.5, color="#3498db"),
+            marker=dict(
+              size=4, color=curr["nube_y"], colorscale="Viridis", showscale=False
+          ),
         )
     )
     for j in range(n_pasos):
@@ -666,7 +675,7 @@ def construir_figura_animada_con_minima(
                   "args": [
                       None,
                       {
-                          "frame": {"duration": 500, "redraw": False},
+                          "frame": {"duration": 1000, "redraw": False},
                           "fromcurrent": True,
                       },
                   ],

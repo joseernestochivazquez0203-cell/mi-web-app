@@ -1772,11 +1772,8 @@ with col_g2:
   )
   st.plotly_chart(fig_evol_r, use_container_width=True)
 
-
-
-  
- # ============================================================================
-  # GRÁFICA DE RATIO DE SHARPE COMBINADO (CON TASAS LIBRES DE RIESGO ESTOCÁSTICAS / ESPERADAS)
+# ============================================================================
+  # GRÁFICA DE RATIO DE SHARPE COMBINADO (EN PUNTOS Y LEYENDA SUPERIOR)
   # ============================================================================
   st.markdown("---")
   st.subheader(
@@ -1794,13 +1791,8 @@ with col_g2:
       (w_grid * desv_mx_anual) ** 2 + ((1 - w_grid) * desv_usa_anual) ** 2
   )
 
-  # --- CÁLCULO RIGUROSO DE LA TASA LIBRE DE RIESGO ESPERADA (TRIANGULAR) ---
-  # CETES: a=0.04, b=0.08, c=0.10 -> E[X] = (a + b + c) / 3
   media_cetes = (0.04 + 0.08 + 0.10) / 3
-  
-  # T-Bills: a=0.0360, b=0.0370, c=0.0400 -> E[X] = (a + b + c) / 3
   media_tbills = (0.0360 + 0.0370 + 0.0400) / 3
-
   tasa_rf_global = media_cetes * w_mx_din + media_tbills * w_usa_din
   sharpe_comb_grid = (ret_comb_grid - tasa_rf_global) / riesgo_comb_grid
 
@@ -1865,140 +1857,143 @@ with col_g2:
       )
   )
   fig_sh_global.update_layout(
-      title=(
-          "Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)<br>"
-      ),
+      title="Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)",
       xaxis_title="Volatilidad (Riesgo Anual)",
       yaxis_title="Rendimiento Anual Esperado",
       template="plotly_white",
       legend=dict(
           orientation="h",
           yanchor="bottom",
-          y=1.02,
+          y=1.12,  # Subimos ligeramente la leyenda para que no choque con el título de la gráfica
           xanchor="center",
           x=0.5,
       ),
-      margin=dict(t=90, r=80),
+      margin=dict(t=100, r=80),
   )
   st.plotly_chart(fig_sh_global, use_container_width=True)
 
-  # TABLA DE SIMULACIÓN DIARIA ESTOCÁSTICA (CON CAPITALES DINÁMICOS)
-  st.markdown("---")
-  st.subheader(f"📈 Tabla de Simulación Diaria Estocástica ({titulo_enf})")
-  dias_muestra = 15
-  fechas_m = [
-      (fecha_inicio_sim + datetime.timedelta(days=i)).strftime("%d/%m/%Y")
-      for i in range(dias_muestra)
-  ]
 
-  tc_base = 18.44
-  val_mx = m_mx_acc
-  val_cetes = m_cetes
-  val_usa_usd = m_usa_mxn / tc_base
-  val_tb_usd = m_tbills_mxn / tc_base
+  
+# ============================================================================
+# TABLA DE SIMULACIÓN DIARIA ESTOCÁSTICA (CON CAPITALES DINÁMICOS)
+# ============================================================================
+st.markdown("---")
+st.subheader(f"📈 Tabla de Simulación Diaria Estocástica ({titulo_enf})")
+dias_muestra = 15
+fechas_m = [
+    (fecha_inicio_sim + datetime.timedelta(days=i)).strftime("%d/%m/%Y")
+    for i in range(dias_muestra)
+]
 
-  rend_h_mx = np.log(d_mx / d_mx.shift(1)).dropna()
-  act_mx_d = [
-      e for e in empresas_mx if e in s_mx.columns and e in rend_h_mx.columns
-  ]
-  port_hist_mx_demo = (
-      rend_h_mx[act_mx_d].dot(s_mx[act_mx_d].values[0]).values
-      if len(act_mx_d) > 0
-      else np.zeros(10)
+tc_base = 18.44
+val_mx = m_mx_acc
+val_cetes = m_cetes
+val_usa_usd = m_usa_mxn / tc_base
+val_tb_usd = m_tbills_mxn / tc_base
+
+rend_h_mx = np.log(d_mx / d_mx.shift(1)).dropna()
+act_mx_d = [
+    e for e in empresas_mx if e in s_mx.columns and e in rend_h_mx.columns
+]
+port_hist_mx_demo = (
+    rend_h_mx[act_mx_d].dot(s_mx[act_mx_d].values[0]).values
+    if len(act_mx_d) > 0
+    else np.zeros(10)
+)
+
+rend_h_usa = np.log(d_usa / d_usa.shift(1)).dropna()
+act_usa_d = [
+    e for e in empresas_usa if e in s_usa.columns and e in rend_h_usa.columns
+]
+port_hist_usa_demo = (
+    rend_h_usa[act_usa_d].dot(s_usa[act_usa_d].values[0]).values
+    if len(act_usa_d) > 0
+    else np.zeros(10)
+)
+
+filas_excel = []
+for idx, f in enumerate(fechas_m):
+  p_cetes = np.random.uniform(0, 1)
+  tasa_c = (
+      0.078 + np.sqrt(p_cetes * 0.002 * 0.004)
+      if p_cetes < 0.5
+      else 0.082 - np.sqrt((1 - p_cetes) * 0.004 * 0.002)
+  )
+  p_tb = np.random.uniform(0, 1)
+  tasa_t = (
+      0.0368 + np.sqrt(p_tb * 0.0002 * 0.0004)
+      if p_tb < 0.5
+      else 0.0372 - np.sqrt((1 - p_tb) * 0.0004 * 0.0002)
   )
 
-  rend_h_usa = np.log(d_usa / d_usa.shift(1)).dropna()
-  act_usa_d = [
-      e for e in empresas_usa if e in s_usa.columns and e in rend_h_usa.columns
-  ]
-  port_hist_usa_demo = (
-      rend_h_usa[act_usa_d].dot(s_usa[act_usa_d].values[0]).values
-      if len(act_usa_d) > 0
-      else np.zeros(10)
-  )
+  if idx == 0:
+    tc, rend_mx_n, rend_usa_n = tc_base, 0.0, 0.0
+  else:
+    rend_mx_n = float(np.random.choice(port_hist_mx_demo))
+    rend_usa_n = float(np.random.choice(port_hist_usa_demo))
+    val_mx *= 1 + rend_mx_n
+    val_cetes *= 1 + tasa_c / 360
+    val_usa_usd *= 1 + rend_usa_n
+    val_tb_usd *= 1 + tasa_t / 360
+    u_w = np.random.uniform(0.3, 0.7)
+    tc = 18.32123 * (u_w / (1 - u_w)) ** (1 / 28.52977)
 
-  filas_excel = []
-  for idx, f in enumerate(fechas_m):
-    p_cetes = np.random.uniform(0, 1)
-    tasa_c = (
-        0.078 + np.sqrt(p_cetes * 0.002 * 0.004)
-        if p_cetes < 0.5
-        else 0.082 - np.sqrt((1 - p_cetes) * 0.004 * 0.002)
-    )
-    p_tb = np.random.uniform(0, 1)
-    tasa_t = (
-        0.0368 + np.sqrt(p_tb * 0.0002 * 0.0004)
-        if p_tb < 0.5
-        else 0.0372 - np.sqrt((1 - p_tb) * 0.0004 * 0.0002)
-    )
+  total_usa_mxn = (val_usa_usd + val_tb_usd) * tc
+  total_global = val_mx + val_cetes + total_usa_mxn
 
-    if idx == 0:
-      tc, rend_mx_n, rend_usa_n = tc_base, 0.0, 0.0
-    else:
-      rend_mx_n = float(np.random.choice(port_hist_mx_demo))
-      rend_usa_n = float(np.random.choice(port_hist_usa_demo))
-      val_mx *= 1 + rend_mx_n
-      val_cetes *= 1 + tasa_c / 360
-      val_usa_usd *= 1 + rend_usa_n
-      val_tb_usd *= 1 + tasa_t / 360
-      u_w = np.random.uniform(0.3, 0.7)
-      tc = 18.32123 * (u_w / (1 - u_w)) ** (1 / 28.52977)
+  fila_dict = {"Fecha": f}
+  if mostrar_mx:
+    fila_dict.update({
+        "Rend. MX (Boot)": rend_mx_n,
+        "Portafolio Acc. MX ($)": val_mx,
+        "Prob CETES": p_cetes,
+        "Tasa CETES (Triang)": tasa_c,
+        "Valor CETES ($)": val_cetes,
+    })
+  if mostrar_usa:
+    fila_dict.update({
+        "Rend. USA (Boot)": rend_usa_n,
+        "Portafolio Acc. USA (USD)": val_usa_usd,
+        "Prob T-Bills": p_tb,
+        "Tasa T-Bills (Triang)": tasa_t,
+        "Valor T-Bills (USD)": val_tb_usd,
+        "Tipo Cambio USD/MXN": tc,
+        "Valor Total USA (MXN)": total_usa_mxn,
+    })
+  if enf_key == "global":
+    fila_dict["VALOR TOTAL PORTAFOLIO GLOBAL (MXN)"] = total_global
+  elif enf_key == "mexico":
+    fila_dict["VALOR TOTAL MÉXICO (MXN)"] = val_mx + val_cetes
+  else:
+    fila_dict["VALOR TOTAL USA (MXN)"] = total_usa_mxn
+  filas_excel.append(fila_dict)
 
-    total_usa_mxn = (val_usa_usd + val_tb_usd) * tc
-    total_global = val_mx + val_cetes + total_usa_mxn
+df_excel_demo = pd.DataFrame(filas_excel)
+formatos_tabla = {
+    "Rend. MX (Boot)": "{:.2%}",
+    "Portafolio Acc. MX ($)": "${:,.2f}",
+    "Prob CETES": "{:.4f}",
+    "Tasa CETES (Triang)": "{:.2%}",
+    "Valor CETES ($)": "${:,.2f}",
+    "Rend. USA (Boot)": "{:.2%}",
+    "Portafolio Acc. USA (USD)": "${:,.2f}",
+    "Prob T-Bills": "{:.4f}",
+    "Tasa T-Bills (Triang)": "{:.2%}",
+    "Valor T-Bills (USD)": "${:,.2f}",
+    "Tipo Cambio USD/MXN": "${:,.4f}",
+    "Valor Total USA (MXN)": "${:,.2f}",
+    "VALOR TOTAL PORTAFOLIO GLOBAL (MXN)": "${:,.2f}",
+    "VALOR TOTAL MÉXICO (MXN)": "${:,.2f}",
+    "VALOR TOTAL USA (MXN)": "${:,.2f}",
+}
+st.dataframe(
+    df_excel_demo.style.format(
+        {c: v for c, v in formatos_tabla.items() if c in df_excel_demo.columns}
+    ),
+    use_container_width=True,
+) 
 
-    fila_dict = {"Fecha": f}
-    if mostrar_mx:
-      fila_dict.update({
-          "Rend. MX (Boot)": rend_mx_n,
-          "Portafolio Acc. MX ($)": val_mx,
-          "Prob CETES": p_cetes,
-          "Tasa CETES (Triang)": tasa_c,
-          "Valor CETES ($)": val_cetes,
-      })
-    if mostrar_usa:
-      fila_dict.update({
-          "Rend. USA (Boot)": rend_usa_n,
-          "Portafolio Acc. USA (USD)": val_usa_usd,
-          "Prob T-Bills": p_tb,
-          "Tasa T-Bills (Triang)": tasa_t,
-          "Valor T-Bills (USD)": val_tb_usd,
-          "Tipo Cambio USD/MXN": tc,
-          "Valor Total USA (MXN)": total_usa_mxn,
-      })
-    if enf_key == "global":
-      fila_dict["VALOR TOTAL PORTAFOLIO GLOBAL (MXN)"] = total_global
-    elif enf_key == "mexico":
-      fila_dict["VALOR TOTAL MÉXICO (MXN)"] = val_mx + val_cetes
-    else:
-      fila_dict["VALOR TOTAL USA (MXN)"] = total_usa_mxn
-    filas_excel.append(fila_dict)
-
-  df_excel_demo = pd.DataFrame(filas_excel)
-  formatos_tabla = {
-      "Rend. MX (Boot)": "{:.2%}",
-      "Portafolio Acc. MX ($)": "${:,.2f}",
-      "Prob CETES": "{:.4f}",
-      "Tasa CETES (Triang)": "{:.2%}",
-      "Valor CETES ($)": "${:,.2f}",
-      "Rend. USA (Boot)": "{:.2%}",
-      "Portafolio Acc. USA (USD)": "${:,.2f}",
-      "Prob T-Bills": "{:.4f}",
-      "Tasa T-Bills (Triang)": "{:.2%}",
-      "Valor T-Bills (USD)": "${:,.2f}",
-      "Tipo Cambio USD/MXN": "${:,.4f}",
-      "Valor Total USA (MXN)": "${:,.2f}",
-      "VALOR TOTAL PORTAFOLIO GLOBAL (MXN)": "${:,.2f}",
-      "VALOR TOTAL MÉXICO (MXN)": "${:,.2f}",
-      "VALOR TOTAL USA (MXN)": "${:,.2f}",
-  }
-  st.dataframe(
-      df_excel_demo.style.format(
-          {c: v for c, v in formatos_tabla.items() if c in df_excel_demo.columns}
-      ),
-      use_container_width=True,
-  )
-
+  
 
 # ==============================================================================
 # PESTAÑA 4: MODELO EXCEL ESTOCÁSTICO & TÍTULOS

@@ -789,7 +789,8 @@ def generar_simulacion_y_estadisticos(
       a_t + np.sqrt(u_t * (b_t - a_t) * (c_t - a_t)),
       c_t - np.sqrt((1 - u_t) * (c_t - a_t) * (c_t - b_t)),
   )
-  val_final_tbills_usd = (monto_tbills_mxn / tc_inicial) * np.prod(
+  monto_tbills_usd = monto_tbills_mxn / tc_inicial
+  val_final_tbills_usd = monto_tbills_usd * np.prod(
       1 + tasas_tbills / 360, axis=1
   )
 
@@ -836,7 +837,7 @@ def generar_simulacion_y_estadisticos(
   # EE. UU.
   monto_usa_acc_usd = monto_usa_acc_mxn / tc_inicial
   val_final_usa_acc_usd = np.zeros(num_simulaciones_futuras)
-  val_extra_tbills_usa_mxn = np.zeros(num_simulaciones_futuras)
+  val_extra_tbills_usa_usd = np.zeros(num_simulaciones_futuras)
   conteo_salidas_usa = {}
 
   if monto_usa_acc_usd > 0:
@@ -869,56 +870,62 @@ def generar_simulacion_y_estadisticos(
       val_no_salio = cap_emp_usd * np.exp(r_acum[:, -1])
 
       dias_restantes = np.maximum(0, n_dias - dia_salida)
-      cap_refugiado_mxn = ((cap_emp_usd * tc_inicial) * (1 + stop_loss)) * (
+      cap_refugiado_usd = (cap_emp_usd * (1 + stop_loss)) * (
           (1 + tasa_prom_tbills / 360) ** dias_restantes
       )
 
       val_final_usa_acc_usd += np.where(salio, 0.0, val_no_salio)
-      val_extra_tbills_usa_mxn += np.where(salio, cap_refugiado_mxn, 0.0)
+      val_extra_tbills_usa_usd += np.where(salio, cap_refugiado_usd, 0.0)
 
   # TIPO DE CAMBIO
   u_tc = np.random.uniform(0.001, 0.999, size=num_simulaciones_futuras)
   tc_final = scale_lambda * (u_tc / (1 - u_tc)) ** (1 / shape_k)
 
-  val_final_usa_total_mxn = (
-      val_final_usa_acc_usd * tc_final
-  ) + val_final_tbills_usd * tc_final + val_extra_tbills_usa_mxn
+  # VALORES EN USD PUROS (SIN EFECTO CAMBIARIO)
+  val_usa_rv_total_usd = val_final_usa_acc_usd + val_extra_tbills_usa_usd
+  val_usa_total_usd = val_usa_rv_total_usd + val_final_tbills_usd
+
+  # VALORES EN MXN
+  val_final_usa_total_mxn = val_usa_total_usd * tc_final
   val_final_cetes_total = val_final_cetes_base + val_extra_cetes_mx
   val_final_global_mxn = (
       val_final_mx_acc + val_final_cetes_total + val_final_usa_total_mxn
   )
 
+  # RENDIMIENTOS PORCENTUALES
   rend_global = (val_final_global_mxn - capital_total) / capital_total
   rend_mx_acc = (
       ((val_final_mx_acc + val_extra_cetes_mx) - monto_mx_acc) / monto_mx_acc
       if monto_mx_acc > 0
       else np.zeros_like(rend_global)
   )
-
-  val_usa_total_neto = val_final_usa_acc_usd + (
-      val_extra_tbills_usa_mxn / tc_inicial
-  )
   rend_usa_usd = (
-      (val_usa_total_neto - monto_usa_acc_usd) / monto_usa_acc_usd
+      (val_usa_rv_total_usd - monto_usa_acc_usd) / monto_usa_acc_usd
       if monto_usa_acc_usd > 0
       else np.zeros_like(rend_global)
   )
-
   rend_cetes = (
       (val_final_cetes_base - monto_cetes) / monto_cetes
       if monto_cetes > 0
       else np.zeros_like(rend_global)
   )
+  rend_tbills = (
+      (val_final_tbills_usd - monto_tbills_usd) / monto_tbills_usd
+      if monto_tbills_usd > 0
+      else np.zeros_like(rend_global)
+  )
   rend_cambiario = (tc_final - tc_inicial) / tc_inicial
 
+  # VALORES NOMINALES FINALES (MXN y USD)
   val_mx_total_mxn = val_final_mx_acc + val_extra_cetes_mx
-  val_usa_total_mxn_val = (
-      val_final_usa_acc_usd * tc_final
-  ) + val_extra_tbills_usa_mxn
+  val_usa_rv_mxn_val = val_usa_rv_total_usd * tc_final
   val_cetes_total_mxn = val_final_cetes_base
-  val_cambiario_mxn = (
-      monto_usa_acc_usd + (monto_tbills_mxn / tc_inicial)
-  ) * tc_final
+  val_tbills_mxn_val = val_final_tbills_usd * tc_final
+
+  # DIFERENCIA CAMBIARIA PURA EN MXN (INCLUYENDO RENTA VARIABLE USA + T-BILLS)
+  # Si el portafolio USA sin cambio vale $400,000 y con cambio $415,000 -> diferencia = +$15,000
+  val_usa_sin_cambio_mxn = val_usa_total_usd * tc_inicial
+  diff_cambiaria_mxn = val_final_usa_total_mxn - val_usa_sin_cambio_mxn
 
   def calcular_fila_stats(arr, val_arr):
     rend = np.mean(arr)
@@ -940,7 +947,7 @@ def generar_simulacion_y_estadisticos(
         np.min(arr),
     ]
 
-  def calcular_fila_stats_nominal(val_arr, alpha):
+  def calcular_fila_stats_nominal(val_arr, alpha, es_diferencia=False):
     rend_nom = np.mean(val_arr)
     riesgo_nom = np.std(val_arr)
     cutoff = np.percentile(val_arr, alpha * 100)
@@ -965,26 +972,31 @@ def generar_simulacion_y_estadisticos(
   filas_stats = [
       calcular_fila_stats(rend_global, val_final_global_mxn),
       calcular_fila_stats(rend_mx_acc, val_mx_total_mxn),
-      calcular_fila_stats(rend_usa_usd, val_usa_total_mxn_val),
+      calcular_fila_stats(rend_usa_usd, val_usa_rv_mxn_val),
       calcular_fila_stats(rend_cetes, val_cetes_total_mxn),
-      calcular_fila_stats(rend_cambiario, val_cambiario_mxn),
+      calcular_fila_stats(rend_tbills, val_tbills_mxn_val),
+      calcular_fila_stats(rend_cambiario, diff_cambiaria_mxn),
   ]
 
   filas_stats_nominal = [
       calcular_fila_stats_nominal(val_final_global_mxn, alpha),
       calcular_fila_stats_nominal(val_mx_total_mxn, alpha),
-      calcular_fila_stats_nominal(val_usa_total_mxn_val, alpha),
+      calcular_fila_stats_nominal(val_usa_rv_mxn_val, alpha),
+      calcular_fila_stats_nominal(val_usa_rv_total_usd, alpha),
       calcular_fila_stats_nominal(val_cetes_total_mxn, alpha),
-      calcular_fila_stats_nominal(val_cambiario_mxn, alpha),
+      calcular_fila_stats_nominal(val_tbills_mxn_val, alpha),
+      calcular_fila_stats_nominal(val_final_tbills_usd, alpha),
+      calcular_fila_stats_nominal(diff_cambiaria_mxn, alpha),
   ]
 
   df_estadisticos = pd.DataFrame(
       filas_stats,
       index=[
-          "Portafolio Global Final",
-          "Portafolio Renta Variable México",
-          "Portafolio Renta Variable EE. UU.",
-          "Portafolio Renta Fija (CETES)",
+          "Portafolio Global Final (MXN)",
+          "Portafolio Renta Variable México (MXN)",
+          "Portafolio Renta Variable EE. UU. (MXN)",
+          "Portafolio Renta Fija CETES (MXN)",
+          "Portafolio Renta Fija T-Bills (MXN)",
           "Efecto Rendimiento Cambiario",
       ],
       columns=[
@@ -1003,14 +1015,17 @@ def generar_simulacion_y_estadisticos(
   df_estadisticos_nominal = pd.DataFrame(
       filas_stats_nominal,
       index=[
-          "Portafolio Global Final",
-          "Portafolio Renta Variable México",
-          "Portafolio Renta Variable EE. UU.",
-          "Portafolio Renta Fija (CETES)",
-          "Efecto Rendimiento Cambiario",
+          "Portafolio Global Final (MXN)",
+          "Portafolio Renta Variable México (MXN)",
+          "Portafolio Renta Variable EE. UU. (MXN)",
+          "Portafolio Renta Variable EE. UU. (USD)",
+          "Portafolio Renta Fija CETES (MXN)",
+          "Portafolio Renta Fija T-Bills (MXN)",
+          "Portafolio Renta Fija T-Bills (USD)",
+          "Diferencia Cambiaria Neta (RV USA + T-Bills en MXN)",
       ],
       columns=[
-          "rendimiento",
+          "valor_esperado",
           "riesgo",
           f"{alpha*100:.1f}% CUTOFF",
           f"{alpha*100:.1f}% VAR",
@@ -1029,6 +1044,7 @@ def generar_simulacion_y_estadisticos(
       "Inicio del Dólar": tc_inicial,
       "Final del Dólar": tc_final,
       "Ganancia Cambiaria": rend_cambiario,
+      "Diferencia Cambiaria (MXN)": diff_cambiaria_mxn,
       "Rendimiento Global": rend_global,
   })
 
@@ -1538,9 +1554,10 @@ with tab_port_enf:
       use_container_width=True,
   )
 
-  # TABLA 2: EN CANTIDADES NOMINALES (MXN)
+  # TABLA 2: EN CANTIDADES NOMINALES (MXN y USD)
   st.subheader(
-      "💵 Tabla de Estadísticos & Riesgo en Cantidades Nominales (MXN)"
+      "💵 Tabla de Estadísticos & Riesgo en Cantidades Nominales (MXN, USD y"
+      " Diferencia Cambiaria Neta)"
   )
 
   def formateador_tabla_nominal(val):
@@ -1611,6 +1628,7 @@ with tab_port_enf:
           "Inicio del Dólar": "${:,.2f}",
           "Final del Dólar": "${:,.2f}",
           "Ganancia Cambiaria": "{:.2%}",
+          "Diferencia Cambiaria (MXN)": "${:,.2f}",
           "Rendimiento Global": "{:.2%}",
       }),
       use_container_width=True,

@@ -1598,34 +1598,33 @@ st.markdown("---")
   st.subheader(
       f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
   )
-
-  st.markdown("---")
-    st.subheader(
-        f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
+st.markdown("---")
+st.subheader(
+    f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
     )
 
-    # 1. HISTOGRAMA DEL VALOR FINAL CON ESTADÍSTICOS INCRUSTADOS (MEDIA, MODA, MEDIANA, CUANTILES)
-    media_val = np.mean(val_enf_sim)
-    mediana_val = np.median(val_enf_sim)
-    q1_val = np.percentile(val_enf_sim, 25)
-    q3_val = np.percentile(val_enf_sim, 75)
-    cutoff_val = np.percentile(val_enf_sim, alpha_nivel * 100)
+# 1. HISTOGRAMA DEL VALOR FINAL CON ESTADÍSTICOS INCRUSTADOS (MEDIA, MODA, MEDIANA, CUANTILES)
+media_val = np.mean(val_enf_sim)
+mediana_val = np.median(val_enf_sim)
+q1_val = np.percentile(val_enf_sim, 25)
+q3_val = np.percentile(val_enf_sim, 75)
+cutoff_val = np.percentile(val_enf_sim, alpha_nivel * 100)
 
     # Cálculo de la moda estimada (centro del bin con mayor frecuencia en 50 bins)
-    conteos, bordes = np.histogram(val_enf_sim, bins=50)
-    idx_moda = np.argmax(conteos)
-    moda_val = (bordes[idx_moda] + bordes[idx_moda + 1]) / 2
+conteos, bordes = np.histogram(val_enf_sim, bins=50)
+idx_moda = np.argmax(conteos)
+moda_val = (bordes[idx_moda] + bordes[idx_moda + 1]) / 2
 
-    fig_hist = px.histogram(
-        x=val_enf_sim,
-        nbins=50,
-        labels={"x": "Valor Final en MXN"},
-        title=(
-            "Distribución de Probabilidad del Valor Final (10,000 Corridas"
-            " Bootstrap)"
-        ),
-        color_discrete_sequence=["#2980b9"],
-        opacity=0.75,
+fig_hist = px.histogram(
+    x=val_enf_sim,
+    nbins=50,
+    labels={"x": "Valor Final en MXN"},
+    title=(
+        "Distribución de Probabilidad del Valor Final (10,000 Corridas"
+        " Bootstrap)"
+    ),
+    color_discrete_sequence=["#2980b9"],
+    opacity=0.75,
     )
 
     # Líneas verticales para cada estadístico

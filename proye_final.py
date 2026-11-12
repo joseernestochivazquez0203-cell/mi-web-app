@@ -1645,8 +1645,8 @@ with tab_port_enf:
     )
     st.plotly_chart(fig_10k_mov, use_container_width=True)
 
-  # ============================================================================
-  # GRÁFICA DE RATIO DE SHARPE COMBINADO (EN PUNTOS Y LEYENDA SUPERIOR)
+ # ============================================================================
+  # GRÁFICA DE RATIO DE SHARPE COMBINADO (CON TASAS LIBRES DE RIESGO ESTOCÁSTICAS / ESPERADAS)
   # ============================================================================
   st.markdown("---")
   st.subheader(
@@ -1663,7 +1663,15 @@ with tab_port_enf:
   riesgo_comb_grid = np.sqrt(
       (w_grid * desv_mx_anual) ** 2 + ((1 - w_grid) * desv_usa_anual) ** 2
   )
-  tasa_rf_global = 0.08 * w_mx_din + 0.037 * w_usa_din
+
+  # --- CÁLCULO RIGUROSO DE LA TASA LIBRE DE RIESGO ESPERADA (TRIANGULAR) ---
+  # CETES: a=0.04, b=0.08, c=0.10 -> E[X] = (a + b + c) / 3
+  media_cetes = (0.04 + 0.08 + 0.10) / 3
+  
+  # T-Bills: a=0.0360, b=0.0370, c=0.0400 -> E[X] = (a + b + c) / 3
+  media_tbills = (0.0360 + 0.0370 + 0.0400) / 3
+
+  tasa_rf_global = media_cetes * w_mx_din + media_tbills * w_usa_din
   sharpe_comb_grid = (ret_comb_grid - tasa_rf_global) / riesgo_comb_grid
 
   idx_best_sh = np.argmax(sharpe_comb_grid)
@@ -1727,7 +1735,9 @@ with tab_port_enf:
       )
   )
   fig_sh_global.update_layout(
-      title="Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)",
+      title=(
+          "Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)<br>"
+      ),
       xaxis_title="Volatilidad (Riesgo Anual)",
       yaxis_title="Rendimiento Anual Esperado",
       template="plotly_white",

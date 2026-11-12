@@ -1774,101 +1774,106 @@ with col_g2:
 
 
  # ============================================================================
-  # GRÁFICA DE RATIO DE SHARPE COMBINADO (EN PUNTOS Y LEYENDA SUPERIOR)
-  # ============================================================================
-  st.markdown("---")
-  st.subheader(
-      "📈 Gráfica de Optimización Ratio de Sharpe (Portafolio Combinado MX +"
-      " USA)"
-  )
-  rp_mx_anual = s_mx["Rp"].values[0]
-  desv_mx_anual = s_mx["des_p"].values[0]
-  rp_usa_anual = s_usa["Rp"].values[0]
-  desv_usa_anual = s_usa["des_p"].values[0]
+# GRÁFICA DE RATIO DE SHARPE COMBINADO (ANCHO COMPLETO Y LEYENDA SUPERIOR)
+# ============================================================================
+st.markdown("---")
+st.subheader(
+    "📈 Gráfica de Optimización Ratio de Sharpe (Portafolio Combinado MX +"
+    " USA)"
+)
+rp_mx_anual = s_mx["Rp"].values[0]
+desv_mx_anual = s_mx["des_p"].values[0]
+rp_usa_anual = s_usa["Rp"].values[0]
+desv_usa_anual = s_usa["des_p"].values[0]
 
-  w_grid = np.linspace(0, 1, 60)
-  ret_comb_grid = w_grid * rp_mx_anual + (1 - w_grid) * rp_usa_anual
-  riesgo_comb_grid = np.sqrt(
-      (w_grid * desv_mx_anual) ** 2 + ((1 - w_grid) * desv_usa_anual) ** 2
-  )
-  tasa_rf_global = 0.08 * w_mx_din + 0.037 * w_usa_din
-  sharpe_comb_grid = (ret_comb_grid - tasa_rf_global) / riesgo_comb_grid
+w_grid = np.linspace(0, 1, 60)
+ret_comb_grid = w_grid * rp_mx_anual + (1 - w_grid) * rp_usa_anual
+riesgo_comb_grid = np.sqrt(
+    (w_grid * desv_mx_anual) ** 2 + ((1 - w_grid) * desv_usa_anual) ** 2
+)
 
-  idx_best_sh = np.argmax(sharpe_comb_grid)
-  idx_min_var_g = np.argmin(riesgo_comb_grid)
+# Tasa libre de riesgo basada en el valor esperado de la distribución triangular
+media_cetes = (0.04 + 0.08 + 0.10) / 3
+media_tbills = (0.0360 + 0.0370 + 0.0400) / 3
+tasa_rf_global = media_cetes * w_mx_din + media_tbills * w_usa_din
 
-  fig_sh_global = go.Figure()
-  fig_sh_global.add_trace(
-      go.Scatter(
-          x=riesgo_comb_grid,
-          y=ret_comb_grid,
-          mode="markers",
-          marker=dict(
-              size=8,
-              color=sharpe_comb_grid,
-              colorscale="Viridis",
-              showscale=True,
-              colorbar=dict(title="Sharpe", x=1.02),
-              line=dict(width=0.5, color="white"),
-          ),
-          name="Portafolios Combinados",
-      )
-  )
-  fig_sh_global.add_trace(
-      go.Scatter(
-          x=[riesgo_comb_grid[idx_best_sh]],
-          y=[ret_comb_grid[idx_best_sh]],
-          mode="markers",
-          marker=dict(
-              size=16,
-              color="#e74c3c",
-              symbol="star",
-              line=dict(width=1.5, color="black"),
-          ),
-          name="★ Máximo Sharpe Global",
-      )
-  )
-  fig_sh_global.add_trace(
-      go.Scatter(
-          x=[riesgo_comb_grid[idx_min_var_g]],
-          y=[ret_comb_grid[idx_min_var_g]],
-          mode="markers",
-          marker=dict(
-              size=12,
-              color="blue",
-              symbol="circle",
-              line=dict(width=1.5, color="black"),
-          ),
-          name="🔵 Mínima Varianza Global",
-      )
-  )
+sharpe_comb_grid = (ret_comb_grid - tasa_rf_global) / riesgo_comb_grid
 
-  x_cal_g = np.linspace(0, riesgo_comb_grid[idx_best_sh] * 1.25, 30)
-  y_cal_g = tasa_rf_global + sharpe_comb_grid[idx_best_sh] * x_cal_g
-  fig_sh_global.add_trace(
-      go.Scatter(
-          x=x_cal_g,
-          y=y_cal_g,
-          mode="lines",
-          line=dict(color="red", width=1.5, dash="dash"),
-          name="Línea de Asignación de Capital (CAL)",
-      )
-  )
-  fig_sh_global.update_layout(
-      title="Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)",
-      xaxis_title="Volatilidad (Riesgo Anual)",
-      yaxis_title="Rendimiento Anual Esperado",
-      template="plotly_white",
-      legend=dict(
-          orientation="h",
-          yanchor="bottom",
-          y=1.02,
-          xanchor="center",
-          x=0.5,
-      ),
-      margin=dict(t=90, r=80),
-  )
-  st.plotly_chart(fig_sh_global, use_container_width=True)
+idx_best_sh = np.argmax(sharpe_comb_grid)
+idx_min_var_g = np.argmin(riesgo_comb_grid)
+
+fig_sh_global = go.Figure()
+fig_sh_global.add_trace(
+    go.Scatter(
+        x=riesgo_comb_grid,
+        y=ret_comb_grid,
+        mode="markers",
+        marker=dict(
+            size=8,
+            color=sharpe_comb_grid,
+            colorscale="Viridis",
+            showscale=True,
+            colorbar=dict(title="Sharpe", x=1.02),
+            line=dict(width=0.5, color="white"),
+        ),
+        name="Portafolios Combinados",
+    )
+)
+fig_sh_global.add_trace(
+    go.Scatter(
+        x=[riesgo_comb_grid[idx_best_sh]],
+        y=[ret_comb_grid[idx_best_sh]],
+        mode="markers",
+        marker=dict(
+            size=16,
+            color="#e74c3c",
+            symbol="star",
+            line=dict(width=1.5, color="black"),
+        ),
+        name="★ Máximo Sharpe Global",
+    )
+)
+fig_sh_global.add_trace(
+    go.Scatter(
+        x=[riesgo_comb_grid[idx_min_var_g]],
+        y=[ret_comb_grid[idx_min_var_g]],
+        mode="markers",
+        marker=dict(
+            size=12,
+            color="blue",
+            symbol="circle",
+            line=dict(width=1.5, color="black"),
+        ),
+        name="🔵 Mínima Varianza Global",
+    )
+)
+
+x_cal_g = np.linspace(0, riesgo_comb_grid[idx_best_sh] * 1.25, 30)
+y_cal_g = tasa_rf_global + sharpe_comb_grid[idx_best_sh] * x_cal_g
+fig_sh_global.add_trace(
+    go.Scatter(
+        x=x_cal_g,
+        y=y_cal_g,
+        mode="lines",
+        line=dict(color="red", width=1.5, dash="dash"),
+        name="Línea de Asignación de Capital (CAL)",
+    )
+)
+fig_sh_global.update_layout(
+    title="Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)",
+    xaxis_title="Volatilidad (Riesgo Anual)",
+    yaxis_title="Rendimiento Anual Esperado",
+    template="plotly_white",
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="center",
+        x=0.5,
+    ),
+    margin=dict(t=90, r=80),
+)
+st.plotly_chart(fig_sh_global, use_container_width=True)
 
 # ============================================================================
 # TABLA DE SIMULACIÓN DIARIA ESTOCÁSTICA (CON CAPITALES DINÁMICOS)

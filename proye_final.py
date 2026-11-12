@@ -1589,62 +1589,208 @@ with tab_port_enf:
   )
   st.plotly_chart(fig_hist, use_container_width=True)
 
-  # VIOLIN PLOT Y GRÁFICA DE RENDIMIENTOS (LADO A LADO)
+ st.markdown("---")
+  st.subheader(
+      f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
+  )
+
+  # 1. HISTOGRAMA DEL VALOR FINAL CON ESTADÍSTICOS INCRUSTADOS (MEDIA, MODA, MEDIANA, CUANTILES)
+  media_val = np.mean(val_enf_sim)
+  mediana_val = np.median(val_enf_sim)
+  q1_val = np.percentile(val_enf_sim, 25)
+  q3_val = np.percentile(val_enf_sim, 75)
+  cutoff_val = np.percentile(val_enf_sim, alpha_nivel * 100)
+
+  # Cálculo de la moda estimada (centro del bin con mayor frecuencia en 50 bins)
+  conteos, bordes = np.histogram(val_enf_sim, bins=50)
+  idx_moda = np.argmax(conteos)
+  moda_val = (bordes[idx_moda] + bordes[idx_moda + 1]) / 2
+
+  fig_hist = px.histogram(
+      x=val_enf_sim,
+      nbins=50,
+      labels={"x": "Valor Final en MXN"},
+      title=(
+          "Distribución de Probabilidad del Valor Final (10,000 Corridas"
+          " Bootstrap)"
+      ),
+      color_discrete_sequence=["#2980b9"],
+      opacity=0.75,
+  )
+
+  # Líneas verticales para cada estadístico
+  fig_hist.add_vline(
+      x=media_val,
+      line_dash="solid",
+      line_color="#27ae60",
+      line_width=2,
+      annotation_text=f"Media: ${media_val:,.0f}",
+      annotation_position="top right",
+  )
+  fig_hist.add_vline(
+      x=mediana_val,
+      line_dash="dash",
+      line_color="#f39c12",
+      line_width=2,
+      annotation_text=f"Mediana (Q2): ${mediana_val:,.0f}",
+      annotation_position="top left",
+  )
+  fig_hist.add_vline(
+      x=moda_val,
+      line_dash="dot",
+      line_color="#8e44ad",
+      line_width=2.5,
+      annotation_text=f"Moda: ${moda_val:,.0f}",
+      annotation_position="bottom right",
+  )
+  fig_hist.add_vline(
+      x=q1_val,
+      line_dash="dashdot",
+      line_color="#7f8c8d",
+      line_width=1.5,
+      annotation_text=f"Q1: ${q1_val:,.0f}",
+      annotation_position="bottom left",
+  )
+  fig_hist.add_vline(
+      x=q3_val,
+      line_dash="dashdot",
+      line_color="#7f8c8d",
+      line_width=1.5,
+      annotation_text=f"Q3: ${q3_val:,.0f}",
+      annotation_position="top right",
+  )
+  fig_hist.add_vline(
+      x=cutoff_val,
+      line_dash="dash",
+      line_color="#e74c3c",
+      line_width=2,
+      annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): ${cutoff_val:,.0f}",
+      annotation_position="bottom left",
+  )
+
+  # Cuadro resumen flotante dentro de la gráfica
+  fig_hist.add_annotation(
+      xref="paper",
+      yref="paper",
+      x=0.98,
+      y=0.95,
+      text=(
+          f"<b>Estadísticos (MXN):</b><br>"
+          f"• Media: ${media_val:,.2f}<br>"
+          f"• Mediana (Q2): ${mediana_val:,.2f}<br>"
+          f"• Moda: ${moda_val:,.2f}<br>"
+          f"• Q1 (25%): ${q1_val:,.2f}<br>"
+          f"• Q3 (75%): ${q3_val:,.2f}<br>"
+          f"• Cutoff ({alpha_nivel*100:.1f}%): ${cutoff_val:,.2f}"
+      ),
+      showarrow=False,
+      align="left",
+      bgcolor="rgba(255, 255, 255, 0.9)",
+      bordercolor="#bdc3c7",
+      borderwidth=1,
+      borderpad=6,
+      font=dict(size=12, color="#2c3e50"),
+  )
+
+  fig_hist.update_layout(
+      xaxis_title="Valor Final (MXN)",
+      yaxis_title="Frecuencia (Corridas)",
+      template="plotly_white",
+      margin=dict(t=70),
+  )
+  st.plotly_chart(fig_hist, use_container_width=True)
+
+  # 2. BOXPLOT Y EVOLUCIÓN DE RENDIMIENTOS EN LAS CORRIDAS (LADO A LADO)
   col_g1, col_g2 = st.columns(2)
   with col_g1:
-    fig_violin = px.violin(
+    fig_box = px.box(
         y=val_enf_sim / 1000,
-        box=True,
-        points="all",
-        title="Violin Plot - Dispersión del Valor Final (Miles MXN)",
+        points="outliers",
+        title="Boxplot - Dispersión del Valor Final (Miles MXN)",
         labels={"y": "Valor Final (Miles MXN)"},
         color_discrete_sequence=["#27ae60"],
     )
-    fig_violin.update_layout(template="plotly_white")
-    st.plotly_chart(fig_violin, use_container_width=True)
+    fig_box.update_traces(boxmean="sd")
+    fig_box.update_layout(template="plotly_white")
+    st.plotly_chart(fig_box, use_container_width=True)
 
   with col_g2:
-    media_r = np.mean(rend_enf_sim) * 100
-    cutoff_r = np.percentile(rend_enf_sim, alpha_nivel * 100) * 100
+    n_sims = len(rend_enf_sim)
+    pasos = np.arange(1, n_sims + 1)
+    rend_pct = rend_enf_sim * 100
 
-    fig_10k_mov = go.Figure()
-    fig_10k_mov.add_trace(
+    # Evolución del promedio acumulado y desviación estándar acumulada
+    media_acum = np.cumsum(rend_pct) / pasos
+    media_cuad_acum = np.cumsum(rend_pct**2) / pasos
+    std_acum = np.sqrt(np.maximum(0, media_cuad_acum - media_acum**2))
+
+    media_r = np.mean(rend_pct)
+    cutoff_r = np.percentile(rend_pct, alpha_nivel * 100)
+
+    # Submuestreo ligero para los puntos de fondo si hay muchas corridas (agiliza renderizado)
+    step_plot = max(1, n_sims // 2000)
+
+    fig_evol_r = go.Figure()
+    fig_evol_r.add_trace(
         go.Scatter(
-            x=np.arange(1, len(rend_enf_sim) + 1),
-            y=rend_enf_sim * 100,
+            x=pasos[::step_plot],
+            y=rend_pct[::step_plot],
             mode="markers",
-            marker=dict(
-                size=4,
-                color=rend_enf_sim * 100,
-                colorscale="Viridis",
-                opacity=0.6,
-            ),
-            name="Rendimiento (%)",
+            marker=dict(size=3, color="#95a5a6", opacity=0.35),
+            name="Rendimiento Individual (%)",
         )
     )
-    fig_10k_mov.add_hline(
-        y=media_r,
-        line_dash="solid",
-        line_color="#27ae60",
-        annotation_text=f"Media: {media_r:.2f}%",
-        annotation_position="top right",
+    fig_evol_r.add_trace(
+        go.Scatter(
+            x=pasos,
+            y=media_acum + std_acum,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip",
+        )
     )
-    fig_10k_mov.add_hline(
+    fig_evol_r.add_trace(
+        go.Scatter(
+            x=pasos,
+            y=media_acum - std_acum,
+            mode="lines",
+            line=dict(width=0),
+            fill="tonexty",
+            fillcolor="rgba(39, 174, 96, 0.15)",
+            name="Banda ±1 Desv. Estándar",
+        )
+    )
+    fig_evol_r.add_trace(
+        go.Scatter(
+            x=pasos,
+            y=media_acum,
+            mode="lines",
+            line=dict(color="#27ae60", width=2.5),
+            name=f"Media Acumulada ({media_r:.2f}%)",
+        )
+    )
+    fig_evol_r.add_hline(
         y=cutoff_r,
         line_dash="dash",
         line_color="#e74c3c",
         annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): {cutoff_r:.2f}%",
         annotation_position="bottom right",
     )
-    fig_10k_mov.update_layout(
-        title="Rendimientos en las 10,000 Simulaciones",
-        xaxis_title="Simulación (#1 a #10,000)",
-        yaxis_title="Rendimiento Final (%)",
+    fig_evol_r.update_layout(
+        title="Evolución y Convergencia del Rendimiento en las Corridas",
+        xaxis_title="Número de Corrida (#1 a #10,000)",
+        yaxis_title="Rendimiento (%)",
         template="plotly_white",
-        showlegend=False,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+        ),
     )
-    st.plotly_chart(fig_10k_mov, use_container_width=True)
-
+    st.plotly_chart(fig_evol_r, use_container_width=True)
  # ============================================================================
   # GRÁFICA DE RATIO DE SHARPE COMBINADO (CON TASAS LIBRES DE RIESGO ESTOCÁSTICAS / ESPERADAS)
   # ============================================================================

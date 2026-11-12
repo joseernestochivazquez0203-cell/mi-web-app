@@ -1594,6 +1594,11 @@ with tab_port_enf:
       f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
   )
 
+st.markdown("---")
+  st.subheader(
+      f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
+  )
+
   # 1. HISTOGRAMA DEL VALOR FINAL CON ESTADÍSTICOS INCRUSTADOS (MEDIA, MODA, MEDIANA, CUANTILES)
   media_val = np.mean(val_enf_sim)
   mediana_val = np.median(val_enf_sim)
@@ -1791,6 +1796,8 @@ with tab_port_enf:
         ),
     )
     st.plotly_chart(fig_evol_r, use_container_width=True)
+
+  
  # ============================================================================
   # GRÁFICA DE RATIO DE SHARPE COMBINADO (CON TASAS LIBRES DE RIESGO ESTOCÁSTICAS / ESPERADAS)
   # ============================================================================

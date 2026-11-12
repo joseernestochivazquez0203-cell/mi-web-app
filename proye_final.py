@@ -1555,8 +1555,8 @@ with tab_port_enf:
 
   # TABLA ESTILO EXCEL (MUESTRA DE LAS 10,000 SIMULACIONES)
   st.subheader(
-      "📋 Tabla Resumen de 10,000 Simulaciones Bootstrap (Formato Excel -"
-      " Primeras 15 Filas)"
+      "📋 Tabla Resumen de 10,000 Simulaciones Bootstrap -"
+      " Primeras 15 Filas"
   )
   st.dataframe(
       df_excel_10k.head(15).style.format({

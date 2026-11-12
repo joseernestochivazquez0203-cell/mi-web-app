@@ -1330,7 +1330,7 @@ with tab_port_enf:
     )
   with col_sel2:
     horiz_sel = st.selectbox(
-        "Selecciona los pesos Wi de qué año deseas para (SHARPE RATIO):",
+        "Selecciona el intervalo de tiempo para el que deseas evaluar tus Wi:",
         ["1 año", "2 años", "3 años"],
         key="sel_h_enfoque",
     )

@@ -1773,13 +1773,14 @@ with col_g2:
   st.plotly_chart(fig_evol_r, use_container_width=True)
 
 # ============================================================================
-  # GRÁFICA DE RATIO DE SHARPE COMBINADO (EN PUNTOS Y LEYENDA SUPERIOR)
+  # GRÁFICA DE RATIO DE SHARPE COMBINADO (DISTRIBUCIÓN LADO A LADO)
   # ============================================================================
   st.markdown("---")
   st.subheader(
       "📈 Gráfica de Optimización Ratio de Sharpe (Portafolio Combinado MX +"
       " USA)"
   )
+  
   rp_mx_anual = s_mx["Rp"].values[0]
   desv_mx_anual = s_mx["des_p"].values[0]
   rp_usa_anual = s_usa["Rp"].values[0]
@@ -1856,23 +1857,39 @@ with col_g2:
           name="Línea de Asignación de Capital (CAL)",
       )
   )
+  
+  # Layout optimizado con leyenda lateral para que no colisione con el título
   fig_sh_global.update_layout(
-      title="Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)",
+      title="Frontera Eficiente & Ratio de Sharpe (MX + EE. UU.)",
       xaxis_title="Volatilidad (Riesgo Anual)",
       yaxis_title="Rendimiento Anual Esperado",
       template="plotly_white",
       legend=dict(
-          orientation="h",
-          yanchor="bottom",
-          y=1.12,  # Subimos ligeramente la leyenda para que no choque con el título de la gráfica
-          xanchor="center",
-          x=0.5,
+          orientation="v",  # Leyenda vertical a un lado
+          yanchor="top",
+          y=1.0,
+          xanchor="left",
+          x=1.05,
       ),
-      margin=dict(t=100, r=80),
+      margin=dict(t=50, r=150, b=50),
   )
-  st.plotly_chart(fig_sh_global, use_container_width=True)
 
+  # Distribución en columnas: Gráfica a la izquierda (ocupa más espacio), detalles a la derecha
+  col_graf_izq, col_info_der = st.columns([2.2, 1])
 
+  with col_graf_izq:
+    st.plotly_chart(fig_sh_global, use_container_width=True)
+
+  with col_info_der:
+    st.markdown("#### 📊 Parámetros Globales")
+    st.metric("Tasa Libre de Riesgo (Rf)", f"{tasa_rf_global*100:.2f}%")
+    st.metric("Sharpe Máximo Global", f"{sharpe_comb_grid[idx_best_sh]:.4f}")
+    st.metric("Volatilidad Óptima", f"{riesgo_comb_grid[idx_best_sh]*100:.2f}%")
+    st.metric("Rendimiento Esperado", f"{ret_comb_grid[idx_best_sh]*100:.2f}%")
+    st.info(
+        "💡 Esta sección muestra la combinación óptima entre los portafolios de"
+        " México y EE. UU. ponderados por mínima varianza."
+    )
   
 # ============================================================================
 # TABLA DE SIMULACIÓN DIARIA ESTOCÁSTICA (CON CAPITALES DINÁMICOS)

@@ -1359,15 +1359,15 @@ with tab_usa:
         "T-Bills",
         False,
     )
-   with sub_usa_comp:
-    st.subheader("📋 Tablas Comparativas de los 3 Años (EE. UU)")
+ with sub_mx_comp:
+    st.subheader("📋 Tablas Comparativas de los 3 Años (México)")
     st.markdown(
         "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
     )
     st.dataframe(
-        pd.concat([min_usa_1, min_usa_2, min_usa_3])[
-            [c for c in cols_min_usa if c in min_usa_1.columns]
-        ].style.format(formatos_usa),
+        pd.concat([min_mx_1, min_mx_2, min_mx_3])[
+            [c for c in cols_min_mx if c in min_mx_1.columns]
+        ].style.format(formatos_mx),
         use_container_width=True,
     )
     st.markdown(
@@ -1375,11 +1375,11 @@ with tab_usa:
         " Años)"
     )
     st.dataframe(
-        pd.concat([max_usa_1, max_usa_2, max_usa_3])[
-            [c for c in cols_sh_usa if c in max_usa_1.columns]
-        ].style.format(formatos_usa),
+        pd.concat([max_mx_1, max_mx_2, max_mx_3])[
+            [c for c in cols_sh_mx if c in max_mx_1.columns]
+        ].style.format(formatos_mx),
         use_container_width=True,
-    )
+    )     
 
 # ==============================================================================
 # PESTAÑA 3: SIMULACIÓN POR ENFOQUE

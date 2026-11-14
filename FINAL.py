@@ -929,8 +929,8 @@ def generar_simulacion_y_estadisticos(
   def calcular_fila_stats(arr, val_arr):
     rend = np.mean(arr)
     riesgo = np.std(arr)
-    cutoff = np.percentile(val_arr, alpha * 100)
-    var_alpha = np.mean(val_arr) - cutoff
+    cutoff = np.percentile(arr, alpha * 100) # Modificado para reflejar porcentaje en lugar de valor nominal en la tabla porcentual
+    var_alpha = np.mean(arr) - cutoff # Modificado para reflejar porcentaje en lugar de valor nominal en la tabla porcentual
     q1 = np.percentile(arr, 25)
     q2 = np.median(arr)
     q3 = np.percentile(arr, 75)
@@ -985,7 +985,7 @@ def generar_simulacion_y_estadisticos(
   inv_cetes = monto_cetes
   inv_tbills_mxn = monto_tbills_mxn
   inv_tbills_usd = monto_tbills_usd
-  inv_diff_cambiaria = 0.0  # Es una diferencia neta, parte de 0
+  inv_diff_cambiaria = 0.0
 
   filas_stats_nominal = [
       [inv_global] + calcular_fila_stats_nominal(val_final_global_mxn, alpha),
@@ -1542,7 +1542,7 @@ with tab_port_enf:
       stop_loss=-0.10,
   )
 
-  # TABLA 1: EN PORCENTAJES
+  # TABLA 1: EN PORCENTAJES (Modificada para mostrar todas las métricas de esta tabla en porcentaje con 2 decimales)
   st.subheader(
       "📊 Tabla de Estadísticos & Riesgo en Porcentajes (10,000 Simulaciones"
       " Bootstrap + Stop-Loss Individual 10% / 2 Decimales)"
@@ -1550,10 +1550,7 @@ with tab_port_enf:
 
   def formateador_tabla_riesgo(val, col_name):
     if isinstance(val, (int, float)):
-      if "CUTOFF" in col_name or "VAR" in col_name:
-        return f"${val:,.2f}"
-      else:
-        return f"{val:.2%}"
+      return f"{val:.2f}%"
     return val
 
   st.dataframe(

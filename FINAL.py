@@ -1309,77 +1309,78 @@ with tab_mx:
 # PESTAÑA 2: ESTADOS UNIDOS
 # ==============================================================================
 with tab_usa:
-  st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
-  sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs([
-      "📅 1 Año",
-      "📅 2 Años",
-      "📅 3 Años",
-      "📋 Tablas Comparativas (Mínima Varianza y Sharpe)",
-  ])
+    st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
+    sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs([
+        "📅 1 Año",
+        "📅 2 Años",
+        "📅 3 Años",
+        "📋 Tablas Comparativas (Mínima Varianza y Sharpe)",
+    ])
 
-  with sub_usa_1:
-    renderizar_bloque_pais(
-        datos_usa_1,
-        cov_usa_1,
-        min_usa_1,
-        max_usa_1,
-        anim_usa_1,
-        t1000_usa_1,
-        empresas_usa,
-        cols_activas_usa_1,
-        "1 Año (EE. UU.)",
-        "T-Bills",
-        False,
-    )
-  with sub_usa_2:
-    renderizar_bloque_pais(
-        datos_usa_2,
-        cov_usa_2,
-        min_usa_2,
-        max_usa_2,
-        anim_usa_2,
-        t1000_usa_2,
-        empresas_usa,
-        cols_activas_usa_2,
-        "2 Años (EE. UU.)",
-        "T-Bills",
-        False,
-    )
-  with sub_usa_3:
-    renderizar_bloque_pais(
-        datos_usa_3,
-        cov_usa_3,
-        min_usa_3,
-        max_usa_3,
-        anim_usa_3,
-        t1000_usa_3,
-        empresas_usa,
-        cols_activas_usa_3,
-        "3 Años (EE. UU.)",
-        "T-Bills",
-        False,
-    )
- with sub_mx_comp:
-    st.subheader("📋 Tablas Comparativas de los 3 Años (México)")
-    st.markdown(
-        "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
-    )
-    st.dataframe(
-        pd.concat([min_mx_1, min_mx_2, min_mx_3])[
-            [c for c in cols_min_mx if c in min_mx_1.columns]
-        ].style.format(formatos_mx),
-        use_container_width=True,
-    )
-    st.markdown(
-        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
-        " Años)"
-    )
-    st.dataframe(
-        pd.concat([max_mx_1, max_mx_2, max_mx_3])[
-            [c for c in cols_sh_mx if c in max_mx_1.columns]
-        ].style.format(formatos_mx),
-        use_container_width=True,
-    )     
+    with sub_usa_1:
+        renderizar_bloque_pais(
+            datos_usa_1,
+            cov_usa_1,
+            min_usa_1,
+            max_usa_1,
+            anim_usa_1,
+            t1000_usa_1,
+            empresas_usa,
+            cols_activas_usa_1,
+            "1 Año (EE. UU.)",
+            "T-Bills",
+            False,
+        )
+    with sub_usa_2:
+        renderizar_bloque_pais(
+            datos_usa_2,
+            cov_usa_2,
+            min_usa_2,
+            max_usa_2,
+            anim_usa_2,
+            t1000_usa_2,
+            empresas_usa,
+            cols_activas_usa_2,
+            "2 Años (EE. UU.)",
+            "T-Bills",
+            False,
+        )
+    with sub_usa_3:
+        renderizar_bloque_pais(
+            datos_usa_3,
+            cov_usa_3,
+            min_usa_3,
+            max_usa_3,
+            anim_usa_3,
+            t1000_usa_3,
+            empresas_usa,
+            cols_activas_usa_3,
+            "3 Años (EE. UU.)",
+            "T-Bills",
+            False,
+        )
+        
+    with sub_usa_comp:
+        st.subheader("📋 Tablas Comparativas de los 3 Años (EE. UU.)")
+        st.markdown(
+            "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
+        )
+        st.dataframe(
+            pd.concat([min_usa_1, min_usa_2, min_usa_3])[
+                [c for c in cols_min_usa if c in min_usa_1.columns]
+            ].style.format(formatos_usa),
+            use_container_width=True,
+        )
+        st.markdown(
+            "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3 "
+            "Años)"
+        )
+        st.dataframe(
+            pd.concat([max_usa_1, max_usa_2, max_usa_3])[
+                [c for c in cols_sh_usa if c in max_usa_1.columns]
+            ].style.format(formatos_usa),
+            use_container_width=True,
+        )   
 
 # ==============================================================================
 # PESTAÑA 3: SIMULACIÓN POR ENFOQUE

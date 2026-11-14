@@ -1172,7 +1172,7 @@ with tab_mx:
               x=cols_activas,
               y=cols_activas,
               color_continuous_scale="RdBu",  # Paleta divergente (Rojo para negativos, Azul para positivos)
-              zmid=0,                         # Fuerza a que el centro de la escala sea el cero exacto
+              color_continuous_midpoint=0,                         # Fuerza a que el centro de la escala sea el cero exacto
               text_auto=".2f",
               title="Matriz de Covarianza (Sigma)",
           ),

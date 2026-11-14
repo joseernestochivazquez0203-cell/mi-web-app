@@ -1173,7 +1173,7 @@ with tab_mx:
               y=cols_activas,
               color_continuous_scale="RdBu",
               zmid=0,
-              text_auto=".2f%",
+              text_auto=".2f",
               title="Matriz de Covarianza (Sigma)",
           ),
           use_container_width=True,

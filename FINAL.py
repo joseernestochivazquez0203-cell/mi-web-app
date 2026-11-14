@@ -97,9 +97,9 @@ opciones_mx = [
 ]
 
 opciones_usa = [
-    "MSFT", "AAPL", "GOOGL", "AMZN", "NVDA",
-    "TSLA", "META", "NFLX", "AMD", "INTC",
-    "QCOM", "IBM", "ORCL", "JPM", "V",
+    "MSFT", "AAPL", "GOOGL", "AMZN", "META",
+    "TSLA", "NVDA", "NFLX", "AMD", "INTC",
+    "V", "WMT", "JPM", "LLY", "AVGO",
 ]
 
 # ==============================================================================

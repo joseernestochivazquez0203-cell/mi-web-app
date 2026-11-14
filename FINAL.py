@@ -1359,32 +1359,27 @@ with tab_usa:
         "T-Bills",
         False,
     )
-  with sub_usa_comp:
-      
-      st.subheader("📋 Tablas Comparativas de los 3 Años (EE. UU.)")
-      st.markdown(
-          
-         "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
-           )
-      st.dataframe(
-          pd.concat([min_usa_1, min_usa_2, min_usa_3])[
-          [c for c in cols_min_usa if c in min_usa_1.columns]
-          ].style.format(formatos_usa),
-          use_container_width=True,
-      )
-      st.markdown(
-          "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
-          " Años)"
+   with sub_usa_comp:
+    st.subheader("📋 Tablas Comparativas de los 3 Años (EE. UU)")
+    st.markdown(
+        "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
     )
-      .
-      st.dataframe(
-          pd.concat([max_usa_1, max_usa_2, max_usa_3])[
+    st.dataframe(
+        pd.concat([min_usa_1, min_usa_2, min_usa_3])[
+            [c for c in cols_min_usa if c in min_usa_1.columns]
+        ].style.format(formatos_usa),
+        use_container_width=True,
+    )
+    st.markdown(
+        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
+        " Años)"
+    )
+    st.dataframe(
+        pd.concat([max_usa_1, max_usa_2, max_usa_3])[
             [c for c in cols_sh_usa if c in max_usa_1.columns]
-         ].style.format(formatos_usa),
-         use_container_width=True,
+        ].style.format(formatos_usa),
+        use_container_width=True,
     )
-    
-
 
 # ==============================================================================
 # PESTAÑA 3: SIMULACIÓN POR ENFOQUE

@@ -1559,8 +1559,8 @@ with tab_port_enf:
 
   # TABLA 1: EN PORCENTAJES
   st.subheader(
-      "📊 Tabla de Estadísticos & Riesgo en Porcentajes (10,000 Simulaciones"
-      " Bootstrap + Stop-Loss Individual 10% / 2 Decimales)"
+      "📊 Resultados Finales en Porcentajes (10,000 Simulaciones"
+      " Bootstrap + Stop-Loss Individual 10%)"
   )
 
   def formateador_tabla_riesgo(val, col_name):
@@ -1581,7 +1581,7 @@ with tab_port_enf:
 
   # TABLA 2: EN CANTIDADES NOMINALES (MXN y USD) CON INVERSIÓN INICIAL
   st.subheader(
-      "💵 Tabla de Estadísticos & Riesgo en Cantidades Nominales (MXN, USD y"
+      "💵 Resultados Finales en Cantidades Nominales (MXN, USD y"
       " Diferencia Cambiaria Neta)"
   )
 

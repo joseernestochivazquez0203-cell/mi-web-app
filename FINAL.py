@@ -70,7 +70,7 @@ def estilizar_tabla(styler):
 
 
 st.title(
-    "📊 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
+    "💼 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
 )
 st.markdown(
     "Modelo cuantitativo multianual con Markowitz, Frontera Eficiente, Simulación"
@@ -112,7 +112,7 @@ alpha_nivel = (
     / 100.0
 )
 
-st.sidebar.subheader("📅 Proyección Estocástica Futura")
+st.sidebar.subheader("🚀 Proyección Estocástica Futura")
 fecha_inicio_sim = datetime.date.today()
 fecha_fin_sim = st.sidebar.date_input(
     "Fecha Final de Simulación:",

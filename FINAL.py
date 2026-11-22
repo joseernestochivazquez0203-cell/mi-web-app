@@ -14,7 +14,9 @@ st.set_page_config(
     layout="wide",
 )
 
-fecha_hoy_str = datetime.date.today().strftime("%d/%m/%Y")
+fecha_hoy_str = datetime.datetime.now(ZoneInfo("America/Mexico_City")).strftime(
+    "%d/%m/%Y"
+)
 
 # Estilo CSS personalizado para tarjetas, encabezados y estética general
 st.markdown(

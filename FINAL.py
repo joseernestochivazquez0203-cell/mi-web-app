@@ -14,20 +14,60 @@ st.set_page_config(
     layout="wide",
 )
 
-# Estilo CSS personalizado para las cajitas de selección
-st.markdown("""
+fecha_hoy_str = datetime.date.today().strftime("%d/%m/%Y")
+
+# Estilo CSS personalizado para tarjetas, encabezados y estética general
+st.markdown(
+    """
     <style>
     .stock-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border: 1px solid #dee2e6;
+        background: linear-gradient(135deg, #f4fbf8 0%, #e6f4ee 100%);
+        border: 1px solid #b7dfd0;
         border-radius: 12px;
         padding: 10px;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 6px rgba(0, 107, 84, 0.08);
         margin-bottom: 5px;
     }
+    [data-testid="stDataFrame"] {
+        border: 1px solid #d1e7dd;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    [data-testid="stMetric"] {
+        background-color: #f8fcfa;
+        border: 1px solid #d1e7dd;
+        border-left: 4px solid #006B54;
+        border-radius: 8px;
+        padding: 10px 14px;
+    }
     </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
+
+
+def estilizar_tabla(styler):
+  """Aplica un estilo visual limpio y uniforme sin modificar datos ni formatos."""
+  return styler.set_table_styles([
+      {
+          "selector": "th",
+          "props": [
+              ("background-color", "#006B54"),
+              ("color", "#ffffff"),
+              ("font-weight", "600"),
+              ("border-color", "#005240"),
+          ],
+      },
+      {
+          "selector": "td",
+          "props": [
+              ("border-color", "#e5ece9"),
+          ],
+      },
+  ]).set_properties(**{"font-size": "13px"})
+
 
 st.title(
     "📊 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
@@ -91,15 +131,39 @@ st.sidebar.info(
 # 2. LISTAS DE 15 EMPRESAS DISPONIBLES PARA CADA PAÍS (PARA LAS CAJITAS)
 # ==============================================================================
 opciones_mx = [
-    "KIMBERA.MX", "WALMEX.MX", "AMXB.MX", "BIMBOA.MX", "FEMSAUBD.MX",
-    "GFNORTEO.MX", "CEMEXCPO.MX", "GENTERA.MX", "AC.MX", "GFINBURO.MX",
-    "ASURB.MX", "GAPB.MX", "OMAB.MX", "KOFUBL.MX", "PINFRA.MX",
+    "KIMBERA.MX",
+    "WALMEX.MX",
+    "AMXB.MX",
+    "BIMBOA.MX",
+    "FEMSAUBD.MX",
+    "GFNORTEO.MX",
+    "CEMEXCPO.MX",
+    "GENTERA.MX",
+    "AC.MX",
+    "GFINBURO.MX",
+    "ASURB.MX",
+    "GAPB.MX",
+    "OMAB.MX",
+    "KOFUBL.MX",
+    "PINFRA.MX",
 ]
 
 opciones_usa = [
-    "MSFT", "AAPL", "GOOGL", "AMZN", "META",
-    "TSLA", "NVDA", "NFLX", "AMD", "INTC",
-    "V", "WMT", "JPM", "LLY", "AVGO",
+    "MSFT",
+    "AAPL",
+    "GOOGL",
+    "AMZN",
+    "META",
+    "TSLA",
+    "NVDA",
+    "NFLX",
+    "AMD",
+    "INTC",
+    "V",
+    "WMT",
+    "JPM",
+    "LLY",
+    "AVGO",
 ]
 
 # ==============================================================================
@@ -148,15 +212,21 @@ st.markdown("---")
 
 fechas_horizontes = {
     "1 año": {
-        "inicio": (fecha_inicio_sim - datetime.timedelta(days=365)).strftime("%Y-%m-%d"),
+        "inicio": (fecha_inicio_sim - datetime.timedelta(days=365)).strftime(
+            "%Y-%m-%d"
+        ),
         "fin": fecha_inicio_sim.strftime("%Y-%m-%d"),
     },
     "2 años": {
-        "inicio": (fecha_inicio_sim - datetime.timedelta(days=730)).strftime("%Y-%m-%d"),
+        "inicio": (fecha_inicio_sim - datetime.timedelta(days=730)).strftime(
+            "%Y-%m-%d"
+        ),
         "fin": fecha_inicio_sim.strftime("%Y-%m-%d"),
     },
     "3 años": {
-        "inicio": (fecha_inicio_sim - datetime.timedelta(days=1095)).strftime("%Y-%m-%d"),
+        "inicio": (fecha_inicio_sim - datetime.timedelta(days=1095)).strftime(
+            "%Y-%m-%d"
+        ),
         "fin": fecha_inicio_sim.strftime("%Y-%m-%d"),
     },
 }
@@ -235,7 +305,7 @@ def ejecutar_simulacion_mercado(
   w_portafolio = 0.70
 
   min_port = None
-  min_desp_val = float('inf')
+  min_desp_val = float("inf")
 
   for i in range(1, n_corr + 1):
     p_tasa = np.random.uniform(0, 1)
@@ -431,10 +501,26 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       cols_activas_usa_3,
   ) = res_usa_3
 
-min_mx_1.index, min_mx_2.index, min_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
-max_mx_1.index, max_mx_2.index, max_mx_3.index = ["1 año"], ["2 años"], ["3 años"]
-min_usa_1.index, min_usa_2.index, min_usa_3.index = ["1 año"], ["2 años"], ["3 años"]
-max_usa_1.index, max_usa_2.index, max_usa_3.index = ["1 año"], ["2 años"], ["3 años"]
+min_mx_1.index, min_mx_2.index, min_mx_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
+max_mx_1.index, max_mx_2.index, max_mx_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
+min_usa_1.index, min_usa_2.index, min_usa_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
+max_usa_1.index, max_usa_2.index, max_usa_3.index = (
+    ["1 año"],
+    ["2 años"],
+    ["3 años"],
+)
 
 
 # ==============================================================================
@@ -619,8 +705,11 @@ def construir_figura_animada_con_minima(
             y=curr["nube_y"],
             mode="markers",
             marker=dict(
-              size=4, color=curr["nube_y"], colorscale="Viridis", showscale=False
-          ),
+                size=4,
+                color=curr["nube_y"],
+                colorscale="Viridis",
+                showscale=False,
+            ),
         )
     )
     for j in range(n_pasos):
@@ -668,68 +757,72 @@ def construir_figura_animada_con_minima(
       height=500,
       xaxis=dict(title="Volatility (Riesgo Anual)", range=[0, 1.2]),
       yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.1, 0.4]),
-      updatemenus=[{
-          "type": "buttons",
-          "buttons": [
-              {
-                  "label": "▶ Reproducir",
-                  "method": "animate",
-                  "args": [
-                      None,
-                      {
-                          "frame": {"duration": 1000, "redraw": False},
-                          "fromcurrent": True,
-                      },
-                  ],
-              },
-              {
-                  "label": "⏸ Pausa",
-                  "method": "animate",
-                  "args": [
-                      [None],
-                      {
-                          "frame": {"duration": 0, "redraw": False},
-                          "mode": "immediate",
-                      },
-                  ],
-              },
-          ],
-          "direction": "left",
-          "pad": {"r": 10, "t": 87},
-          "x": 0.1,
-          "xanchor": "right",
-          "y": 0,
-          "yanchor": "top",
-      }],
-      sliders=[{
-          "active": 0,
-          "yanchor": "top",
-          "xanchor": "left",
-          "currentvalue": {
-              "font": {"size": 13},
-              "prefix": "Iteración: ",
-              "visible": True,
+      updatemenus=[
+          {
+              "type": "buttons",
+              "buttons": [
+                  {
+                      "label": "▶ Reproducir",
+                      "method": "animate",
+                      "args": [
+                          None,
+                          {
+                              "frame": {"duration": 1000, "redraw": False},
+                              "fromcurrent": True,
+                          },
+                      ],
+                  },
+                  {
+                      "label": "⏸ Pausa",
+                      "method": "animate",
+                      "args": [
+                          [None],
+                          {
+                              "frame": {"duration": 0, "redraw": False},
+                              "mode": "immediate",
+                          },
+                      ],
+                  },
+              ],
+              "direction": "left",
+              "pad": {"r": 10, "t": 87},
+              "x": 0.1,
               "xanchor": "right",
-          },
-          "pad": {"b": 10, "t": 50},
-          "len": 0.9,
-          "x": 0.1,
-          "y": 0,
-          "steps": [
-              {
-                  "args": [
-                      [f"Paso {k}"],
-                      {
-                          "frame": {"duration": 300, "redraw": False},
-                          "mode": "immediate",
-                      },
-                  ],
-                  "label": f"#{k}",
-                  "method": "animate",
-              }
-              for k in range(1, n_pasos + 1)
-          ],
-      }],
+              "y": 0,
+              "yanchor": "top",
+          }
+      ],
+      sliders=[
+          {
+              "active": 0,
+              "yanchor": "top",
+              "xanchor": "left",
+              "currentvalue": {
+                  "font": {"size": 13},
+                  "prefix": "Iteración: ",
+                  "visible": True,
+                  "xanchor": "right",
+              },
+              "pad": {"b": 10, "t": 50},
+              "len": 0.9,
+              "x": 0.1,
+              "y": 0,
+              "steps": [
+                  {
+                      "args": [
+                          [f"Paso {k}"],
+                          {
+                              "frame": {"duration": 300, "redraw": False},
+                              "mode": "immediate",
+                          },
+                      ],
+                      "label": f"#{k}",
+                      "method": "animate",
+                  }
+                  for k in range(1, n_pasos + 1)
+              ],
+          }
+      ],
   )
   fig.frames = frames
   return fig
@@ -802,7 +895,9 @@ def generar_simulacion_y_estadisticos(
   if monto_mx_acc > 0:
     rend_hist_mx = np.log(datos_mx / datos_mx.shift(1)).dropna()
     activos_mx = [
-        e for e in empresas_mx if e in max_mx.columns and e in rend_hist_mx.columns
+        e
+        for e in empresas_mx
+        if e in max_mx.columns and e in rend_hist_mx.columns
     ]
     pesos_mx = max_mx[activos_mx].values[0]
     conteo_salidas_mx = {e: 0 for e in activos_mx}
@@ -991,11 +1086,14 @@ def generar_simulacion_y_estadisticos(
       [inv_global] + calcular_fila_stats_nominal(val_final_global_mxn, alpha),
       [inv_mx_acc] + calcular_fila_stats_nominal(val_mx_total_mxn, alpha),
       [inv_usa_rv_mxn] + calcular_fila_stats_nominal(val_usa_rv_mxn_val, alpha),
-      [inv_usa_rv_usd] + calcular_fila_stats_nominal(val_usa_rv_total_usd, alpha),
+      [inv_usa_rv_usd]
+      + calcular_fila_stats_nominal(val_usa_rv_total_usd, alpha),
       [inv_cetes] + calcular_fila_stats_nominal(val_cetes_total_mxn, alpha),
       [inv_tbills_mxn] + calcular_fila_stats_nominal(val_tbills_mxn_val, alpha),
-      [inv_tbills_usd] + calcular_fila_stats_nominal(val_final_tbills_usd, alpha),
-      [inv_diff_cambiaria] + calcular_fila_stats_nominal(diff_cambiaria_mxn, alpha),
+      [inv_tbills_usd]
+      + calcular_fila_stats_nominal(val_final_tbills_usd, alpha),
+      [inv_diff_cambiaria]
+      + calcular_fila_stats_nominal(diff_cambiaria_mxn, alpha),
   ]
 
   df_estadisticos = pd.DataFrame(
@@ -1009,15 +1107,15 @@ def generar_simulacion_y_estadisticos(
           "Efecto Rendimiento Cambiario",
       ],
       columns=[
-          "rendimiento",
-          "riesgo",
+          "Rendimiento",
+          "Riesgo",
           f"{alpha*100:.1f}% CUTOFF",
           f"{alpha*100:.1f}% VAR",
           "Q1",
           "Q2",
           "Q3",
-          "max",
-          "min",
+          "Máximo",
+          "Mínimo",
       ],
   )
 
@@ -1035,15 +1133,15 @@ def generar_simulacion_y_estadisticos(
       ],
       columns=[
           "Inversión Inicial",
-          "valor_esperado",
-          "riesgo",
+          "Valor esperado",
+          "Riesgo",
           f"{alpha*100:.1f}% CUTOFF",
           f"{alpha*100:.1f}% VAR",
           "Q1",
           "Q2",
           "Q3",
-          "max",
-          "min",
+          "Máximo",
+          "Mínimo",
       ],
   )
 
@@ -1149,13 +1247,18 @@ with tab_mx:
 
     st.subheader(f"2. Tabla de Evolución Histórica de Precios ({titulo_h})")
     st.dataframe(
-        datos_hist.tail(10).style.format("${:,.2f}"), use_container_width=True
+        estilizar_tabla(datos_hist.tail(10).style.format("${:,.2f}")),
+        use_container_width=True,
     )
 
     st.subheader(f"3. Estadísticos del Rendimiento Histórico ({titulo_h})")
     df_desc_rend = datos_hist.pct_change().dropna().describe()
     st.dataframe(
-        df_desc_rend.style.format("{:.2%}", subset=pd.IndexSlice[df_desc_rend.index != "count", :]).format("{:.0f}", subset=pd.IndexSlice[["count"], :]),
+        estilizar_tabla(
+            df_desc_rend.style.format(
+                "{:.2%}", subset=pd.IndexSlice[df_desc_rend.index != "count", :]
+            ).format("{:.0f}", subset=pd.IndexSlice[["count"], :])
+        ),
         use_container_width=True,
     )
 
@@ -1171,8 +1274,8 @@ with tab_mx:
               matriz_limpia,
               x=cols_activas,
               y=cols_activas,
-              color_continuous_scale="RdBu",  # Paleta divergente (Rojo para negativos, Azul para positivos)
-              color_continuous_midpoint=0,                         # Fuerza a que el centro de la escala sea el cero exacto
+              color_continuous_scale="RdBu",
+              color_continuous_midpoint=0,
               text_auto=".2f",
               title="Matriz de Covarianza (Sigma)",
           ),
@@ -1184,8 +1287,10 @@ with tab_mx:
     st.subheader(f"5. Portafolio de Mínima Varianza ({titulo_h})")
     cols_min = [c for c in cols_activas + ["Rp", "vp", "des_p"]]
     st.dataframe(
-        min_port[[c for c in cols_min if c in min_port.columns]].style.format(
-            formatos_mx if is_mx else formatos_usa
+        estilizar_tabla(
+            min_port[[c for c in cols_min if c in min_port.columns]].style.format(
+                formatos_mx if is_mx else formatos_usa
+            )
         ),
         use_container_width=True,
     )
@@ -1205,8 +1310,10 @@ with tab_mx:
         + ["Rp", "vp", "des_p", "Tasa_diaria", "Tasa_anual", "sharpe_ratio"]
     ]
     st.dataframe(
-        max_port[[c for c in cols_sh if c in max_port.columns]].style.format(
-            formatos_mx if is_mx else formatos_usa
+        estilizar_tabla(
+            max_port[[c for c in cols_sh if c in max_port.columns]].style.format(
+                formatos_mx if is_mx else formatos_usa
+            )
         ),
         use_container_width=True,
     )
@@ -1236,7 +1343,7 @@ with tab_mx:
         ],
     })
     st.dataframe(
-        df_stats_sharpe.style.format({"Valor": "{:.2f}"}),
+        estilizar_tabla(df_stats_sharpe.style.format({"Valor": "{:.2f}"})),
         use_container_width=True,
     )
 
@@ -1288,9 +1395,11 @@ with tab_mx:
         "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
     )
     st.dataframe(
-        pd.concat([min_mx_1, min_mx_2, min_mx_3])[
-            [c for c in cols_min_mx if c in min_mx_1.columns]
-        ].style.format(formatos_mx),
+        estilizar_tabla(
+            pd.concat([min_mx_1, min_mx_2, min_mx_3])[
+                [c for c in cols_min_mx if c in min_mx_1.columns]
+            ].style.format(formatos_mx)
+        ),
         use_container_width=True,
     )
     st.markdown(
@@ -1298,9 +1407,11 @@ with tab_mx:
         " Años)"
     )
     st.dataframe(
-        pd.concat([max_mx_1, max_mx_2, max_mx_3])[
-            [c for c in cols_sh_mx if c in max_mx_1.columns]
-        ].style.format(formatos_mx),
+        estilizar_tabla(
+            pd.concat([max_mx_1, max_mx_2, max_mx_3])[
+                [c for c in cols_sh_mx if c in max_mx_1.columns]
+            ].style.format(formatos_mx)
+        ),
         use_container_width=True,
     )
 
@@ -1309,78 +1420,82 @@ with tab_mx:
 # PESTAÑA 2: ESTADOS UNIDOS
 # ==============================================================================
 with tab_usa:
-    st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
-    sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs([
-        "📅 1 Año",
-        "📅 2 Años",
-        "📅 3 Años",
-        "📋 Tablas Comparativas (Mínima Varianza y Sharpe)",
-    ])
+  st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
+  sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs([
+      "📅 1 Año",
+      "📅 2 Años",
+      "📅 3 Años",
+      "📋 Tablas Comparativas (Mínima Varianza y Sharpe)",
+  ])
 
-    with sub_usa_1:
-        renderizar_bloque_pais(
-            datos_usa_1,
-            cov_usa_1,
-            min_usa_1,
-            max_usa_1,
-            anim_usa_1,
-            t1000_usa_1,
-            empresas_usa,
-            cols_activas_usa_1,
-            "1 Año (EE. UU.)",
-            "T-Bills",
-            False,
-        )
-    with sub_usa_2:
-        renderizar_bloque_pais(
-            datos_usa_2,
-            cov_usa_2,
-            min_usa_2,
-            max_usa_2,
-            anim_usa_2,
-            t1000_usa_2,
-            empresas_usa,
-            cols_activas_usa_2,
-            "2 Años (EE. UU.)",
-            "T-Bills",
-            False,
-        )
-    with sub_usa_3:
-        renderizar_bloque_pais(
-            datos_usa_3,
-            cov_usa_3,
-            min_usa_3,
-            max_usa_3,
-            anim_usa_3,
-            t1000_usa_3,
-            empresas_usa,
-            cols_activas_usa_3,
-            "3 Años (EE. UU.)",
-            "T-Bills",
-            False,
-        )
-        
-    with sub_usa_comp:
-        st.subheader("📋 Tablas Comparativas de los 3 Años (EE. UU.)")
-        st.markdown(
-            "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
-        )
-        st.dataframe(
+  with sub_usa_1:
+    renderizar_bloque_pais(
+        datos_usa_1,
+        cov_usa_1,
+        min_usa_1,
+        max_usa_1,
+        anim_usa_1,
+        t1000_usa_1,
+        empresas_usa,
+        cols_activas_usa_1,
+        "1 Año (EE. UU.)",
+        "T-Bills",
+        False,
+    )
+  with sub_usa_2:
+    renderizar_bloque_pais(
+        datos_usa_2,
+        cov_usa_2,
+        min_usa_2,
+        max_usa_2,
+        anim_usa_2,
+        t1000_usa_2,
+        empresas_usa,
+        cols_activas_usa_2,
+        "2 Años (EE. UU.)",
+        "T-Bills",
+        False,
+    )
+  with sub_usa_3:
+    renderizar_bloque_pais(
+        datos_usa_3,
+        cov_usa_3,
+        min_usa_3,
+        max_usa_3,
+        anim_usa_3,
+        t1000_usa_3,
+        empresas_usa,
+        cols_activas_usa_3,
+        "3 Años (EE. UU.)",
+        "T-Bills",
+        False,
+    )
+
+  with sub_usa_comp:
+    st.subheader("📋 Tablas Comparativas de los 3 Años (EE. UU.)")
+    st.markdown(
+        "### A. Tabla Comparativa - Criterio de Mínima Varianza (1, 2 y 3 Años)"
+    )
+    st.dataframe(
+        estilizar_tabla(
             pd.concat([min_usa_1, min_usa_2, min_usa_3])[
                 [c for c in cols_min_usa if c in min_usa_1.columns]
-            ].style.format(formatos_usa),
-            use_container_width=True,
-        )
-        st.markdown(
-            "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3 "
-            "Años)"
-        )
-        st.dataframe(
+            ].style.format(formatos_usa)
+        ),
+        use_container_width=True,
+    )
+    st.markdown(
+        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3 "
+        "Años)"
+    )
+    st.dataframe(
+        estilizar_tabla(
             pd.concat([max_usa_1, max_usa_2, max_usa_3])[
                 [c for c in cols_sh_usa if c in max_usa_1.columns]
-            ].style.format(formatos_usa),
-            use_container_width=True,
-        )   
+            ].style.format(formatos_usa)
+        ),
+        use_container_width=True,
+    )
 
 # ==============================================================================
 # PESTAÑA 3: SIMULACIÓN POR ENFOQUE
@@ -1463,10 +1578,12 @@ with tab_port_enf:
       ],
   })
   st.dataframe(
-      df_dist_dinamica.style.format({
-          "Peso Dinámico (Mín. Varianza)": "{:.2%}",
-          "Inversión Asignada (MXN)": "${:,.2f}",
-      }),
+      estilizar_tabla(
+          df_dist_dinamica.style.format({
+              "Peso Dinámico (Mín. Varianza)": "{:.2%}",
+              "Inversión Asignada (MXN)": "${:,.2f}",
+          })
+      ),
       use_container_width=True,
   )
 
@@ -1477,6 +1594,9 @@ with tab_port_enf:
       k: obtener_precio_actual(v, 150.0) for k, v in tickers_usa.items()
   }
 
+  col_precio_mx = f"Precio Actual (MXN - {fecha_hoy_str})"
+  col_precio_usa = f"Precio Actual (USD - {fecha_hoy_str})"
+
   if mostrar_mx:
     st.markdown(f"#### 🇲🇽 Portafolio Accionario México (${m_mx_acc:,.2f} MXN)")
     activos_validos_mx = [e for e in empresas_mx if e in s_mx.columns]
@@ -1485,20 +1605,20 @@ with tab_port_enf:
         "Empresa": activos_validos_mx,
         "Peso Óptimo": pesos_mx_opt,
         "Capital Asignado (MXN)": pesos_mx_opt * m_mx_acc,
-        "Precio Actual (MXN)": [
-            precios_mx_actuales[e] for e in activos_validos_mx
-        ],
+        col_precio_mx: [precios_mx_actuales[e] for e in activos_validos_mx],
     })
     df_t_mx["Títulos a Comprar"] = np.floor(
-        df_t_mx["Capital Asignado (MXN)"] / df_t_mx["Precio Actual (MXN)"]
+        df_t_mx["Capital Asignado (MXN)"] / df_t_mx[col_precio_mx]
     ).astype(int)
     st.dataframe(
-        df_t_mx.style.format({
-            "Peso Óptimo": "{:.2%}",
-            "Capital Asignado (MXN)": "${:,.2f}",
-            "Precio Actual (MXN)": "${:,.2f}",
-            "Títulos a Comprar": "{:d}",
-        }),
+        estilizar_tabla(
+            df_t_mx.style.format({
+                "Peso Óptimo": "{:.2%}",
+                "Capital Asignado (MXN)": "${:,.2f}",
+                col_precio_mx: "${:,.2f}",
+                "Títulos a Comprar": "{:d}",
+            })
+        ),
         use_container_width=True,
     )
 
@@ -1513,20 +1633,20 @@ with tab_port_enf:
         "Empresa": activos_validos_usa,
         "Peso Óptimo": pesos_usa_opt,
         "Capital Asignado (USD)": pesos_usa_opt * (m_usa_mxn / tc_inicial),
-        "Precio Actual (USD)": [
-            precios_usa_actuales[e] for e in activos_validos_usa
-        ],
+        col_precio_usa: [precios_usa_actuales[e] for e in activos_validos_usa],
     })
     df_t_usa["Títulos a Comprar"] = np.floor(
-        df_t_usa["Capital Asignado (USD)"] / df_t_usa["Precio Actual (USD)"]
+        df_t_usa["Capital Asignado (USD)"] / df_t_usa[col_precio_usa]
     ).astype(int)
     st.dataframe(
-        df_t_usa.style.format({
-            "Peso Óptimo": "{:.2%}",
-            "Capital Asignado (USD)": "${:,.2f}",
-            "Precio Actual (USD)": "${:,.2f}",
-            "Títulos a Comprar": "{:d}",
-        }),
+        estilizar_tabla(
+            df_t_usa.style.format({
+                "Peso Óptimo": "{:.2%}",
+                "Capital Asignado (USD)": "${:,.2f}",
+                col_precio_usa: "${:,.2f}",
+                "Títulos a Comprar": "{:d}",
+            })
+        ),
         use_container_width=True,
     )
 
@@ -1572,10 +1692,12 @@ with tab_port_enf:
     return val
 
   st.dataframe(
-      df_est_enf.style.format({
-          col: lambda v, c=col: formateador_tabla_riesgo(v, c)
-          for col in df_est_enf.columns
-      }),
+      estilizar_tabla(
+          df_est_enf.style.format({
+              col: lambda v, c=col: formateador_tabla_riesgo(v, c)
+              for col in df_est_enf.columns
+          })
+      ),
       use_container_width=True,
   )
 
@@ -1591,9 +1713,12 @@ with tab_port_enf:
     return val
 
   st.dataframe(
-      df_est_enf_nominal.style.format({
-          col: formateador_tabla_nominal for col in df_est_enf_nominal.columns
-      }),
+      estilizar_tabla(
+          df_est_enf_nominal.style.format({
+              col: formateador_tabla_nominal
+              for col in df_est_enf_nominal.columns
+          })
+      ),
       use_container_width=True,
   )
 
@@ -1634,10 +1759,12 @@ with tab_port_enf:
         .reset_index(drop=True)
     )
     st.dataframe(
-        df_sl_ranking.style.format({
-            "Veces que Salió (-10%)": "{:,d}",
-            "% de Simulaciones": "{:.2%}",
-        }),
+        estilizar_tabla(
+            df_sl_ranking.style.format({
+                "Veces que Salió (-10%)": "{:,d}",
+                "% de Simulaciones": "{:.2%}",
+            })
+        ),
         use_container_width=True,
     )
 
@@ -1647,15 +1774,17 @@ with tab_port_enf:
       " Primeras 15 Filas"
   )
   st.dataframe(
-      df_excel_10k.head(15).style.format({
-          "Rendimiento en Pesos": "{:.2%}",
-          "Rendimiento en Dólares": "{:.2%}",
-          "Inicio del Dólar": "${:,.2f}",
-          "Final del Dólar": "${:,.2f}",
-          "Ganancia Cambiaria": "{:.2%}",
-          "Diferencia Cambiaria (MXN)": "${:,.2f}",
-          "Rendimiento Global": "{:.2%}",
-      }),
+      estilizar_tabla(
+          df_excel_10k.head(15).style.format({
+              "Rendimiento en Pesos": "{:.2%}",
+              "Rendimiento en Dólares": "{:.2%}",
+              "Inicio del Dólar": "${:,.2f}",
+              "Final del Dólar": "${:,.2f}",
+              "Ganancia Cambiaria": "{:.2%}",
+              "Diferencia Cambiaria (MXN)": "${:,.2f}",
+              "Rendimiento Global": "{:.2%}",
+          })
+      ),
       use_container_width=True,
   )
 
@@ -2063,8 +2192,10 @@ formatos_tabla = {
     "VALOR TOTAL USA (MXN)": "${:,.2f}",
 }
 st.dataframe(
-    df_excel_demo.style.format(
-        {c: v for c, v in formatos_tabla.items() if c in df_excel_demo.columns}
+    estilizar_tabla(
+        df_excel_demo.style.format({
+            c: v for c, v in formatos_tabla.items() if c in df_excel_demo.columns
+        })
     ),
     use_container_width=True,
 )
@@ -2115,6 +2246,9 @@ with tab_excel:
       k: obtener_precio_actual(v, 150.0) for k, v in tickers_usa.items()
   }
 
+  col_precio_mx_ex = f"Precio Actual (MXN - {fecha_hoy_str})"
+  col_precio_usa_ex = f"Precio Actual (USD - {fecha_hoy_str})"
+
   st.subheader(
       f"🇲🇽 Asignación de Títulos - Portafolio México (${m_mx_ex:,.2f} MXN)"
   )
@@ -2124,21 +2258,21 @@ with tab_excel:
       "Empresa": activos_validos_mx,
       "Peso Óptimo": pesos_mx_opt,
       "Capital Asignado (MXN)": pesos_mx_opt * m_mx_ex,
-      "Precio Actual (MXN)": [
-          precios_mx_actuales[e] for e in activos_validos_mx
-      ],
+      col_precio_mx_ex: [precios_mx_actuales[e] for e in activos_validos_mx],
   })
   df_titulos_mx["Títulos a Comprar"] = np.floor(
       df_titulos_mx["Capital Asignado (MXN)"]
-      / df_titulos_mx["Precio Actual (MXN)"]
+      / df_titulos_mx[col_precio_mx_ex]
   ).astype(int)
   st.dataframe(
-      df_titulos_mx.style.format({
-          "Peso Óptimo": "{:.2%}",
-          "Capital Asignado (MXN)": "${:,.2f}",
-          "Precio Actual (MXN)": "${:,.2f}",
-          "Títulos a Comprar": "{:d}",
-      }),
+      estilizar_tabla(
+          df_titulos_mx.style.format({
+              "Peso Óptimo": "{:.2%}",
+              "Capital Asignado (MXN)": "${:,.2f}",
+              col_precio_mx_ex: "${:,.2f}",
+              "Títulos a Comprar": "{:d}",
+          })
+      ),
       use_container_width=True,
   )
 
@@ -2153,21 +2287,21 @@ with tab_excel:
       "Empresa": activos_validos_usa,
       "Peso Óptimo": pesos_usa_opt,
       "Capital Asignado (USD)": pesos_usa_opt * (m_usa_ex / tc_inicial),
-      "Precio Actual (USD)": [
-          precios_usa_actuales[e] for e in activos_validos_usa
-      ],
+      col_precio_usa_ex: [precios_usa_actuales[e] for e in activos_validos_usa],
   })
   df_titulos_usa["Títulos a Comprar"] = np.floor(
       df_titulos_usa["Capital Asignado (USD)"]
-      / df_titulos_usa["Precio Actual (USD)"]
+      / df_titulos_usa[col_precio_usa_ex]
   ).astype(int)
   st.dataframe(
-      df_titulos_usa.style.format({
-          "Peso Óptimo": "{:.2%}",
-          "Capital Asignado (USD)": "${:,.2f}",
-          "Precio Actual (USD)": "${:,.2f}",
-          "Títulos a Comprar": "{:d}",
-      }),
+      estilizar_tabla(
+          df_titulos_usa.style.format({
+              "Peso Óptimo": "{:.2%}",
+              "Capital Asignado (USD)": "${:,.2f}",
+              col_precio_usa_ex: "${:,.2f}",
+              "Títulos a Comprar": "{:d}",
+          })
+      ),
       use_container_width=True,
   )
 

@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 # Configuración de la página en Streamlit
 st.set_page_config(
     page_title="Simulador de Portafolios Internacionales & Riesgo Estocástico",
-    page_icon="📈",
+    page_icon="💼",
     layout="wide",
 )
 

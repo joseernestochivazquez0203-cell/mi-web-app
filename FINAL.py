@@ -131,39 +131,23 @@ st.sidebar.info(
 # 2. LISTAS DE 15 EMPRESAS DISPONIBLES PARA CADA PAÍS (PARA LAS CAJITAS)
 # ==============================================================================
 opciones_mx = [
-    "KIMBERA.MX",
-    "WALMEX.MX",
-    "AMXB.MX",
-    "BIMBOA.MX",
-    "FEMSAUBD.MX",
-    "GFNORTEO.MX",
-    "CEMEXCPO.MX",
-    "GENTERA.MX",
-    "AC.MX",
-    "GFINBURO.MX",
-    "ASURB.MX",
-    "GAPB.MX",
-    "OMAB.MX",
-    "KOFUBL.MX",
-    "PINFRA.MX",
+   "WALMEX.MX", "AMXB.MX", "FEMSAUBD.MX", "GFNORTEO.MX", "GMEXICOB.MX",
+    "CEMEXCPO.MX", "BIMBOA.MX", "GAPB.MX", "ASURB.MX", "OMAB.MX",
+    "AC.MX", "KOFUBL.MX", "KIMBERA.MX", "GFINBURO.MX", "GENTERA.MX",
+    "PINFRA.MX", "ALFAA.MX", "CUERVO.MX", "LABB.MX", "CHDRAUIB.MX",
+    "SORIANAB.MX", "LIVEPOLC-1.MX", "GCARSOA1.MX", "BBAJIOO.MX", "RA.MX",
+    "FUNO11.MX", "FMTY14.MX", "TERRA13.MX", "DANHOS13.MX", "MEGACPO.MX",
+    "TLEVISACPO.MX", "VOLARA.MX", "ALSEA.MX", "GRUMAB.MX", "BOLSAA.MX",
+    "VESTA.MX", "ORBIA.MX", "PE&OLES.MX", "GCC.MX", "SITESB-1.MX",
 ]
 
 opciones_usa = [
-    "MSFT",
-    "AAPL",
-    "GOOGL",
-    "AMZN",
-    "META",
-    "TSLA",
-    "NVDA",
-    "NFLX",
-    "AMD",
-    "INTC",
-    "V",
-    "WMT",
-    "JPM",
-    "LLY",
-    "AVGO",
+    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AVGO", "BRK-B", "LLY",
+    "JPM", "V", "MA", "XOM", "UNH", "WMT", "COST", "HD", "PG", "JNJ",
+    "NFLX", "CRM", "AMD", "INTC", "ORCL", "ADBE", "BAC", "WFC", "GS", "MS",
+    "CVX", "MRK", "ABBV", "PEP", "KO", "TMO", "ACN", "MCD", "DIS", "ABT",
+    "CSCO", "LIN", "PM", "TXN", "NEE", "DHR", "AMGN", "RTX", "CAT", "IBM",
+    "QCOM", "SPGI", "LOW", "BA", "UBER", "PLTR", "COIN", "PYPL", "SBUX", "BKNG",
 ]
 
 # ==============================================================================

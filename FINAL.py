@@ -1,12 +1,13 @@
 import datetime
 import math
+from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 import yfinance as yf
-from zoneinfo import ZoneInfo
+
 # Configuración de la página en Streamlit
 st.set_page_config(
     page_title="Simulador de Portafolios Internacionales & Riesgo Estocástico",
@@ -14,7 +15,9 @@ st.set_page_config(
     layout="wide",
 )
 
-fecha_hoy_str = datetime.datetime.now(ZoneInfo("America/Mexico_City")).strftime("%d/%m/%Y")
+fecha_hoy_str = datetime.datetime.now(ZoneInfo("America/Mexico_City")).strftime(
+    "%d/%m/%Y"
+)
 
 # Estilo CSS personalizado para tarjetas, encabezados y estética general
 st.markdown(
@@ -73,8 +76,9 @@ st.title(
     "💼 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
 )
 st.markdown(
-    "Modelo cuantitativo multianual con Markowitz, Frontera Eficiente, Simulación"
-    " Monte Carlo, Bootstrapping (10,000 corridas), Stop-Loss Individual y Métricas de Riesgo."
+    "Modelo cuantitativo multianual con Markowitz, Frontera Eficiente,"
+    " Simulación Monte Carlo, Bootstrapping (10,000 corridas), Stop-Loss"
+    " Individual y Métricas de Riesgo."
 )
 
 # ==============================================================================
@@ -128,26 +132,112 @@ st.sidebar.info(
 )
 
 # ==============================================================================
-# 2. LISTAS DE 15 EMPRESAS DISPONIBLES PARA CADA PAÍS (PARA LAS CAJITAS)
+# 2. LISTAS DE EMPRESAS DISPONIBLES PARA CADA PAÍS (PARA LAS CAJITAS)
 # ==============================================================================
 opciones_mx = [
-    "WALMEX.MX", "AMXB.MX", "FEMSAUBD.MX", "GFNORTEO.MX", "GMEXICOB.MX",
-    "CEMEXCPO.MX", "BIMBOA.MX", "GAPB.MX", "ASURB.MX", "OMAB.MX",
-    "AC.MX", "KOFUBL.MX", "KIMBERA.MX", "GFINBURO.MX", "GENTERA.MX",
-    "PINFRA.MX", "ALFAA.MX", "CUERVO.MX", "LABB.MX", "CHDRAUIB.MX",
-    "SORIANAB.MX", "LIVEPOLC-1.MX", "GCARSOA1.MX", "BBAJIOO.MX", "RA.MX",
-    "FUNO11.MX", "FMTY14.MX", "TERRA13.MX", "DANHOS13.MX", "MEGACPO.MX",
-    "TLEVISACPO.MX", "VOLARA.MX", "ALSEA.MX", "GRUMAB.MX", "BOLSAA.MX",
-    "VESTA.MX", "ORBIA.MX", "PE&OLES.MX", "GCC.MX", "SITESB-1.MX",
+    "WALMEX.MX",
+    "AMXB.MX",
+    "FEMSAUBD.MX",
+    "GFNORTEO.MX",
+    "GMEXICOB.MX",
+    "CEMEXCPO.MX",
+    "BIMBOA.MX",
+    "GAPB.MX",
+    "ASURB.MX",
+    "OMAB.MX",
+    "AC.MX",
+    "KOFUBL.MX",
+    "KIMBERA.MX",
+    "GFINBURO.MX",
+    "GENTERA.MX",
+    "PINFRA.MX",
+    "ALFAA.MX",
+    "CUERVO.MX",
+    "LABB.MX",
+    "CHDRAUIB.MX",
+    "SORIANAB.MX",
+    "LIVEPOLC-1.MX",
+    "GCARSOA1.MX",
+    "BBAJIOO.MX",
+    "RA.MX",
+    "FUNO11.MX",
+    "FMTY14.MX",
+    "TERRA13.MX",
+    "DANHOS13.MX",
+    "MEGACPO.MX",
+    "TLEVISACPO.MX",
+    "VOLARA.MX",
+    "ALSEA.MX",
+    "GRUMAB.MX",
+    "BOLSAA.MX",
+    "VESTA.MX",
+    "ORBIA.MX",
+    "PE&OLES.MX",
+    "GCC.MX",
+    "SITESB-1.MX",
 ]
 
 opciones_usa = [
-    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AVGO", "BRK-B", "LLY",
-    "JPM", "V", "MA", "XOM", "UNH", "WMT", "COST", "HD", "PG", "JNJ",
-    "NFLX", "CRM", "AMD", "INTC", "ORCL", "ADBE", "BAC", "WFC", "GS", "MS",
-    "CVX", "MRK", "ABBV", "PEP", "KO", "TMO", "ACN", "MCD", "DIS", "ABT",
-    "CSCO", "LIN", "PM", "TXN", "NEE", "DHR", "AMGN", "RTX", "CAT", "IBM",
-    "QCOM", "SPGI", "LOW", "BA", "UBER", "PLTR", "COIN", "PYPL", "SBUX", "BKNG",
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "TSLA",
+    "AVGO",
+    "BRK-B",
+    "LLY",
+    "JPM",
+    "V",
+    "MA",
+    "XOM",
+    "UNH",
+    "WMT",
+    "COST",
+    "HD",
+    "PG",
+    "JNJ",
+    "NFLX",
+    "CRM",
+    "AMD",
+    "INTC",
+    "ORCL",
+    "ADBE",
+    "BAC",
+    "WFC",
+    "GS",
+    "MS",
+    "CVX",
+    "MRK",
+    "ABBV",
+    "PEP",
+    "KO",
+    "TMO",
+    "ACN",
+    "MCD",
+    "DIS",
+    "ABT",
+    "CSCO",
+    "LIN",
+    "PM",
+    "TXN",
+    "NEE",
+    "DHR",
+    "AMGN",
+    "RTX",
+    "CAT",
+    "IBM",
+    "QCOM",
+    "SPGI",
+    "LOW",
+    "BA",
+    "UBER",
+    "PLTR",
+    "COIN",
+    "PYPL",
+    "SBUX",
+    "BKNG",
 ]
 
 # ==============================================================================
@@ -238,25 +328,39 @@ def ejecutar_simulacion_mercado(
     tickers_dict, lista_empresas, start, end, n_sim, n_corr, tipo_tasa="cetes"
 ):
   raw_data = yf.download(
-      list(tickers_dict.values()), start=start, end=end, progress=False
+      list(tickers_dict.values()),
+      start=start,
+      end=end,
+      progress=False,
+      auto_adjust=True,
   )
-  if isinstance(raw_data, pd.DataFrame) and "Close" in raw_data.columns:
-    datos = raw_data["Close"]
-  else:
-    datos = raw_data
 
-  if isinstance(datos, pd.DataFrame):
-    if isinstance(datos.columns, pd.MultiIndex):
-      datos.columns = datos.columns.droplevel(0)
-    datos.rename(columns={v: k for k, v in tickers_dict.items()}, inplace=True)
-    datos = datos[[c for c in lista_empresas if c in datos.columns]].dropna(
-        how="all"
-    )
-    datos = datos.dropna(axis=1, how="any")
+  if isinstance(raw_data, pd.DataFrame) and not raw_data.empty:
+    if isinstance(raw_data.columns, pd.MultiIndex):
+      if "Close" in raw_data.columns.get_level_values(0):
+        datos = raw_data["Close"].copy()
+      else:
+        datos = raw_data.xs("Close", axis=1, level=-1, drop_level=True).copy()
+    else:
+      datos = (
+          raw_data["Close"].to_frame()
+          if "Close" in raw_data.columns
+          else raw_data.copy()
+      )
   else:
-    datos = pd.DataFrame(datos)
-    datos.columns = [lista_empresas[0]]
-    datos = datos.dropna()
+    datos = pd.DataFrame()
+
+  if not datos.empty:
+    mapa_inverso = {v: k for k, v in tickers_dict.items()}
+    datos.rename(columns=mapa_inverso, inplace=True)
+
+    cols_presentes = [c for c in lista_empresas if c in datos.columns]
+    datos = datos[cols_presentes].sort_index()
+
+    # Rellenar huecos puntuales (días inhábiles asimétricos en BMV) antes de limpiar
+    datos = datos.ffill().bfill().dropna(how="all")
+    # Eliminar únicamente columnas que vengan completamente vacías
+    datos = datos.dropna(axis=1, how="all")
 
   if datos.empty or datos.shape[1] == 0:
     datos = pd.DataFrame(
@@ -741,72 +845,68 @@ def construir_figura_animada_con_minima(
       height=500,
       xaxis=dict(title="Volatility (Riesgo Anual)", range=[0, 1.2]),
       yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.1, 0.4]),
-      updatemenus=[
-          {
-              "type": "buttons",
-              "buttons": [
-                  {
-                      "label": "▶ Reproducir",
-                      "method": "animate",
-                      "args": [
-                          None,
-                          {
-                              "frame": {"duration": 1000, "redraw": False},
-                              "fromcurrent": True,
-                          },
-                      ],
-                  },
-                  {
-                      "label": "⏸ Pausa",
-                      "method": "animate",
-                      "args": [
-                          [None],
-                          {
-                              "frame": {"duration": 0, "redraw": False},
-                              "mode": "immediate",
-                          },
-                      ],
-                  },
-              ],
-              "direction": "left",
-              "pad": {"r": 10, "t": 87},
-              "x": 0.1,
-              "xanchor": "right",
-              "y": 0,
-              "yanchor": "top",
-          }
-      ],
-      sliders=[
-          {
-              "active": 0,
-              "yanchor": "top",
-              "xanchor": "left",
-              "currentvalue": {
-                  "font": {"size": 13},
-                  "prefix": "Iteración: ",
-                  "visible": True,
-                  "xanchor": "right",
+      updatemenus=[{
+          "type": "buttons",
+          "buttons": [
+              {
+                  "label": "▶ Reproducir",
+                  "method": "animate",
+                  "args": [
+                      None,
+                      {
+                          "frame": {"duration": 1000, "redraw": False},
+                          "fromcurrent": True,
+                      },
+                  ],
               },
-              "pad": {"b": 10, "t": 50},
-              "len": 0.9,
-              "x": 0.1,
-              "y": 0,
-              "steps": [
-                  {
-                      "args": [
-                          [f"Paso {k}"],
-                          {
-                              "frame": {"duration": 300, "redraw": False},
-                              "mode": "immediate",
-                          },
-                      ],
-                      "label": f"#{k}",
-                      "method": "animate",
-                  }
-                  for k in range(1, n_pasos + 1)
-              ],
-          }
-      ],
+              {
+                  "label": "⏸ Pausa",
+                  "method": "animate",
+                  "args": [
+                      [None],
+                      {
+                          "frame": {"duration": 0, "redraw": False},
+                          "mode": "immediate",
+                      },
+                  ],
+              },
+          ],
+          "direction": "left",
+          "pad": {"r": 10, "t": 87},
+          "x": 0.1,
+          "xanchor": "right",
+          "y": 0,
+          "yanchor": "top",
+      }],
+      sliders=[{
+          "active": 0,
+          "yanchor": "top",
+          "xanchor": "left",
+          "currentvalue": {
+              "font": {"size": 13},
+              "prefix": "Iteración: ",
+              "visible": True,
+              "xanchor": "right",
+          },
+          "pad": {"b": 10, "t": 50},
+          "len": 0.9,
+          "x": 0.1,
+          "y": 0,
+          "steps": [
+              {
+                  "args": [
+                      [f"Paso {k}"],
+                      {
+                          "frame": {"duration": 300, "redraw": False},
+                          "mode": "immediate",
+                      },
+                  ],
+                  "label": f"#{k}",
+                  "method": "animate",
+              }
+              for k in range(1, n_pasos + 1)
+          ],
+      }],
   )
   fig.frames = frames
   return fig
@@ -1001,7 +1101,7 @@ def generar_simulacion_y_estadisticos(
   val_cetes_total_mxn = val_final_cetes_base
   val_tbills_mxn_val = val_final_tbills_usd * tc_final
 
-  # DIFERENCIA CAMBIARIA PURA EN MXN (INCLUYENDO RENTA VARIABLE USA + T-BILLS)
+  # DIFERENCIA CAMBIARIA PURA EN MXN
   val_usa_sin_cambio_mxn = val_usa_total_usd * tc_inicial
   diff_cambiaria_mxn = val_final_usa_total_mxn - val_usa_sin_cambio_mxn
 
@@ -1056,7 +1156,6 @@ def generar_simulacion_y_estadisticos(
       calcular_fila_stats(rend_cambiario, diff_cambiaria_mxn),
   ]
 
-  # INVERSIONES INICIALES CORRESPONDIENTES
   inv_global = capital_total
   inv_mx_acc = monto_mx_acc
   inv_usa_rv_mxn = monto_usa_acc_mxn
@@ -1064,7 +1163,7 @@ def generar_simulacion_y_estadisticos(
   inv_cetes = monto_cetes
   inv_tbills_mxn = monto_tbills_mxn
   inv_tbills_usd = monto_tbills_usd
-  inv_diff_cambiaria = 0.0  # Es una diferencia neta, parte de 0
+  inv_diff_cambiaria = 0.0
 
   filas_stats_nominal = [
       [inv_global] + calcular_fila_stats_nominal(val_final_global_mxn, alpha),
@@ -1469,8 +1568,8 @@ with tab_usa:
         use_container_width=True,
     )
     st.markdown(
-        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3 "
-        "Años)"
+        "### B. Tabla Comparativa - Criterio de Máximo Sharpe Ratio (1, 2 y 3"
+        " Años)"
     )
     st.dataframe(
         estilizar_tabla(
@@ -1718,7 +1817,8 @@ with tab_port_enf:
   st.markdown("---")
 
   st.subheader(
-      "🛡️ Ranking de Salidas por Stop-Loss (-10% Individual → Refugio en CETES / T-Bills)"
+      "🛡️ Ranking de Salidas por Stop-Loss (-10% Individual → Refugio en CETES"
+      " / T-Bills)"
   )
   filas_sl = []
   for emp, cnt in sl_mx_c.items():
@@ -1854,7 +1954,7 @@ fig_hist.add_annotation(
     x=0.98,
     y=0.95,
     text=(
-        f"<b>Estadísticos (MXN):</b><br>"
+        "<b>Estadísticos (MXN):</b><br>"
         f"• Media: ${media_val:,.2f}<br>"
         f"• Mediana (Q2): ${mediana_val:,.2f}<br>"
         f"• Moda: ${moda_val:,.2f}<br>"

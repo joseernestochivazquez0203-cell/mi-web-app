@@ -131,7 +131,7 @@ st.sidebar.info(
 # 2. LISTAS DE 15 EMPRESAS DISPONIBLES PARA CADA PAÍS (PARA LAS CAJITAS)
 # ==============================================================================
 opciones_mx = [
-   "WALMEX.MX", "AMXB.MX", "FEMSAUBD.MX", "GFNORTEO.MX", "GMEXICOB.MX",
+    "WALMEX.MX", "AMXB.MX", "FEMSAUBD.MX", "GFNORTEO.MX", "GMEXICOB.MX",
     "CEMEXCPO.MX", "BIMBOA.MX", "GAPB.MX", "ASURB.MX", "OMAB.MX",
     "AC.MX", "KOFUBL.MX", "KIMBERA.MX", "GFINBURO.MX", "GENTERA.MX",
     "PINFRA.MX", "ALFAA.MX", "CUERVO.MX", "LABB.MX", "CHDRAUIB.MX",

@@ -119,17 +119,16 @@ def estilizar_tabla(styler):
   (No modifica datos ni formatos numéricos.)"""
 
   def _zebra(df):
-    patron = np.where(
-        np.arange(len(df))[:, None] % 2 == 1,
-        "background-color: rgba(31, 78, 121, 0.05)",
-        "",
-    )
-    return pd.DataFrame(patron, index=df.index, columns=df.columns)
+    # Matriz con la MISMA forma que el DataFrame (filas x columnas).
+    estilos = np.full(df.shape, "", dtype=object)
+    estilos[1::2, :] = "background-color: rgba(31, 78, 121, 0.05)"
+    return pd.DataFrame(estilos, index=df.index, columns=df.columns)
 
-  try:
+  # Styler.apply es perezoso (falla al renderizar), así que se valida antes:
+  # solo se aplica zebra si índice y columnas son únicos.
+  datos = styler.data
+  if datos.index.is_unique and datos.columns.is_unique:
     styler = styler.apply(_zebra, axis=None)
-  except Exception:
-    pass  # Si el DataFrame no admite el estilo, se muestra sin zebra.
   return styler.set_properties(**{"font-size": "13px"})
 
 

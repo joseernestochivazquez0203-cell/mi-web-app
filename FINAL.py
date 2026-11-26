@@ -1980,191 +1980,288 @@ with tab_port_enf:
       use_container_width=True,
   )
 
-st.markdown("---")
-st.subheader(
-    f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
-)
-
-media_val = np.mean(val_enf_sim)
-mediana_val = np.median(val_enf_sim)
-q1_val = np.percentile(val_enf_sim, 25)
-q3_val = np.percentile(val_enf_sim, 75)
-cutoff_val = np.percentile(val_enf_sim, alpha_nivel * 100)
-
-conteos, bordes = np.histogram(val_enf_sim, bins=50)
-idx_moda = np.argmax(conteos)
-moda_val = (bordes[idx_moda] + bordes[idx_moda + 1]) / 2
-
-fig_hist = px.histogram(
-    x=val_enf_sim,
-    nbins=50,
-    labels={"x": "Valor Final en MXN"},
-    title=(
-        "Distribución de Probabilidad del Valor Final (10,000 Corridas"
-        " Bootstrap)"
-    ),
-    color_discrete_sequence=["#2980b9"],
-    opacity=0.75,
-)
-
-fig_hist.add_vline(
-    x=media_val,
-    line_dash="solid",
-    line_color="#27ae60",
-    line_width=2,
-    annotation_text=f"Media: ${media_val:,.2f}",
-    annotation_position="top right",
-)
-fig_hist.add_vline(
-    x=mediana_val,
-    line_dash="dash",
-    line_color="#f39c12",
-    line_width=2,
-    annotation_text=f"Mediana (Q2): ${mediana_val:,.2f}",
-    annotation_position="top left",
-)
-fig_hist.add_vline(
-    x=moda_val,
-    line_dash="dot",
-    line_color="#8e44ad",
-    line_width=2.5,
-    annotation_text=f"Moda: ${moda_val:,.2f}",
-    annotation_position="bottom right",
-)
-fig_hist.add_vline(
-    x=q1_val,
-    line_dash="dashdot",
-    line_color="#7f8c8d",
-    line_width=1.5,
-    annotation_text=f"Q1: ${q1_val:,.2f}",
-    annotation_position="bottom left",
-)
-fig_hist.add_vline(
-    x=q3_val,
-    line_dash="dashdot",
-    line_color="#7f8c8d",
-    line_width=1.5,
-    annotation_text=f"Q3: ${q3_val:,.2f}",
-    annotation_position="top right",
-)
-fig_hist.add_vline(
-    x=cutoff_val,
-    line_dash="dash",
-    line_color="#e74c3c",
-    line_width=2,
-    annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): ${cutoff_val:,.2f}",
-    annotation_position="bottom left",
-)
-
-fig_hist.add_annotation(
-    xref="paper",
-    yref="paper",
-    x=0.98,
-    y=0.95,
-    text=(
-        "<b>Estadísticos (MXN):</b><br>"
-        f"• Media: ${media_val:,.2f}<br>"
-        f"• Mediana (Q2): ${mediana_val:,.2f}<br>"
-        f"• Moda: ${moda_val:,.2f}<br>"
-        f"• Q1 (25%): ${q1_val:,.2f}<br>"
-        f"• Q3 (75%): ${q3_val:,.2f}<br>"
-        f"• Cutoff ({alpha_nivel*100:.1f}%): ${cutoff_val:,.2f}"
-    ),
-    showarrow=False,
-    align="left",
-    bgcolor="rgba(255, 255, 255, 0.9)",
-    bordercolor="#bdc3c7",
-    borderwidth=1,
-    borderpad=6,
-    font=dict(size=12, color="#2c3e50"),
-)
-
-fig_hist.update_layout(
-    xaxis_title="Valor Final (MXN)",
-    yaxis_title="Frecuencia (Corridas)",
-    template="plotly_white",
-    margin=dict(t=70),
-)
-st.plotly_chart(fig_hist, use_container_width=True)
-
-col_g1, col_g2 = st.columns(2)
-with col_g1:
-  fig_box = px.box(
-      y=val_enf_sim / 1000,
-      points="outliers",
-      title="Boxplot - Dispersión del Valor Final (Miles MXN)",
-      labels={"y": "Valor Final (Miles MXN)"},
-      color_discrete_sequence=["#27ae60"],
+  st.markdown("---")
+  st.subheader(
+      f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
   )
-  fig_box.update_traces(boxmean="sd")
-  fig_box.update_layout(template="plotly_white")
-  st.plotly_chart(fig_box, use_container_width=True)
 
-with col_g2:
-  n_sims = len(rend_enf_sim)
-  pasos = np.arange(1, n_sims + 1)
-  rend_pct = rend_enf_sim * 100
+  media_val = np.mean(val_enf_sim)
+  mediana_val = np.median(val_enf_sim)
+  q1_val = np.percentile(val_enf_sim, 25)
+  q3_val = np.percentile(val_enf_sim, 75)
+  cutoff_val = np.percentile(val_enf_sim, alpha_nivel * 100)
 
-  media_acum = np.cumsum(rend_pct) / pasos
-  media_cuad_acum = np.cumsum(rend_pct**2) / pasos
-  std_acum = np.sqrt(np.maximum(0, media_cuad_acum - media_acum**2))
+  conteos, bordes = np.histogram(val_enf_sim, bins=50)
+  idx_moda = np.argmax(conteos)
+  moda_val = (bordes[idx_moda] + bordes[idx_moda + 1]) / 2
 
-  media_r = np.mean(rend_pct)
-  cutoff_r = np.percentile(rend_pct, alpha_nivel * 100)
-
-  step_plot = max(1, n_sims // 2000)
-
-  fig_evol_r = go.Figure()
-  fig_evol_r.add_trace(
-      go.Scatter(
-          x=pasos[::step_plot],
-          y=rend_pct[::step_plot],
-          mode="markers",
-          marker=dict(size=3, color="#95a5a6", opacity=0.35),
-          name="Rendimiento Individual (%)",
-      )
+  fig_hist = px.histogram(
+      x=val_enf_sim,
+      nbins=50,
+      labels={"x": "Valor Final en MXN"},
+      title=(
+          "Distribución de Probabilidad del Valor Final (10,000 Corridas"
+          " Bootstrap)"
+      ),
+      color_discrete_sequence=["#2980b9"],
+      opacity=0.75,
   )
-  fig_evol_r.add_trace(
-      go.Scatter(
-          x=pasos,
-          y=media_acum + std_acum,
-          mode="lines",
-          line=dict(width=0),
-          showlegend=False,
-          hoverinfo="skip",
-      )
+
+  fig_hist.add_vline(
+      x=media_val,
+      line_dash="solid",
+      line_color="#27ae60",
+      line_width=2,
+      annotation_text=f"Media: ${media_val:,.2f}",
+      annotation_position="top right",
   )
-  fig_evol_r.add_trace(
-      go.Scatter(
-          x=pasos,
-          y=media_acum - std_acum,
-          mode="lines",
-          line=dict(width=0),
-          fill="tonexty",
-          fillcolor="rgba(39, 174, 96, 0.15)",
-          name="Banda ±1 Desv. Estándar",
-      )
-  )
-  fig_evol_r.add_trace(
-      go.Scatter(
-          x=pasos,
-          y=media_acum,
-          mode="lines",
-          line=dict(color="#27ae60", width=2.5),
-          name=f"Media Acumulada ({media_r:.2f}%)",
-      )
-  )
-  fig_evol_r.add_hline(
-      y=cutoff_r,
+  fig_hist.add_vline(
+      x=mediana_val,
       line_dash="dash",
-      line_color="#e74c3c",
-      annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): {cutoff_r:.2f}%",
+      line_color="#f39c12",
+      line_width=2,
+      annotation_text=f"Mediana (Q2): ${mediana_val:,.2f}",
+      annotation_position="top left",
+  )
+  fig_hist.add_vline(
+      x=moda_val,
+      line_dash="dot",
+      line_color="#8e44ad",
+      line_width=2.5,
+      annotation_text=f"Moda: ${moda_val:,.2f}",
       annotation_position="bottom right",
   )
-  fig_evol_r.update_layout(
-      title="Evolución y Convergencia del Rendimiento en las Corridas",
-      xaxis_title="Número de Corrida (#1 a #10,000)",
-      yaxis_title="Rendimiento (%)",
+  fig_hist.add_vline(
+      x=q1_val,
+      line_dash="dashdot",
+      line_color="#7f8c8d",
+      line_width=1.5,
+      annotation_text=f"Q1: ${q1_val:,.2f}",
+      annotation_position="bottom left",
+  )
+  fig_hist.add_vline(
+      x=q3_val,
+      line_dash="dashdot",
+      line_color="#7f8c8d",
+      line_width=1.5,
+      annotation_text=f"Q3: ${q3_val:,.2f}",
+      annotation_position="top right",
+  )
+  fig_hist.add_vline(
+      x=cutoff_val,
+      line_dash="dash",
+      line_color="#e74c3c",
+      line_width=2,
+      annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): ${cutoff_val:,.2f}",
+      annotation_position="bottom left",
+  )
+
+  fig_hist.add_annotation(
+      xref="paper",
+      yref="paper",
+      x=0.98,
+      y=0.95,
+      text=(
+          "<b>Estadísticos (MXN):</b><br>"
+          f"• Media: ${media_val:,.2f}<br>"
+          f"• Mediana (Q2): ${mediana_val:,.2f}<br>"
+          f"• Moda: ${moda_val:,.2f}<br>"
+          f"• Q1 (25%): ${q1_val:,.2f}<br>"
+          f"• Q3 (75%): ${q3_val:,.2f}<br>"
+          f"• Cutoff ({alpha_nivel*100:.1f}%): ${cutoff_val:,.2f}"
+      ),
+      showarrow=False,
+      align="left",
+      bgcolor="rgba(255, 255, 255, 0.9)",
+      bordercolor="#bdc3c7",
+      borderwidth=1,
+      borderpad=6,
+      font=dict(size=12, color="#2c3e50"),
+  )
+
+  fig_hist.update_layout(
+      xaxis_title="Valor Final (MXN)",
+      yaxis_title="Frecuencia (Corridas)",
+      template="plotly_white",
+      margin=dict(t=70),
+  )
+  st.plotly_chart(fig_hist, use_container_width=True)
+
+  col_g1, col_g2 = st.columns(2)
+  with col_g1:
+    fig_box = px.box(
+        y=val_enf_sim / 1000,
+        points="outliers",
+        title="Boxplot - Dispersión del Valor Final (Miles MXN)",
+        labels={"y": "Valor Final (Miles MXN)"},
+        color_discrete_sequence=["#27ae60"],
+    )
+    fig_box.update_traces(boxmean="sd")
+    fig_box.update_layout(template="plotly_white")
+    st.plotly_chart(fig_box, use_container_width=True)
+
+  with col_g2:
+    n_sims = len(rend_enf_sim)
+    pasos = np.arange(1, n_sims + 1)
+    rend_pct = rend_enf_sim * 100
+
+    media_acum = np.cumsum(rend_pct) / pasos
+    media_cuad_acum = np.cumsum(rend_pct**2) / pasos
+    std_acum = np.sqrt(np.maximum(0, media_cuad_acum - media_acum**2))
+
+    media_r = np.mean(rend_pct)
+    cutoff_r = np.percentile(rend_pct, alpha_nivel * 100)
+
+    step_plot = max(1, n_sims // 2000)
+
+    fig_evol_r = go.Figure()
+    fig_evol_r.add_trace(
+        go.Scatter(
+            x=pasos[::step_plot],
+            y=rend_pct[::step_plot],
+            mode="markers",
+            marker=dict(size=3, color="#95a5a6", opacity=0.35),
+            name="Rendimiento Individual (%)",
+        )
+    )
+    fig_evol_r.add_trace(
+        go.Scatter(
+            x=pasos,
+            y=media_acum + std_acum,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    fig_evol_r.add_trace(
+        go.Scatter(
+            x=pasos,
+            y=media_acum - std_acum,
+            mode="lines",
+            line=dict(width=0),
+            fill="tonexty",
+            fillcolor="rgba(39, 174, 96, 0.15)",
+            name="Banda ±1 Desv. Estándar",
+        )
+    )
+    fig_evol_r.add_trace(
+        go.Scatter(
+            x=pasos,
+            y=media_acum,
+            mode="lines",
+            line=dict(color="#27ae60", width=2.5),
+            name=f"Media Acumulada ({media_r:.2f}%)",
+        )
+    )
+    fig_evol_r.add_hline(
+        y=cutoff_r,
+        line_dash="dash",
+        line_color="#e74c3c",
+        annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): {cutoff_r:.2f}%",
+        annotation_position="bottom right",
+    )
+    fig_evol_r.update_layout(
+        title="Evolución y Convergencia del Rendimiento en las Corridas",
+        xaxis_title="Número de Corrida (#1 a #10,000)",
+        yaxis_title="Rendimiento (%)",
+        template="plotly_white",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+        ),
+    )
+    st.plotly_chart(fig_evol_r, use_container_width=True)
+
+  st.markdown("---")
+  st.subheader(
+      "📈 Gráfica de Optimización Ratio de Sharpe (Portafolio Combinado MX +"
+      " USA)"
+  )
+  rp_mx_anual = s_mx["Rp"].values[0]
+  desv_mx_anual = s_mx["des_p"].values[0]
+  rp_usa_anual = s_usa["Rp"].values[0]
+  desv_usa_anual = s_usa["des_p"].values[0]
+
+  w_grid = np.linspace(0, 1, 60)
+  ret_comb_grid = w_grid * rp_mx_anual + (1 - w_grid) * rp_usa_anual
+  riesgo_comb_grid = np.sqrt(
+      (w_grid * desv_mx_anual) ** 2 + ((1 - w_grid) * desv_usa_anual) ** 2
+  )
+
+  media_cetes = (0.04 + 0.08 + 0.10) / 3
+  media_tbills = (0.0360 + 0.0370 + 0.0400) / 3
+  tasa_rf_global = media_cetes * w_mx_din + media_tbills * w_usa_din
+
+  sharpe_comb_grid = (ret_comb_grid - tasa_rf_global) / riesgo_comb_grid
+
+  idx_best_sh = np.argmax(sharpe_comb_grid)
+  idx_min_var_g = np.argmin(riesgo_comb_grid)
+
+  fig_sh_global = go.Figure()
+  fig_sh_global.add_trace(
+      go.Scatter(
+          x=riesgo_comb_grid,
+          y=ret_comb_grid,
+          mode="markers",
+          marker=dict(
+              size=8,
+              color=sharpe_comb_grid,
+              colorscale="Viridis",
+              showscale=True,
+              colorbar=dict(title="Sharpe", x=1.02),
+              line=dict(width=0.5, color="white"),
+          ),
+          name="Portafolios Combinados",
+      )
+  )
+  fig_sh_global.add_trace(
+      go.Scatter(
+          x=[riesgo_comb_grid[idx_best_sh]],
+          y=[ret_comb_grid[idx_best_sh]],
+          mode="markers",
+          marker=dict(
+              size=16,
+              color="#e74c3c",
+              symbol="star",
+              line=dict(width=1.5, color="black"),
+          ),
+          name="★ Máximo Sharpe Global",
+      )
+  )
+  fig_sh_global.add_trace(
+      go.Scatter(
+          x=[riesgo_comb_grid[idx_min_var_g]],
+          y=[ret_comb_grid[idx_min_var_g]],
+          mode="markers",
+          marker=dict(
+              size=12,
+              color="blue",
+              symbol="circle",
+              line=dict(width=1.5, color="black"),
+          ),
+          name="🔵 Mínima Varianza Global",
+      )
+  )
+
+  x_cal_g = np.linspace(0, riesgo_comb_grid[idx_best_sh] * 1.25, 30)
+  y_cal_g = tasa_rf_global + sharpe_comb_grid[idx_best_sh] * x_cal_g
+  fig_sh_global.add_trace(
+      go.Scatter(
+          x=x_cal_g,
+          y=y_cal_g,
+          mode="lines",
+          line=dict(color="red", width=1.5, dash="dash"),
+          name="Línea de Asignación de Capital (CAL)",
+      )
+  )
+  fig_sh_global.update_layout(
+      title="Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)",
+      xaxis_title="Volatilidad (Riesgo Anual)",
+      yaxis_title="Rendimiento Anual Esperado",
       template="plotly_white",
       legend=dict(
           orientation="h",
@@ -2173,224 +2270,127 @@ with col_g2:
           xanchor="center",
           x=0.5,
       ),
+      margin=dict(t=90, r=80),
   )
-  st.plotly_chart(fig_evol_r, use_container_width=True)
+  st.plotly_chart(fig_sh_global, use_container_width=True)
 
-st.markdown("---")
-st.subheader(
-    "📈 Gráfica de Optimización Ratio de Sharpe (Portafolio Combinado MX +"
-    " USA)"
-)
-rp_mx_anual = s_mx["Rp"].values[0]
-desv_mx_anual = s_mx["des_p"].values[0]
-rp_usa_anual = s_usa["Rp"].values[0]
-desv_usa_anual = s_usa["des_p"].values[0]
+  st.markdown("---")
+  st.subheader(f"📈 Tabla de Simulación Diaria Estocástica ({titulo_enf})")
+  dias_muestra = 15
+  fechas_m = [
+      (fecha_inicio_sim + datetime.timedelta(days=i)).strftime("%d/%m/%Y")
+      for i in range(dias_muestra)
+  ]
 
-w_grid = np.linspace(0, 1, 60)
-ret_comb_grid = w_grid * rp_mx_anual + (1 - w_grid) * rp_usa_anual
-riesgo_comb_grid = np.sqrt(
-    (w_grid * desv_mx_anual) ** 2 + ((1 - w_grid) * desv_usa_anual) ** 2
-)
+  tc_base = 18.44
+  val_mx = m_mx_acc
+  val_cetes = m_cetes
+  val_usa_usd = m_usa_mxn / tc_base
+  val_tb_usd = m_tbills_mxn / tc_base
 
-media_cetes = (0.04 + 0.08 + 0.10) / 3
-media_tbills = (0.0360 + 0.0370 + 0.0400) / 3
-tasa_rf_global = media_cetes * w_mx_din + media_tbills * w_usa_din
-
-sharpe_comb_grid = (ret_comb_grid - tasa_rf_global) / riesgo_comb_grid
-
-idx_best_sh = np.argmax(sharpe_comb_grid)
-idx_min_var_g = np.argmin(riesgo_comb_grid)
-
-fig_sh_global = go.Figure()
-fig_sh_global.add_trace(
-    go.Scatter(
-        x=riesgo_comb_grid,
-        y=ret_comb_grid,
-        mode="markers",
-        marker=dict(
-            size=8,
-            color=sharpe_comb_grid,
-            colorscale="Viridis",
-            showscale=True,
-            colorbar=dict(title="Sharpe", x=1.02),
-            line=dict(width=0.5, color="white"),
-        ),
-        name="Portafolios Combinados",
-    )
-)
-fig_sh_global.add_trace(
-    go.Scatter(
-        x=[riesgo_comb_grid[idx_best_sh]],
-        y=[ret_comb_grid[idx_best_sh]],
-        mode="markers",
-        marker=dict(
-            size=16,
-            color="#e74c3c",
-            symbol="star",
-            line=dict(width=1.5, color="black"),
-        ),
-        name="★ Máximo Sharpe Global",
-    )
-)
-fig_sh_global.add_trace(
-    go.Scatter(
-        x=[riesgo_comb_grid[idx_min_var_g]],
-        y=[ret_comb_grid[idx_min_var_g]],
-        mode="markers",
-        marker=dict(
-            size=12,
-            color="blue",
-            symbol="circle",
-            line=dict(width=1.5, color="black"),
-        ),
-        name="🔵 Mínima Varianza Global",
-    )
-)
-
-x_cal_g = np.linspace(0, riesgo_comb_grid[idx_best_sh] * 1.25, 30)
-y_cal_g = tasa_rf_global + sharpe_comb_grid[idx_best_sh] * x_cal_g
-fig_sh_global.add_trace(
-    go.Scatter(
-        x=x_cal_g,
-        y=y_cal_g,
-        mode="lines",
-        line=dict(color="red", width=1.5, dash="dash"),
-        name="Línea de Asignación de Capital (CAL)",
-    )
-)
-fig_sh_global.update_layout(
-    title="Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)",
-    xaxis_title="Volatilidad (Riesgo Anual)",
-    yaxis_title="Rendimiento Anual Esperado",
-    template="plotly_white",
-    legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="center",
-        x=0.5,
-    ),
-    margin=dict(t=90, r=80),
-)
-st.plotly_chart(fig_sh_global, use_container_width=True)
-
-st.markdown("---")
-st.subheader(f"📈 Tabla de Simulación Diaria Estocástica ({titulo_enf})")
-dias_muestra = 15
-fechas_m = [
-    (fecha_inicio_sim + datetime.timedelta(days=i)).strftime("%d/%m/%Y")
-    for i in range(dias_muestra)
-]
-
-tc_base = 18.44
-val_mx = m_mx_acc
-val_cetes = m_cetes
-val_usa_usd = m_usa_mxn / tc_base
-val_tb_usd = m_tbills_mxn / tc_base
-
-rend_h_mx = np.log(d_mx / d_mx.shift(1)).dropna()
-act_mx_d = [
-    e for e in empresas_mx if e in s_mx.columns and e in rend_h_mx.columns
-]
-port_hist_mx_demo = (
-    rend_h_mx[act_mx_d].dot(s_mx[act_mx_d].values[0]).values
-    if len(act_mx_d) > 0
-    else np.zeros(10)
-)
-
-rend_h_usa = np.log(d_usa / d_usa.shift(1)).dropna()
-act_usa_d = [
-    e for e in empresas_usa if e in s_usa.columns and e in rend_h_usa.columns
-]
-port_hist_usa_demo = (
-    rend_h_usa[act_usa_d].dot(s_usa[act_usa_d].values[0]).values
-    if len(act_usa_d) > 0
-    else np.zeros(10)
-)
-
-filas_excel = []
-for idx, f in enumerate(fechas_m):
-  p_cetes = np.random.uniform(0, 1)
-  tasa_c = (
-      0.078 + np.sqrt(p_cetes * 0.002 * 0.004)
-      if p_cetes < 0.5
-      else 0.082 - np.sqrt((1 - p_cetes) * 0.004 * 0.002)
-  )
-  p_tb = np.random.uniform(0, 1)
-  tasa_t = (
-      0.0368 + np.sqrt(p_tb * 0.0002 * 0.0004)
-      if p_tb < 0.5
-      else 0.0372 - np.sqrt((1 - p_tb) * 0.0004 * 0.0002)
+  rend_h_mx = np.log(d_mx / d_mx.shift(1)).dropna()
+  act_mx_d = [
+      e for e in empresas_mx if e in s_mx.columns and e in rend_h_mx.columns
+  ]
+  port_hist_mx_demo = (
+      rend_h_mx[act_mx_d].dot(s_mx[act_mx_d].values[0]).values
+      if len(act_mx_d) > 0
+      else np.zeros(10)
   )
 
-  if idx == 0:
-    tc, rend_mx_n, rend_usa_n = tc_base, 0.0, 0.0
-  else:
-    rend_mx_n = float(np.random.choice(port_hist_mx_demo))
-    rend_usa_n = float(np.random.choice(port_hist_usa_demo))
-    val_mx *= 1 + rend_mx_n
-    val_cetes *= 1 + tasa_c / 360
-    val_usa_usd *= 1 + rend_usa_n
-    val_tb_usd *= 1 + tasa_t / 360
-    u_w = np.random.uniform(0.3, 0.7)
-    tc = 18.32123 * (u_w / (1 - u_w)) ** (1 / 28.52977)
+  rend_h_usa = np.log(d_usa / d_usa.shift(1)).dropna()
+  act_usa_d = [
+      e for e in empresas_usa if e in s_usa.columns and e in rend_h_usa.columns
+  ]
+  port_hist_usa_demo = (
+      rend_h_usa[act_usa_d].dot(s_usa[act_usa_d].values[0]).values
+      if len(act_usa_d) > 0
+      else np.zeros(10)
+  )
 
-  total_usa_mxn = (val_usa_usd + val_tb_usd) * tc
-  total_global = val_mx + val_cetes + total_usa_mxn
+  filas_excel = []
+  for idx, f in enumerate(fechas_m):
+    p_cetes = np.random.uniform(0, 1)
+    tasa_c = (
+        0.078 + np.sqrt(p_cetes * 0.002 * 0.004)
+        if p_cetes < 0.5
+        else 0.082 - np.sqrt((1 - p_cetes) * 0.004 * 0.002)
+    )
+    p_tb = np.random.uniform(0, 1)
+    tasa_t = (
+        0.0368 + np.sqrt(p_tb * 0.0002 * 0.0004)
+        if p_tb < 0.5
+        else 0.0372 - np.sqrt((1 - p_tb) * 0.0004 * 0.0002)
+    )
 
-  fila_dict = {"Fecha": f}
-  if mostrar_mx:
-    fila_dict.update({
-        "Rend. MX (Boot)": rend_mx_n,
-        "Portafolio Acc. MX ($)": val_mx,
-        "Prob CETES": p_cetes,
-        "Tasa CETES (Triang)": tasa_c,
-        "Valor CETES ($)": val_cetes,
-    })
-  if mostrar_usa:
-    fila_dict.update({
-        "Rend. USA (Boot)": rend_usa_n,
-        "Portafolio Acc. USA (USD)": val_usa_usd,
-        "Prob T-Bills": p_tb,
-        "Tasa T-Bills (Triang)": tasa_t,
-        "Valor T-Bills (USD)": val_tb_usd,
-        "Tipo Cambio USD/MXN": tc,
-        "Valor Total USA (MXN)": total_usa_mxn,
-    })
-  if enf_key == "global":
-    fila_dict["VALOR TOTAL PORTAFOLIO GLOBAL (MXN)"] = total_global
-  elif enf_key == "mexico":
-    fila_dict["VALOR TOTAL MÉXICO (MXN)"] = val_mx + val_cetes
-  else:
-    fila_dict["VALOR TOTAL USA (MXN)"] = total_usa_mxn
-  filas_excel.append(fila_dict)
+    if idx == 0:
+      tc, rend_mx_n, rend_usa_n = tc_base, 0.0, 0.0
+    else:
+      rend_mx_n = float(np.random.choice(port_hist_mx_demo))
+      rend_usa_n = float(np.random.choice(port_hist_usa_demo))
+      val_mx *= 1 + rend_mx_n
+      val_cetes *= 1 + tasa_c / 360
+      val_usa_usd *= 1 + rend_usa_n
+      val_tb_usd *= 1 + tasa_t / 360
+      u_w = np.random.uniform(0.3, 0.7)
+      tc = 18.32123 * (u_w / (1 - u_w)) ** (1 / 28.52977)
 
-df_excel_demo = pd.DataFrame(filas_excel)
-formatos_tabla = {
-    "Rend. MX (Boot)": "{:.2%}",
-    "Portafolio Acc. MX ($)": "${:,.2f}",
-    "Prob CETES": "{:.2f}",
-    "Tasa CETES (Triang)": "{:.2%}",
-    "Valor CETES ($)": "${:,.2f}",
-    "Rend. USA (Boot)": "{:.2%}",
-    "Portafolio Acc. USA (USD)": "${:,.2f}",
-    "Prob T-Bills": "{:.2f}",
-    "Tasa T-Bills (Triang)": "{:.2%}",
-    "Valor T-Bills (USD)": "${:,.2f}",
-    "Tipo Cambio USD/MXN": "${:,.4f}",
-    "Valor Total USA (MXN)": "${:,.2f}",
-    "VALOR TOTAL PORTAFOLIO GLOBAL (MXN)": "${:,.2f}",
-    "VALOR TOTAL MÉXICO (MXN)": "${:,.2f}",
-    "VALOR TOTAL USA (MXN)": "${:,.2f}",
-}
-st.dataframe(
-    estilizar_tabla(
-        df_excel_demo.style.format({
-            c: v for c, v in formatos_tabla.items() if c in df_excel_demo.columns
-        })
-    ),
-    use_container_width=True,
-)
+    total_usa_mxn = (val_usa_usd + val_tb_usd) * tc
+    total_global = val_mx + val_cetes + total_usa_mxn
+
+    fila_dict = {"Fecha": f}
+    if mostrar_mx:
+      fila_dict.update({
+          "Rend. MX (Boot)": rend_mx_n,
+          "Portafolio Acc. MX ($)": val_mx,
+          "Prob CETES": p_cetes,
+          "Tasa CETES (Triang)": tasa_c,
+          "Valor CETES ($)": val_cetes,
+      })
+    if mostrar_usa:
+      fila_dict.update({
+          "Rend. USA (Boot)": rend_usa_n,
+          "Portafolio Acc. USA (USD)": val_usa_usd,
+          "Prob T-Bills": p_tb,
+          "Tasa T-Bills (Triang)": tasa_t,
+          "Valor T-Bills (USD)": val_tb_usd,
+          "Tipo Cambio USD/MXN": tc,
+          "Valor Total USA (MXN)": total_usa_mxn,
+      })
+    if enf_key == "global":
+      fila_dict["VALOR TOTAL PORTAFOLIO GLOBAL (MXN)"] = total_global
+    elif enf_key == "mexico":
+      fila_dict["VALOR TOTAL MÉXICO (MXN)"] = val_mx + val_cetes
+    else:
+      fila_dict["VALOR TOTAL USA (MXN)"] = total_usa_mxn
+    filas_excel.append(fila_dict)
+
+  df_excel_demo = pd.DataFrame(filas_excel)
+  formatos_tabla = {
+      "Rend. MX (Boot)": "{:.2%}",
+      "Portafolio Acc. MX ($)": "${:,.2f}",
+      "Prob CETES": "{:.2f}",
+      "Tasa CETES (Triang)": "{:.2%}",
+      "Valor CETES ($)": "${:,.2f}",
+      "Rend. USA (Boot)": "{:.2%}",
+      "Portafolio Acc. USA (USD)": "${:,.2f}",
+      "Prob T-Bills": "{:.2f}",
+      "Tasa T-Bills (Triang)": "{:.2%}",
+      "Valor T-Bills (USD)": "${:,.2f}",
+      "Tipo Cambio USD/MXN": "${:,.4f}",
+      "Valor Total USA (MXN)": "${:,.2f}",
+      "VALOR TOTAL PORTAFOLIO GLOBAL (MXN)": "${:,.2f}",
+      "VALOR TOTAL MÉXICO (MXN)": "${:,.2f}",
+      "VALOR TOTAL USA (MXN)": "${:,.2f}",
+  }
+  st.dataframe(
+      estilizar_tabla(
+          df_excel_demo.style.format({
+              c: v for c, v in formatos_tabla.items() if c in df_excel_demo.columns
+          })
+      ),
+      use_container_width=True,
+  )
 
 
 # ==============================================================================

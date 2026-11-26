@@ -1062,12 +1062,12 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
 
 else:
     if "Log-logístico" in modelo_seleccionado:
-        st.markdown("## 📌 MODELO 1: LOG-LOGÍSTICO")
+        st.markdown("## 🎢🌊 MODELO 1: LOG-LOGÍSTICO")
         df_diario, fechas = simular_diario_log_logistico(precio_futuro_inicial, capital_inicial, tamano_contrato, margen_llamada)
         nombre_mod = "Log-Logístico"
         tipo_mc = "log_logistico"
     else:
-        st.markdown("## 📌 MODELO 2: MÉTODO DE FISHER (MBG)")
+        st.markdown("## 〰️⚛️ MODELO 2: MÉTODO DE FISHER (MBG)")
         df_diario, fechas = simular_diario_fisher(precio_futuro_inicial, capital_inicial, tamano_contrato, margen_llamada)
         nombre_mod = "Fisher (MBG)"
         tipo_mc = "fisher"
@@ -1147,7 +1147,7 @@ else:
     st.markdown("---")
     col_tit, col_btn = st.columns([3, 1])
     with col_tit:
-        st.markdown("### 📈 Gráfica de Trayectorias Comparativas (Sobrepuestas)")
+        st.markdown("### 📈 Gráfica de Trayectorias Comparativas")
     with col_btn:
         if st.button("🧹 Limpiar Historial", use_container_width=True):
             st.session_state["historial_trayectorias"] = [trayectoria_actual]

@@ -1,5 +1,8 @@
 import datetime
+import json
 import math
+import os
+from pathlib import Path
 from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
@@ -117,11 +120,44 @@ alpha_nivel = (
 )
 
 st.sidebar.subheader("🚀 Proyección Estocástica Futura")
-fecha_inicio_sim = datetime.date.today()
+_hoy = datetime.date.today()
+
+# Fecha de inicio editable (por defecto: hoy). Se inicializa en session_state
+# una sola vez para no mezclar `value=` con el estado y evitar conflictos.
+if "fecha_inicio_sim" not in st.session_state:
+    st.session_state["fecha_inicio_sim"] = _hoy
+
+fecha_inicio_sim = st.sidebar.date_input(
+    "Fecha de Inicio de Simulación:",
+    key="fecha_inicio_sim",
+    min_value=datetime.date(2000, 1, 1),
+    max_value=_hoy,
+    help="Por defecto es hoy. Los históricos de 1, 2 y 3 años se calculan hacia atrás desde esta fecha.",
+)
+
+# Fecha final: se mantiene consistente con la fecha de inicio.
+_min_fin = fecha_inicio_sim + datetime.timedelta(days=1)
+_max_fin = fecha_inicio_sim + datetime.timedelta(days=365 * 10)
+
+if "fecha_fin_sim" not in st.session_state:
+    st.session_state["fecha_fin_sim"] = fecha_inicio_sim + datetime.timedelta(days=365)
+else:
+    # Si el usuario movió la fecha de inicio, desplazamos la fecha final el mismo
+    # número de días para conservar el horizonte que ya había elegido.
+    _inicio_prev = st.session_state.get("_fecha_inicio_prev", fecha_inicio_sim)
+    if _inicio_prev != fecha_inicio_sim:
+        st.session_state["fecha_fin_sim"] += fecha_inicio_sim - _inicio_prev
+    # Blindaje final: el valor siempre debe caer dentro de [min_value, max_value].
+    st.session_state["fecha_fin_sim"] = min(
+        max(st.session_state["fecha_fin_sim"], _min_fin), _max_fin
+    )
+st.session_state["_fecha_inicio_prev"] = fecha_inicio_sim
+
 fecha_fin_sim = st.sidebar.date_input(
     "Fecha Final de Simulación:",
-    value=fecha_inicio_sim + datetime.timedelta(days=365),
-    min_value=fecha_inicio_sim + datetime.timedelta(days=1),
+    key="fecha_fin_sim",
+    min_value=_min_fin,
+    max_value=_max_fin,
 )
 
 dias_totales = (fecha_fin_sim - fecha_inicio_sim).days
@@ -242,40 +278,112 @@ opciones_usa = [
 
 # ==============================================================================
 # 3. SELECTORES TIPO "CAJITA" EN LA INTERFAZ PRINCIPAL (5 POR PAÍS)
+#    Persistencia: st.session_state <-> archivo JSON local (sobrevive a recargas
+#    y reinicios de la app).
 # ==============================================================================
+ARCHIVO_SELECCIONES = Path(__file__).with_name("selecciones_activos.json")
+KEYS_MX = ["m1", "m2", "m3", "m4", "m5"]
+KEYS_USA = ["u1", "u2", "u3", "u4", "u5"]
+DEFAULTS_SEL = {
+    **{k: opciones_mx[i] for i, k in enumerate(KEYS_MX)},
+    **{k: opciones_usa[i] for i, k in enumerate(KEYS_USA)},
+}
+OPCIONES_POR_KEY = {
+    **{k: opciones_mx for k in KEYS_MX},
+    **{k: opciones_usa for k in KEYS_USA},
+}
+
+
+def _cargar_selecciones():
+    """Lee el JSON y devuelve solo valores válidos (si falla, usa defaults)."""
+    sel = dict(DEFAULTS_SEL)
+    try:
+        with open(ARCHIVO_SELECCIONES, "r", encoding="utf-8") as f:
+            guardado = json.load(f)
+        for k, v in guardado.items():
+            if k in sel and v in OPCIONES_POR_KEY[k]:
+                sel[k] = v
+    except (FileNotFoundError, json.JSONDecodeError, OSError, TypeError):
+        pass
+    return sel
+
+
+def _guardar_selecciones(sel):
+    """Escritura atómica para no corromper el JSON si la app se cierra a medias."""
+    try:
+        tmp = ARCHIVO_SELECCIONES.with_suffix(".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(sel, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, ARCHIVO_SELECCIONES)
+    except OSError:
+        pass  # Si el disco es de solo lectura, la app sigue funcionando sin persistir.
+
+
+def _restablecer_selecciones():
+    """Callback del botón: corre ANTES de instanciar los widgets, por eso es
+    seguro modificar st.session_state aquí sin conflictos."""
+    for k, v in DEFAULTS_SEL.items():
+        st.session_state[k] = v
+    st.session_state["_sel_guardadas"] = dict(DEFAULTS_SEL)
+    try:
+        ARCHIVO_SELECCIONES.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+# Primera carga de la sesión: volcar lo guardado en session_state (una sola vez).
+if "_sel_guardadas" not in st.session_state:
+    _inicial = _cargar_selecciones()
+    for k, v in _inicial.items():
+        st.session_state[k] = v
+    st.session_state["_sel_guardadas"] = dict(_inicial)
+
 st.markdown("---")
 st.subheader("🏢 Selección Interactiva de Activos (Cajitas de Exposición)")
 col_sel_mx, col_sel_usa = st.columns(2)
 
+# Nota: sin `index=` porque el valor lo controla st.session_state[key].
 with col_sel_mx:
   st.markdown("#### 🇲🇽 Selecciona 5 Activos para México (BMV)")
   c_mx1, c_mx2, c_mx3, c_mx4, c_mx5 = st.columns(5)
   with c_mx1:
-    t1 = st.selectbox("M1", opciones_mx, index=0, key="m1")
+    t1 = st.selectbox("M1", opciones_mx, key="m1")
   with c_mx2:
-    t2 = st.selectbox("M2", opciones_mx, index=1, key="m2")
+    t2 = st.selectbox("M2", opciones_mx, key="m2")
   with c_mx3:
-    t3 = st.selectbox("M3", opciones_mx, index=2, key="m3")
+    t3 = st.selectbox("M3", opciones_mx, key="m3")
   with c_mx4:
-    t4 = st.selectbox("M4", opciones_mx, index=3, key="m4")
+    t4 = st.selectbox("M4", opciones_mx, key="m4")
   with c_mx5:
-    t5 = st.selectbox("M5", opciones_mx, index=4, key="m5")
+    t5 = st.selectbox("M5", opciones_mx, key="m5")
   tickers_mx_list = [t1, t2, t3, t4, t5]
 
 with col_sel_usa:
   st.markdown("#### 🇺🇸 Selecciona 5 Activos para EE. UU. (Tech/Global)")
   c_usa1, c_usa2, c_usa3, c_usa4, c_usa5 = st.columns(5)
   with c_usa1:
-    u1 = st.selectbox("U1", opciones_usa, index=0, key="u1")
+    u1 = st.selectbox("U1", opciones_usa, key="u1")
   with c_usa2:
-    u2 = st.selectbox("U2", opciones_usa, index=1, key="u2")
+    u2 = st.selectbox("U2", opciones_usa, key="u2")
   with c_usa3:
-    u3 = st.selectbox("U3", opciones_usa, index=2, key="u3")
+    u3 = st.selectbox("U3", opciones_usa, key="u3")
   with c_usa4:
-    u4 = st.selectbox("U4", opciones_usa, index=3, key="u4")
+    u4 = st.selectbox("U4", opciones_usa, key="u4")
   with c_usa5:
-    u5 = st.selectbox("U5", opciones_usa, index=4, key="u5")
+    u5 = st.selectbox("U5", opciones_usa, key="u5")
   tickers_usa_list = [u1, u2, u3, u4, u5]
+
+# Guardar solo si cambió algo respecto a lo último persistido.
+_seleccion_actual = {k: st.session_state[k] for k in DEFAULTS_SEL}
+if _seleccion_actual != st.session_state["_sel_guardadas"]:
+    _guardar_selecciones(_seleccion_actual)
+    st.session_state["_sel_guardadas"] = dict(_seleccion_actual)
+
+st.button(
+    "↺ Restablecer selecciones por defecto",
+    on_click=_restablecer_selecciones,
+    help="Vuelve a las primeras 5 empresas de cada país y borra lo guardado.",
+)
 
 tickers_mx = {t.split(".")[0]: t for t in tickers_mx_list}
 empresas_mx = list(tickers_mx.keys())

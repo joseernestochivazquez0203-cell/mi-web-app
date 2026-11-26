@@ -34,7 +34,7 @@ ROJO = "#D64545"
 GRIS = "#8A94A6"
 GRIS_OSC = "#5B6B82"
 AMBAR = "#F2A900"
-FONDO_SUAVE = "#1F4H80"
+FONDO_SUAVE = "#90C5FA"
 COLORSCALE_AZUL = [[0.0, "#C9DAEA"], [1.0, AZUL]]  # Sharpe: azul claro -> oscuro
 
 _tpl = go.layout.Template(pio.templates["plotly_white"])

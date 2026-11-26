@@ -265,6 +265,18 @@ if "historial_trayectorias" not in st.session_state:
 if "historial_mc" not in st.session_state:
     st.session_state["historial_mc"] = []
 
+def _calcular_moda_continua(serie, bins=40):
+    """Estima la moda para distribuciones continuas usando el centro del intervalo de mayor frecuencia."""
+    if len(serie) == 0:
+        return 0.0
+    valores = serie.dropna().to_numpy()
+    if np.all(valores == valores[0]):
+        return float(valores[0])
+    conteos, bordes = np.histogram(valores, bins=bins)
+    idx_max = int(np.argmax(conteos))
+    return float((bordes[idx_max] + bordes[idx_max + 1]) / 2.0)
+
+
 # --- PARÁMETROS FIJOS DE FUTUROS ---
 RAZON_APORTACION = 1.5   # $15,000 de aportación por cada $10,000 de tamaño de contrato
 COMISION_FIJA = 50.0     # Comisión fija (paso inicial y paso final)
@@ -343,10 +355,10 @@ elif "Comparación" not in modelo_seleccionado and "Fórmulas" not in modelo_sel
 # --- 2. FUNCIONES DE CÁLCULO Y SIMULACIÓN ---
 # ==============================================================================
 
-def simular_diario_log_logistico(precio_inicial, cap_inicial, t_contrato):
+def simular_diario_log_logistico(precio_inicial, cap_inicial, t_contrato, margen_llamada_val=0.0):
     B3 = 28.52977
     B4 = 18.32123
-    fechas = pd.date_range(start="2026-10-15", end="2026-12-17", freq="D")
+    fechas = pd.date_range(start="2026-10-15", end="2026-12-17", freq="B")
     n = len(fechas)
 
     U = np.random.uniform(0.0001, 0.9999, n)
@@ -380,9 +392,9 @@ def simular_diario_log_logistico(precio_inicial, cap_inicial, t_contrato):
         m_temp = margen_prev + gp - com
 
         dep = 0.0
-        if m_temp <= 0:
-            dep = cap_inicial + abs(m_temp)
-            m_temp = m_temp + dep
+        if m_temp < margen_llamada_val:
+            dep = cap_inicial - m_temp
+            m_temp = cap_inicial
 
         margen[i] = m_temp
         depositos_llamadas[i] = dep
@@ -401,11 +413,11 @@ def simular_diario_log_logistico(precio_inicial, cap_inicial, t_contrato):
     return df, fechas
 
 
-def simular_diario_fisher(precio_inicial, cap_inicial, t_contrato):
+def simular_diario_fisher(precio_inicial, cap_inicial, t_contrato, margen_llamada_val=0.0):
     B5_desv = 17.69391793
     B10 = 0.01736111
     B11 = 0.01119444
-    fechas = pd.date_range(start="2026-10-15", end="2026-12-17", freq="D")
+    fechas = pd.date_range(start="2026-10-15", end="2026-12-17", freq="B")
     n = len(fechas)
 
     sigma = B5_desv / 100.0
@@ -416,7 +428,7 @@ def simular_diario_fisher(precio_inicial, cap_inicial, t_contrato):
     precios[0] = 18.44
 
     for i in range(1, n):
-        factor_exponente = (B10 - B11 - 0.5 * (sigma**2)) * dt + (sigma / np.sqrt(252)) * Z[i]
+        factor_exponente = (B10 - B11 - 0.5 * (sigma**2)) * dt + (sigma * np.sqrt(dt)) * Z[i]
         precios[i] = precios[i - 1] * np.exp(factor_exponente)
 
     variacion_diaria = pd.Series(precios).pct_change()
@@ -446,9 +458,9 @@ def simular_diario_fisher(precio_inicial, cap_inicial, t_contrato):
         m_temp = margen_prev + gp - com
 
         dep = 0.0
-        if m_temp <= 0:
-            dep = cap_inicial + abs(m_temp)
-            m_temp = m_temp + dep
+        if m_temp < margen_llamada_val:
+            dep = cap_inicial - m_temp
+            m_temp = cap_inicial
 
         margen[i] = m_temp
         depositos_llamadas[i] = dep
@@ -659,7 +671,7 @@ def generar_df_resumen(df, cap_inicial, t_contrato, p_inicial):
 
 
 def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_inicial, t_contrato, alpha, num_sims):
-    fechas = pd.date_range(start="2026-10-15", end="2026-12-17", freq="D")
+    fechas = pd.date_range(start="2026-10-15", end="2026-12-17", freq="B")
     n = len(fechas)
 
     B3 = 28.52977
@@ -683,7 +695,7 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
             precios = np.zeros(n)
             precios[0] = 18.44
             for i in range(1, n):
-                factor_exponente = (B10 - B11 - 0.5 * (sigma**2)) * dt + (sigma / np.sqrt(252)) * Z[i]
+                factor_exponente = (B10 - B11 - 0.5 * (sigma**2)) * dt + (sigma * np.sqrt(dt)) * Z[i]
                 precios[i] = precios[i - 1] * np.exp(factor_exponente)
 
         variacion_diaria = pd.Series(precios).pct_change()
@@ -758,8 +770,7 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
     dic_estadisticos = []
     for col in columnas_numericas:
         serie = df_excel[col]
-        moda_res = stats.mode(np.round(serie, 2), keepdims=True)
-        moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else 0.0
+        moda_val = _calcular_moda_continua(serie, bins=40)
 
         dic_estadisticos.append({
             "Métrica": col,
@@ -775,7 +786,7 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
 
     df_estadisticos = pd.DataFrame(dic_estadisticos)
 
-    valor_inicial = 190000.0
+    valor_inicial = float(precio_inicial * t_contrato)
     df_excel["Valor Total Final"] = valor_inicial + df_excel["Ganancia bruta del mercado"]
     p = alpha
     etiqueta = f"{int(p*100)}%"
@@ -789,12 +800,12 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
         "Nivel Alpha (%)": etiqueta,
     }])
 
-    return df_excel, df_estadisticos, df_cut_var_valor, etiqueta, matriz_precios_futuros, fechas
+    return df_excel, df_estadisticos, df_cut_var_valor, etiqueta, matriz_precios_futuros, fechas, valor_inicial
 
 
 def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, margen_llamada_val, alpha, num_sims):
-    df_log, _, _, _, _, _ = ejecutar_monte_carlo("log_logistico", precio_inicial, margen_llamada_val, cap_inicial, t_contrato, alpha, num_sims)
-    df_fish, _, _, _, _, _ = ejecutar_monte_carlo("fisher", precio_inicial, margen_llamada_val, cap_inicial, t_contrato, alpha, num_sims)
+    df_log, _, _, _, _, _, _ = ejecutar_monte_carlo("log_logistico", precio_inicial, margen_llamada_val, cap_inicial, t_contrato, alpha, num_sims)
+    df_fish, _, _, _, _, _, _ = ejecutar_monte_carlo("fisher", precio_inicial, margen_llamada_val, cap_inicial, t_contrato, alpha, num_sims)
     
     comparativa_data = {
         "Métrica / Indicador": [
@@ -841,9 +852,9 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
             "$5,847",
             "$28,486",
             "$12,919",
-            "$-119",
+            "-$119",
             "$20,696",
-            "$-31,634"
+            "-$31,634"
         ]
     }
     return pd.DataFrame(comparativa_data)
@@ -926,7 +937,7 @@ elif "Comparación de los Tres Modelos" in modelo_seleccionado:
         p_ini_comp, cap_ini_comp, t_cont_comp, margen_comp, alpha_comp, sims_comp
     )
     
-    # Solo presentación: "$-119" -> "-$119" (los valores y cálculos no cambian)
+    # Solo presentación: "-$119" -> "-$119" (los valores y cálculos no cambian)
     df_comparativa_vista = df_comparativa_final.replace(r"\$-", "-$", regex=True)
     st.dataframe(
         df_comparativa_vista,
@@ -971,8 +982,8 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
                 """
             )
             st.caption(
-                "L = margen de llamada (Monte Carlo). En la simulación diaria individual el disparador es "
-                "M̃ₜ ≤ 0. D = depósito por llamada."
+                "L = margen de llamada configurado en el panel lateral (aplica tanto en la simulación diaria como en Monte Carlo). "
+                "D = depósito por llamada."
             )
     with f4:
         with st.container(border=True):
@@ -1005,13 +1016,13 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
         st.markdown("**Cutoff y VaR (Monte Carlo)**")
         v1, v2 = st.columns(2)
         with v1:
-            st.latex(r"V^{(k)}_{final} = V_0 + \text{Ganancia bruta}^{(k)}, \quad V_0 = 190{,}000")
+            st.latex(r"V^{(k)}_{final} = V_0 + \text{Ganancia bruta}^{(k)}, \quad V_0 = F_0 \cdot T")
             st.latex(r"\text{Cutoff}_\alpha = Q_\alpha\!\left(V^{(k)}_{final}\right)")
             st.latex(r"\text{VaR}_\alpha = V_0 - \text{Cutoff}_\alpha")
         with v2:
             st.markdown("Estadísticos de las métricas simuladas:")
             st.latex(r"\bar{x} = \frac{1}{K}\sum_{k=1}^{K} x_k, \qquad Q_{p}(x) = \text{cuantil de orden } p")
-            st.caption("Q1 = Q₀.₂₅, mediana = Q₀.₅, Q3 = Q₀.₇₅, máximo = máxₖ xₖ, moda = valor más frecuente (redondeado a centavos). K = número de simulaciones.")
+            st.caption("Q1 = Q₀.₂₅, mediana = Q₀.₅, Q3 = Q₀.₇₅, máximo = máxₖ xₖ, moda = marca de clase del intervalo modal (40 bins). K = número de simulaciones.")
 
     st.markdown("---")
 
@@ -1052,12 +1063,12 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
 else:
     if "Log-logístico" in modelo_seleccionado:
         st.markdown("## 📌 MODELO 1: LOG-LOGÍSTICO")
-        df_diario, fechas = simular_diario_log_logistico(precio_futuro_inicial, capital_inicial, tamano_contrato)
+        df_diario, fechas = simular_diario_log_logistico(precio_futuro_inicial, capital_inicial, tamano_contrato, margen_llamada)
         nombre_mod = "Log-Logístico"
         tipo_mc = "log_logistico"
     else:
         st.markdown("## 📌 MODELO 2: MÉTODO DE FISHER (MBG)")
-        df_diario, fechas = simular_diario_fisher(precio_futuro_inicial, capital_inicial, tamano_contrato)
+        df_diario, fechas = simular_diario_fisher(precio_futuro_inicial, capital_inicial, tamano_contrato, margen_llamada)
         nombre_mod = "Fisher (MBG)"
         tipo_mc = "fisher"
 
@@ -1119,7 +1130,7 @@ else:
         },
     )
 
-    df_excel, df_estadisticos, df_cut_var_valor, etiqueta, matriz_precios, fechas_mc = ejecutar_monte_carlo(
+    df_excel, df_estadisticos, df_cut_var_valor, etiqueta, matriz_precios, fechas_mc, valor_inicial_mc = ejecutar_monte_carlo(
         tipo_mc, precio_futuro_inicial, margen_llamada, capital_inicial, tamano_contrato, alpha_seleccionado, num_simulaciones
     )
 
@@ -1193,7 +1204,7 @@ else:
     )
 
     st.markdown("### 🛡️ Tabla de Cutoff y VaR")
-    st.caption(f"Alpha = {etiqueta}  ·  Base: $190,000")
+    st.caption(f"Alpha = {etiqueta}  ·  Base nocional: {_fmt_usd(valor_inicial_mc)}")
     mostrar_tabla(
         df_cut_var_valor,
         {"Tipo Cutoff": _fmt_usd, "Tipo VaR": _fmt_usd},
@@ -1254,8 +1265,7 @@ else:
             mediana_val = serie.median()
             q1_val = serie.quantile(0.25)
             q3_val = serie.quantile(0.75)
-            moda_res = stats.mode(np.round(serie, 2), keepdims=True)
-            moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else serie.iloc[0]
+            moda_val = _calcular_moda_continua(serie, bins=40)
 
             with col_sel2:
                 st.markdown(f"**Modelo Activo:** `{item['etiqueta']}`")
@@ -1294,8 +1304,7 @@ else:
                 mediana_val = serie.median()
                 q1_val = serie.quantile(0.25)
                 q3_val = serie.quantile(0.75)
-                moda_res = stats.mode(np.round(serie, 2), keepdims=True)
-                moda_val = moda_res.mode[0] if len(moda_res.mode) > 0 else serie.iloc[0]
+                moda_val = _calcular_moda_continua(serie, bins=40)
 
                 ax.axvline(media_val, color='#dc2626', linestyle='-', linewidth=1.4, label='Media')
                 ax.axvline(mediana_val, color='#16a34a', linestyle='--', linewidth=1.4, label='Mediana')

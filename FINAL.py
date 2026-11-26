@@ -1493,7 +1493,7 @@ cols_sh_usa = [
 # PESTAÑA 1: MERCADO MEXICANO
 # ==============================================================================
 with tab_mx:
-  st.header("🇲🇽 Análisis de Portafolios - Activos Mexicanos y CETES")
+  st.header("🌶️📂 Análisis de Portafolios - Activos Mexicanos y CETES")
   sub_mx_1, sub_mx_2, sub_mx_3, sub_mx_comp = st.tabs([
       "📅 1 Año",
       "📅 2 Años",
@@ -1713,7 +1713,7 @@ with tab_mx:
 # PESTAÑA 2: ESTADOS UNIDOS
 # ==============================================================================
 with tab_usa:
-  st.header("🇺🇸 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
+  st.header("📂🗽 Análisis de Portafolios - Activos de EE. UU. y T-Bills")
   sub_usa_1, sub_usa_2, sub_usa_3, sub_usa_comp = st.tabs([
       "📅 1 Año",
       "📅 2 Años",
@@ -1804,9 +1804,9 @@ with tab_port_enf:
     enfoque_sel = st.selectbox(
         "Selecciona el enfoque de simulación:",
         [
-            "Full México (Solo Acciones MX + CETES)",
-            "Full EE. UU. (Solo Acciones USA + T-Bills + TC)",
-            "Global Unificado (México + EE. UU. Combinados)",
+            "Full México 🏛️ (Solo Acciones MX + CETES)",
+            "Full EE. UU. 🗽 (Solo Acciones USA + T-Bills + TC)",
+            "Global Unificado 🗺️⚖️(México + EE. UU. Combinados)",
         ],
         key="sel_enf_dinamico",
     )

@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -10,52 +11,98 @@ st.set_page_config(
     page_title="Simulador Financiero Integral USD/MXN", page_icon="📈", layout="wide"
 )
 
-# --- CSS PERSONALIZADO MEJORADO PARA INTERFAZ LIMPIA ---
+# --- CSS PERSONALIZADO: PALETA, TARJETAS, TABLAS Y JERARQUÍA VISUAL ---
 st.markdown(
     """
     <style>
-    /* Estilo general del fondo */
-    .main {
-        background-color: #f8fafc;
+    :root {
+        --c-bg: #f1f5f9;
+        --c-surface: #ffffff;
+        --c-border: #e2e8f0;
+        --c-text: #0f172a;
+        --c-text-2: #334155;
+        --c-muted: #64748b;
+        --c-accent: #2563eb;
+        --c-accent-dark: #1e3a8a;
+        --radius: 12px;
+        --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
     }
-    h1, h2, h3 {
+
+    /* Fondo general y ancho máximo de lectura (evita tablas excesivamente estiradas) */
+    .stApp, .main {
+        background-color: var(--c-bg);
+    }
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 1400px;
+    }
+
+    /* Tipografía y jerarquía de encabezados */
+    h1, h2, h3, h4 {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        color: #0f172a;
+        color: var(--c-text);
+        letter-spacing: -0.01em;
+        line-height: 1.3;
     }
-    
-    /* Corrección de padding en contenedores para evitar solapamientos */
-    div[data-testid="column"] {
-        padding: 0 8px;
+    h2 {
+        font-size: 1.6rem !important;
+        font-weight: 800 !important;
+        margin-top: 0.5rem;
+    }
+    h3 {
+        font-size: 1.15rem !important;
+        font-weight: 700 !important;
+        margin-top: 1.25rem;
+        padding-left: 0.65rem;
+        border-left: 4px solid var(--c-accent);
+        overflow-wrap: break-word;
+    }
+    hr {
+        margin: 1.75rem 0 !important;
+        border-color: var(--c-border) !important;
+    }
+    div[data-testid="stCaptionContainer"] {
+        color: var(--c-muted);
     }
 
-    /* Estilo refinado para DataFrames y Tablas en Streamlit */
+    /* Separación entre columnas (compatible con versiones nuevas y antiguas de Streamlit) */
+    div[data-testid="column"], div[data-testid="stColumn"] {
+        padding: 0 6px;
+    }
+
+    /* Contenedor de tablas (st.dataframe): borde limpio, sin padding interno
+       para que la rejilla calcule bien su ancho y no recorte columnas */
     div[data-testid="stDataFrame"], div[data-testid="stTable"] {
-        background: #ffffff;
-        padding: 14px;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
-        border: 1px solid #e2e8f0;
-        margin-bottom: 20px;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
     }
 
-    /* Estilo para las métricas superiores (st.metric) */
+    /* Tarjetas de métricas (st.metric) */
     div[data-testid="stMetric"] {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-left: 5px solid #2563eb;
-        padding: 12px 12px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        background-color: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-left: 5px solid var(--c-accent);
+        padding: 14px 16px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
     }
     div[data-testid="stMetricLabel"] {
-        color: #64748b;
+        color: var(--c-muted);
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
+        text-transform: none;
     }
     div[data-testid="stMetricValue"] {
-        color: #0f172a;
+        color: var(--c-text);
         font-weight: 700;
         overflow: visible !important;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
     }
     /* Evita el recorte con "..." y escala la fuente según el ancho de pantalla */
     div[data-testid="stMetricValue"] > div {
@@ -69,6 +116,17 @@ st.markdown(
     div[data-testid="stMetricLabel"] p {
         overflow: visible !important;
         text-overflow: clip !important;
+    }
+
+    /* Contenedores con borde (sección de fórmulas) */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: var(--radius);
+    }
+
+    /* Barra lateral */
+    section[data-testid="stSidebar"] {
+        background-color: var(--c-surface);
+        border-right: 1px solid var(--c-border);
     }
 
     /* Botones modernos con efecto elevación suave */
@@ -88,21 +146,106 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* Tablas HTML personalizadas */
+    /* Tablas HTML (markdown) con cifras tabulares */
     table {
         font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
         width: 100% !important;
         border-collapse: collapse;
     }
     th {
         background-color: #f1f5f9 !important;
-        color: #334155 !important;
+        color: var(--c-text-2) !important;
         font-weight: 700 !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+# Estilo base de las gráficas de Matplotlib (solo apariencia)
+plt.rcParams.update({
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "axes.edgecolor": "#cbd5e1",
+    "axes.labelcolor": "#334155",
+    "axes.titlecolor": "#0f172a",
+    "xtick.color": "#475569",
+    "ytick.color": "#475569",
+    "figure.facecolor": "white",
+    "axes.facecolor": "white",
+    "font.family": "sans-serif",
+})
+
+
+# --- HELPERS DE PRESENTACIÓN (solo formato visual; no intervienen en los cálculos) ---
+def _fmt_usd(valor, decimales=2):
+    """Moneda con separador de miles; el signo va antes del símbolo: -$1,234.56."""
+    if valor is None or pd.isna(valor):
+        return ""
+    redondeado = round(float(valor), decimales)
+    signo = "-" if redondeado < 0 else ""
+    return f"{signo}${abs(redondeado):,.{decimales}f}"
+
+
+def _fmt_usd4(valor):
+    return _fmt_usd(valor, 4)
+
+
+def _fmt_pct_desde_proporcion(valor, decimales=2):
+    """Convierte una proporción decimal (-0.05) a porcentaje real (-5.00%)."""
+    if valor is None or pd.isna(valor):
+        return ""
+    pct = round(float(valor) * 100, decimales)
+    if pct == 0:
+        pct = 0.0  # evita "-0.00%"
+    return f"{pct:.{decimales}f}%"
+
+
+def _fmt_num(valor, decimales=4):
+    if valor is None or pd.isna(valor):
+        return ""
+    return f"{float(valor):,.{decimales}f}"
+
+
+def _fmt_num2(valor):
+    return _fmt_num(valor, 2)
+
+
+def _fmt_entero(valor):
+    if valor is None or pd.isna(valor):
+        return ""
+    return f"{int(valor):d}"
+
+
+def _color_signo(valor):
+    """Verde para ganancias, rojo para pérdidas, gris para cero."""
+    if valor is None or pd.isna(valor) or valor == 0:
+        return "color: #64748b"
+    return "color: #15803d" if valor > 0 else "color: #b91c1c"
+
+
+def mostrar_tabla(df, formatos=None, colores_signo=None, **kwargs):
+    """st.dataframe con formato por columna (vía Styler) y limpieza visual.
+
+    El DataFrame original no se modifica: el formato solo afecta a lo que se ve,
+    por lo que el orden/ordenamiento de la tabla sigue usando los valores numéricos reales.
+    """
+    kwargs.setdefault("use_container_width", True)
+    kwargs.setdefault("hide_index", True)
+    formatos = {c: f for c, f in (formatos or {}).items() if c in df.columns}
+    styler = df.style.format(formatos, na_rep="")
+    cols_color = [c for c in (colores_signo or []) if c in df.columns]
+    if cols_color:
+        aplicar = styler.map if hasattr(styler, "map") else styler.applymap
+        styler = aplicar(_color_signo, subset=cols_color)
+    st.dataframe(styler, **kwargs)
+
+
+def _altura_tabla(n_filas, fila_px=35, extra=3):
+    """Altura exacta para tablas cortas (encabezado + filas) sin scroll interno."""
+    return (n_filas + 1) * fila_px + extra
+
 
 # Título Principal con estilo refinado
 st.markdown(
@@ -500,16 +643,16 @@ def generar_df_resumen(df, cap_inicial, t_contrato, p_inicial):
             "Efectivo Total Retirable (Margen Final)",
         ],
         "Valor": [
-            f"${max_deposito:,.2f}",
+            _fmt_usd(max_deposito),
             str(fecha_max_dep),
-            f"${precio_dolar_max_dep:,.4f}" if isinstance(precio_dolar_max_dep, float) else precio_dolar_max_dep,
-            f"${precio_final:,.4f}",
-            f"${cap_inicial:,.2f}",
-            f"${ganancia_bruta_mercado:,.2f}",
-            f"${total_llamadas:,.2f}",
-            f"${capital_inyectado_total:,.2f}",
-            f"${total_comisiones:,.2f}",
-            f"${efectivo_retirable:,.2f}",
+            _fmt_usd(precio_dolar_max_dep, 4) if isinstance(precio_dolar_max_dep, float) else precio_dolar_max_dep,
+            _fmt_usd(precio_final, 4),
+            _fmt_usd(cap_inicial),
+            _fmt_usd(ganancia_bruta_mercado),
+            _fmt_usd(total_llamadas),
+            _fmt_usd(capital_inyectado_total),
+            _fmt_usd(total_comisiones),
+            _fmt_usd(efectivo_retirable),
         ],
     })
     return df_resumen
@@ -727,7 +870,19 @@ if "Binomial" in modelo_seleccionado:
 
     st.markdown("---")
     st.markdown("### 📋 Tabla Resumen por Paso del Árbol Binomial")
-    st.dataframe(df_resumen_pasos, use_container_width=True)
+    mostrar_tabla(
+        df_resumen_pasos,
+        {
+            "Paso": _fmt_entero,
+            "Tiempo (t)": _fmt_num,
+            "Precio Mínimo ($)": _fmt_usd4,
+            "Precio Máximo ($)": _fmt_usd4,
+            "Precio Promedio ($)": _fmt_usd4,
+            "Valor Opción (Promedio)": _fmt_usd4,
+            "Probabilidad (p)": _fmt_num,
+        },
+        height=_altura_tabla(len(df_resumen_pasos)),
+    )
 
     st.caption(
         "Cada nodo es un precio posible: la rama superior es una subida (u) y la inferior una bajada (d). "
@@ -743,7 +898,7 @@ if "Binomial" in modelo_seleccionado:
         use_container_width=True, key="arbol_precios",
     )
     with st.expander("Ver tabla numérica del árbol de precios"):
-        st.dataframe(df_arbol_S, use_container_width=True)
+        mostrar_tabla(df_arbol_S, {c: _fmt_num for c in df_arbol_S.columns}, hide_index=False)
 
     st.markdown(f"### 📉 2. Árbol de Valor de la Opción ({tipo_op} {estilo_op})")
     st.plotly_chart(
@@ -754,7 +909,7 @@ if "Binomial" in modelo_seleccionado:
         use_container_width=True, key="arbol_opcion",
     )
     with st.expander("Ver tabla numérica del árbol de la opción"):
-        st.dataframe(df_arbol_f, use_container_width=True)
+        mostrar_tabla(df_arbol_f, {c: _fmt_num for c in df_arbol_f.columns}, hide_index=False)
 
 elif "Comparación de los Tres Modelos" in modelo_seleccionado:
     st.markdown("## 📊 Comparación de los tres modelos")
@@ -771,7 +926,15 @@ elif "Comparación de los Tres Modelos" in modelo_seleccionado:
         p_ini_comp, cap_ini_comp, t_cont_comp, margen_comp, alpha_comp, sims_comp
     )
     
-    st.dataframe(df_comparativa_final, use_container_width=True)
+    # Solo presentación: "$-119" -> "-$119" (los valores y cálculos no cambian)
+    df_comparativa_vista = df_comparativa_final.replace(r"\$-", "-$", regex=True)
+    st.dataframe(
+        df_comparativa_vista,
+        use_container_width=True,
+        hide_index=True,
+        height=_altura_tabla(len(df_comparativa_vista)),
+        column_config={"Métrica / Indicador": st.column_config.TextColumn("Métrica / Indicador", width="large")},
+    )
 
 elif "Fórmulas Usadas" in modelo_seleccionado:
     st.markdown("## 📐 Fórmulas Usadas")
@@ -910,28 +1073,51 @@ else:
     if not st.session_state["historial_trayectorias"] or st.session_state["historial_trayectorias"][-1]["etiqueta"] != trayectoria_actual["etiqueta"]:
         st.session_state["historial_trayectorias"].append(trayectoria_actual)
 
-    col_izq, col_der = st.columns([3, 2])
-    with col_izq:
-        st.markdown("### 📋 Tabla de Simulación Diaria")
-        st.dataframe(
-            df_diario, 
-            use_container_width=True, 
-            height=420,
-            column_config={
-                "Precio_Simulado": st.column_config.NumberColumn("Precio Simulado", format="$%.4f"),
-                "Variacion_Diaria": st.column_config.NumberColumn("Var. Diaria", format="%.2f%%"),
-                "Precio_Futuro": st.column_config.NumberColumn("Precio Futuro", format="$%.4f"),
-                "Valuacion_Contrato": st.column_config.NumberColumn("Valuación Contrato", format="$%,.2f"),
-                "Ganancia_Perdida_Diaria": st.column_config.NumberColumn("G/P Diaria", format="$%,.2f"),
-                "Comisiones": st.column_config.NumberColumn("Comisiones", format="$%,.2f"),
-                "Depositos_por_llamadas": st.column_config.NumberColumn("Depósitos Llamadas", format="$%,.2f"),
-                "Margen": st.column_config.NumberColumn("Margen", format="$%,.2f")
-            }
-        )
+    # Tarjetas KPI (leen el resumen ya calculado; no recalculan nada)
+    _resumen = dict(zip(df_resumen["Métrica / Concepto"], df_resumen["Valor"]))
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Efectivo retirable (margen final)", _resumen["Efectivo Total Retirable (Margen Final)"])
+    k2.metric("Capital inyectado total", _resumen["Capital Inyectado Total"])
+    k3.metric("Ganancia bruta del mercado", _resumen["Ganancia Bruta del Mercado"])
+    k4.metric("Máximo depósito por llamada", _resumen["Máximo depósito por llamada"])
 
-    with col_der:
-        st.markdown("### 📊 Resumen de Inversión y Resultados")
-        st.dataframe(df_resumen, use_container_width=True, hide_index=True)
+    st.markdown("### 📋 Tabla de Simulación Diaria")
+    df_diario_vista = df_diario.rename(columns={
+        "Precio_Simulado": "Precio Simulado",
+        "Variacion_Diaria": "Var. Diaria",
+        "Precio_Futuro": "Precio Futuro",
+        "Valuacion_Contrato": "Valuación Contrato",
+        "Ganancia_Perdida_Diaria": "G/P Diaria",
+        "Depositos_por_llamadas": "Depósitos Llamadas",
+    })
+    mostrar_tabla(
+        df_diario_vista,
+        {
+            "Precio Simulado": _fmt_usd4,
+            "Var. Diaria": _fmt_pct_desde_proporcion,  # proporción decimal -> porcentaje real
+            "Precio Futuro": _fmt_usd4,
+            "Valuación Contrato": _fmt_usd,
+            "G/P Diaria": _fmt_usd,
+            "Comisiones": _fmt_usd,
+            "Depósitos Llamadas": _fmt_usd,
+            "Margen": _fmt_usd,
+        },
+        colores_signo=["Var. Diaria", "G/P Diaria"],
+        height=420,
+        column_config={"Fecha": st.column_config.TextColumn("Fecha", width="small")},
+    )
+
+    st.markdown("### 📊 Resumen de Inversión y Resultados")
+    st.dataframe(
+        df_resumen,
+        use_container_width=True,
+        hide_index=True,
+        height=_altura_tabla(len(df_resumen)),
+        column_config={
+            "Métrica / Concepto": st.column_config.TextColumn("Métrica / Concepto", width="large"),
+            "Valor": st.column_config.TextColumn("Valor", width="medium"),
+        },
+    )
 
     df_excel, df_estadisticos, df_cut_var_valor, etiqueta, matriz_precios, fechas_mc = ejecutar_monte_carlo(
         tipo_mc, precio_futuro_inicial, margen_llamada, capital_inicial, tamano_contrato, alpha_seleccionado, num_simulaciones
@@ -979,15 +1165,41 @@ else:
     st.markdown("## 🎲 ANÁLISIS DE MONTE CARLO Y VAR")
 
     st.markdown("### 📋 Vista Previa de Simulaciones Monte Carlo (Primeras 10)")
-    st.dataframe(df_excel.head(10), use_container_width=True)
+    mostrar_tabla(
+        df_excel.head(10),
+        {
+            "Simulación (#)": _fmt_entero,
+            "Ganancia bruta del mercado": _fmt_usd,
+            "Depósitos por llamadas": _fmt_usd,
+            "Total de capital inyectado": _fmt_usd,
+            "Efectivo total retirable": _fmt_usd,
+            "Llamada máxima": _fmt_usd,
+            "Valor Total Final": _fmt_usd,
+        },
+        colores_signo=["Ganancia bruta del mercado"],
+        height=_altura_tabla(10),
+    )
 
-    col_est, col_var = st.columns([3, 2])
-    with col_est:
-        st.markdown("### 📊 Tabla de Estadísticos")
-        st.dataframe(df_estadisticos, use_container_width=True)
-    with col_var:
-        st.markdown(f"### 🛡️ Tabla de Cutoff y VaR (Alpha = {etiqueta} | Base: 190,000)")
-        st.dataframe(df_cut_var_valor, use_container_width=True)
+    # Las tablas se apilan a ancho completo: así ninguna columna queda recortada a la derecha
+    st.markdown("### 📊 Tabla de Estadísticos")
+    mostrar_tabla(
+        df_estadisticos,
+        {c: _fmt_usd for c in [
+            "Mínimo", "Q1 (25%)", "Mediana (50%)", "Promedio",
+            "Q3 (75%)", "Máximo", "Moda", "Desviación Estándar",
+        ]},
+        height=_altura_tabla(len(df_estadisticos)),
+        column_config={"Métrica": st.column_config.TextColumn("Métrica", width="medium")},
+    )
+
+    st.markdown("### 🛡️ Tabla de Cutoff y VaR")
+    st.caption(f"Alpha = {etiqueta}  ·  Base: $190,000")
+    mostrar_tabla(
+        df_cut_var_valor,
+        {"Tipo Cutoff": _fmt_usd, "Tipo VaR": _fmt_usd},
+        height=_altura_tabla(len(df_cut_var_valor)),
+        column_config={"Métrica": st.column_config.TextColumn("Métrica", width="large")},
+    )
 
     # Gráfica de Abanico
     st.markdown("### 🌪️ Gráfica de Abanico y Cuantiles de Monte Carlo")
@@ -1095,6 +1307,7 @@ else:
         ax.set_xlabel("Monto ($)", fontsize=8.5)
         ax.set_ylabel("Frecuencia", fontsize=8.5)
         ax.grid(True, linestyle="--", alpha=0.3)
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _pos: _fmt_usd(x, 0)))
 
     # Ajuste seguro de subplots para evitar errores de layout en Matplotlib
     # Leyenda única fuera de las gráficas (abajo) para que no tape las barras

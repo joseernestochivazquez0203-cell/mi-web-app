@@ -34,13 +34,13 @@ ROJO = "#D64545"
 GRIS = "#8A94A6"
 GRIS_OSC = "#5B6B82"
 AMBAR = "#F2A900"
-FONDO_SUAVE = "#1F4E79"
+FONDO_APP = "#CBE4FD"
 COLORSCALE_AZUL = [[0.0, "#C9DAEA"], [1.0, AZUL]]  # Sharpe: azul claro -> oscuro
 
 _tpl = go.layout.Template(pio.templates["plotly_white"])
 _tpl.layout.update(
     colorway=[AZUL, VERDE, AMBAR, ROJO, GRIS, "#4C8FC7", "#8E6BBF", "#2BA3A3"],
-    font=dict(family="Source Sans Pro, Segoe UI, Arial, sans-serif", size=13, color="#CBE4FD"),
+    font=dict(family="Source Sans Pro, Segoe UI, Arial, sans-serif", size=13, color="#1F2937"),
     title=dict(font=dict(size=15, color="#1F2937"), x=0.0, xanchor="left"),
     xaxis=dict(gridcolor="#E8ECF2", linecolor="#CBD2DC", zeroline=False),
     yaxis=dict(gridcolor="#E8ECF2", linecolor="#CBD2DC", zeroline=False),
@@ -53,17 +53,25 @@ pio.templates.default = "fin_clean"
 st.markdown(
     f"""
     <style>
+    /* ---- Fondo general de la aplicación ---- */
+    [data-testid="stAppViewContainer"] {{
+        background-color: {FONDO_APP};
+    }}
+    [data-testid="stHeader"] {{
+        background-color: transparent;
+    }}
+
     /* ---- Tipografía y jerarquía ---- */
     h1 {{ font-size: 1.9rem !important; font-weight: 700 !important; color: {AZUL}; letter-spacing: -0.01em; }}
     h2 {{ font-size: 1.45rem !important; font-weight: 650 !important; color: {AZUL};
           padding-bottom: 0.35rem; border-bottom: 2px solid {AZUL}; }}
     h3 {{ font-size: 1.15rem !important; font-weight: 600 !important; color: {AZUL}; }}
-    hr {{ margin: 2.2rem 0 !important; border-color: #E3E8EF !important; }}
+    hr {{ margin: 2.2rem 0 !important; border-color: rgba(31, 78, 121, 0.22) !important; }}
     [data-testid="stCaptionContainer"] {{ color: {GRIS_OSC}; margin-top: -0.4rem; }}
 
     /* ---- Tarjetas ---- */
     .stock-card {{
-        background: rgba(31, 78, 121, 0.06);
+        background: rgba(255, 255, 255, 0.65);
         border: 1px solid rgba(31, 78, 121, 0.20);
         border-radius: 12px;
         padding: 10px;
@@ -75,15 +83,19 @@ st.markdown(
         border-radius: 10px;
         overflow: hidden;
         box-shadow: 0 2px 8px rgba(31, 78, 121, 0.05);
+        background-color: white;
     }}
     [data-testid="stMetric"] {{
-        background-color: rgba(31, 78, 121, 0.05);
+        background-color: rgba(255, 255, 255, 0.72);
         border: 1px solid rgba(31, 78, 121, 0.18);
         border-left: 4px solid {AZUL};
         border-radius: 8px;
         padding: 10px 14px;
     }}
-    [data-testid="stVerticalBlockBorderWrapper"] {{ border-radius: 12px; }}
+    [data-testid="stVerticalBlockBorderWrapper"] {{
+        border-radius: 12px;
+        background-color: rgba(255, 255, 255, 0.55);
+    }}
 
     /* ---- Etiquetas de sección ---- */
     .pais-label {{
@@ -100,9 +112,10 @@ st.markdown(
     /* ---- Botón discreto (restablecer) ---- */
     .stButton > button {{
         font-size: 0.78rem; padding: 0.15rem 0.8rem; min-height: 0;
-        color: {GRIS_OSC}; border: 1px solid #CBD2DC; background: transparent;
+        color: {AZUL}; border: 1px solid rgba(31, 78, 121, 0.35);
+        background: rgba(255, 255, 255, 0.65);
     }}
-    .stButton > button:hover {{ color: {AZUL}; border-color: {AZUL}; }}
+    .stButton > button:hover {{ color: {AZUL}; border-color: {AZUL}; background: white; }}
     </style>
     """,
     unsafe_allow_html=True,
@@ -499,7 +512,14 @@ def obtener_precio_actual(ticker, default_val=100.0):
 # ==============================================================================
 @st.cache_data
 def ejecutar_simulacion_mercado(
-    tickers_dict, lista_empresas, start, end, n_sim, n_corr, tipo_tasa="cetes"
+    tickers_dict,
+    lista_empresas,
+    start,
+    end,
+    n_sim,
+    n_corr,
+    tipo_tasa="cetes",
+    pct_rf=0.30,
 ):
   raw_data = yf.download(
       list(tickers_dict.values()),
@@ -564,8 +584,8 @@ def ejecutar_simulacion_mercado(
       "Turbo", np.linspace(0.05, 0.95, n_animacion_pasos)
   )
 
-  w_cetes = 0.30
-  w_portafolio = 0.70
+  w_rf = float(pct_rf)
+  w_portafolio = 1.0 - w_rf
 
   min_port = None
   min_desp_val = float("inf")
@@ -618,7 +638,7 @@ def ejecutar_simulacion_mercado(
       y_cal = tasa_anual + max_sh_anual * x_cal
 
       r_comb = w_portafolio * riesgo_opt_anual
-      ret_comb = (w_cetes * tasa_anual) + (w_portafolio * ret_opt_anual)
+      ret_comb = (w_rf * tasa_anual) + (w_portafolio * ret_opt_anual)
 
       df_vis = df_sim.sample(n=min(2500, len(df_sim))).copy()
 
@@ -660,6 +680,7 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       n_simulaciones,
       n_corridas,
       "cetes",
+      pct_renta_fija,
   )
   res_mx_2 = ejecutar_simulacion_mercado(
       tickers_mx,
@@ -669,6 +690,7 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       n_simulaciones,
       n_corridas,
       "cetes",
+      pct_renta_fija,
   )
   res_mx_3 = ejecutar_simulacion_mercado(
       tickers_mx,
@@ -678,6 +700,7 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       n_simulaciones,
       n_corridas,
       "cetes",
+      pct_renta_fija,
   )
 
   res_usa_1 = ejecutar_simulacion_mercado(
@@ -688,6 +711,7 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       n_simulaciones,
       n_corridas,
       "tbills",
+      pct_renta_fija,
   )
   res_usa_2 = ejecutar_simulacion_mercado(
       tickers_usa,
@@ -697,6 +721,7 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       n_simulaciones,
       n_corridas,
       "tbills",
+      pct_renta_fija,
   )
   res_usa_3 = ejecutar_simulacion_mercado(
       tickers_usa,
@@ -706,6 +731,7 @@ with st.spinner("Ejecutando simulaciones y optimizaciones de portafolio..."):
       n_simulaciones,
       n_corridas,
       "tbills",
+      pct_renta_fija,
   )
 
   (
@@ -856,9 +882,12 @@ def construir_figura_animada_con_minima(
     titulo_horizonte,
     lbl_tasa="CETES",
     is_mx=False,
+    pct_rf=0.30,
 ):
   fig = go.Figure()
   n_pasos = len(datos_anim)
+  pct_rf_num = pct_rf * 100 if pct_rf <= 1 else pct_rf
+  pct_rv_num = 100 - pct_rf_num
 
   fig.add_trace(
       go.Scatter(
@@ -923,7 +952,7 @@ def construir_figura_animada_con_minima(
               symbol="diamond",
               line=dict(width=1, color="black"),
           ),
-          name=f"Mix 30% {lbl_tasa} / 70% Portafolio",
+          name=f"Mix {pct_rf_num:.0f}% {lbl_tasa} / {pct_rv_num:.0f}% Portafolio",
       )
   )
   fig.add_trace(
@@ -1590,7 +1619,13 @@ with tab_mx:
     st.subheader(f"6. Optimización por Ratio de Sharpe ({titulo_h})")
     st.plotly_chart(
         construir_figura_animada_con_minima(
-            anim_data, min_port, cols_activas, titulo_h, lbl_tasa, is_mx=is_mx
+            anim_data,
+            min_port,
+            cols_activas,
+            titulo_h,
+            lbl_tasa,
+            is_mx=is_mx,
+            pct_rf=pct_renta_fija,
         ),
         use_container_width=True,
     )

@@ -352,7 +352,7 @@ elif "Comparación" not in modelo_seleccionado and "Fórmulas" not in modelo_sel
 
 
 # ==============================================================================
-# --- 2. FUNCIONES DE CÁLCULO Y SIMULACIÓN ---
+# --- 2. FUNCIONES DE CÁLCULO Y SIMULACIÓN (SIN SEMILLA FIJA) ---
 # ==============================================================================
 
 def simular_diario_log_logistico(precio_inicial, cap_inicial, t_contrato, margen_llamada_val=0.0):
@@ -361,7 +361,8 @@ def simular_diario_log_logistico(precio_inicial, cap_inicial, t_contrato, margen
     fechas = pd.date_range(start="2026-10-15", end="2026-12-17", freq="B")
     n = len(fechas)
 
-    U = np.random.uniform(0.0001, 0.9999, n)
+    rng = np.random.default_rng()
+    U = rng.uniform(0.0001, 0.9999, n)
     precios = B4 * (U / (1 - U)) ** (1 / B3)
     precios[0] = 18.44
 
@@ -423,7 +424,8 @@ def simular_diario_fisher(precio_inicial, cap_inicial, t_contrato, margen_llamad
     sigma = B5_desv / 100.0
     dt = 1 / 252.0
 
-    Z = np.random.standard_normal(n)
+    rng = np.random.default_rng()
+    Z = rng.standard_normal(n)
     precios = np.zeros(n)
     precios[0] = 18.44
 
@@ -572,7 +574,6 @@ def crear_figura_arbol(df_arbol, N, dt, titulo, tipo="precio", S0=None, etiqueta
                 f"{etiqueta_valor}: <b>{v:,.4f}</b>"
             )
             if j < N:
-                # arista hacia el nodo de subida (i, j+1) y hacia el de bajada (i+1, j+1)
                 edge_x += [j, j + 1, None, j, j + 1, None]
                 edge_y += [y, y + 1, None, y, y - 1, None]
 
@@ -682,16 +683,17 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
     sigma = B5_desv / 100.0
     dt = 1 / 252.0
 
+    rng = np.random.default_rng()
     resultados_simulaciones = []
     matriz_precios_futuros = np.zeros((num_sims, n))
 
     for sim in range(num_sims):
         if tipo_modelo == "log_logistico":
-            U = np.random.uniform(0.0001, 0.9999, n)
+            U = rng.uniform(0.0001, 0.9999, n)
             precios = B4 * (U / (1 - U)) ** (1 / B3)
             precios[0] = 18.44
         else:
-            Z = np.random.standard_normal(n)
+            Z = rng.standard_normal(n)
             precios = np.zeros(n)
             precios[0] = 18.44
             for i in range(1, n):
@@ -937,7 +939,6 @@ elif "Comparación de los Tres Modelos" in modelo_seleccionado:
         p_ini_comp, cap_ini_comp, t_cont_comp, margen_comp, alpha_comp, sims_comp
     )
     
-    # Solo presentación: "-$119" -> "-$119" (los valores y cálculos no cambian)
     df_comparativa_vista = df_comparativa_final.replace(r"\$-", "-$", regex=True)
     st.dataframe(
         df_comparativa_vista,
@@ -957,7 +958,7 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with f1:
         with st.container(border=True):
             st.markdown("**Aportación inicial proporcional**")
-            st.latex(r"A = T \times 1.5")
+            st.latex(r"A = T 	imes 1.5")
             st.caption("T = tamaño del contrato. Proporción: $15,000 de aportación por cada $10,000 de contrato.")
             st.markdown("**Comisión y margen inicial**")
             st.latex(r"c_0 = c_n = 50 \qquad M_0 = A - c_0")
@@ -965,7 +966,7 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with f2:
         with st.container(border=True):
             st.markdown("**Precio futuro y valuación del contrato**")
-            st.latex(r"F_t = F_{t-1}\,(1 + r_t), \qquad r_t = \frac{P_t}{P_{t-1}} - 1")
+            st.latex(r"F_t = F_{t-1}\,(1 + r_t), \qquad r_t = rac{P_t}{P_{t-1}} - 1")
             st.latex(r"V_t = F_t \cdot T")
             st.markdown("**Ganancia / pérdida diaria**")
             st.latex(r"GP_t = V_t - V_{t-1}, \qquad GP_0 = 0")
@@ -974,11 +975,11 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with f3:
         with st.container(border=True):
             st.markdown("**Margen diario y llamadas de margen**")
-            st.latex(r"\tilde{M}_t = M_{t-1} + GP_t - c_t\,\mathbb{1}_{\{t=n\}}")
+            st.latex(r"	ilde{M}_t = M_{t-1} + GP_t - c_t\,\mathbb{1}_{\{t=n\}}")
             st.latex(
                 r"""
-                \text{Si } \tilde{M}_t < L:\quad D_t = A - \tilde{M}_t,\;\; M_t = A
-                \qquad\text{en otro caso:}\quad D_t = 0,\;\; M_t = \tilde{M}_t
+                	ext{Si } 	ilde{M}_t < L:\quad D_t = A - 	ilde{M}_t,\;\; M_t = A
+                \qquad	ext{en otro caso:}\quad D_t = 0,\;\; M_t = 	ilde{M}_t
                 """
             )
             st.caption(
@@ -988,10 +989,10 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with f4:
         with st.container(border=True):
             st.markdown("**Resultados finales**")
-            st.latex(r"\text{Efectivo total retirable} = M_n")
-            st.latex(r"\text{Capital inyectado total} = A + \sum_{t=0}^{n} D_t")
-            st.latex(r"\text{Ganancia bruta del mercado} = (F_n - F_0)\cdot T")
-            st.latex(r"\text{Comisiones totales} = \sum_{t=0}^{n} c_t = 100")
+            st.latex(r"	ext{Efectivo total retirable} = M_n")
+            st.latex(r"	ext{Capital inyectado total} = A + \sum_{t=0}^{n} D_t")
+            st.latex(r"	ext{Ganancia bruta del mercado} = (F_n - F_0)\cdot T")
+            st.latex(r"	ext{Comisiones totales} = \sum_{t=0}^{n} c_t = 100")
 
     st.markdown("---")
 
@@ -1001,27 +1002,31 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with g1:
         with st.container(border=True):
             st.markdown("**Distribución Log-Logística**")
-            st.latex(r"F(x) = \frac{1}{1 + (x/\beta)^{-\alpha}}")
+            st.latex(r"F(x) = rac{1}{1 + (x/eta)^{-lpha}}")
             st.markdown("Simulación por transformada inversa:")
-            st.latex(r"P_t = \beta \left(\frac{U_t}{1 - U_t}\right)^{1/\alpha}, \quad U_t \sim \mathcal{U}(0.0001,\,0.9999)")
+            st.latex(r"P_t = eta \left(rac{U_t}{1 - U_t}
+ight)^{1/lpha}, \quad U_t \sim \mathcal{U}(0.0001,\,0.9999)")
             st.caption("α = B3 = 28.52977 · β = B4 = 18.32123 · P₀ = 18.44")
     with g2:
         with st.container(border=True):
             st.markdown("**Modelo de Fisher (Movimiento Browniano Geométrico)**")
-            st.latex(r"P_t = P_{t-1}\exp\!\left[\left(\mu - \tfrac{1}{2}\sigma^2\right)\Delta t + \sigma\sqrt{\Delta t}\,Z_t\right]")
-            st.latex(r"Z_t \sim \mathcal{N}(0,1), \quad \Delta t = \tfrac{1}{252}, \quad \mu = B_{10} - B_{11}")
+            st.latex(r"P_t = P_{t-1}\exp\!\left[\left(\mu - 	frac{1}{2}\sigma^2
+ight)\Delta t + \sigma\sqrt{\Delta t}\,Z_t
+ight]")
+            st.latex(r"Z_t \sim \mathcal{N}(0,1), \quad \Delta t = 	frac{1}{252}, \quad \mu = B_{10} - B_{11}")
             st.caption("B10 = 0.01736111 · B11 = 0.01119444 · σ = 17.69391793 % (0.1769…) · P₀ = 18.44")
 
     with st.container(border=True):
         st.markdown("**Cutoff y VaR (Monte Carlo)**")
         v1, v2 = st.columns(2)
         with v1:
-            st.latex(r"V^{(k)}_{final} = V_0 + \text{Ganancia bruta}^{(k)}, \quad V_0 = F_0 \cdot T")
-            st.latex(r"\text{Cutoff}_\alpha = Q_\alpha\!\left(V^{(k)}_{final}\right)")
-            st.latex(r"\text{VaR}_\alpha = V_0 - \text{Cutoff}_\alpha")
+            st.latex(r"V^{(k)}_{final} = V_0 + 	ext{Ganancia bruta}^{(k)}, \quad V_0 = F_0 \cdot T")
+            st.latex(r"	ext{Cutoff}_lpha = Q_lpha\!\left(V^{(k)}_{final}
+ight)")
+            st.latex(r"	ext{VaR}_lpha = V_0 - 	ext{Cutoff}_lpha")
         with v2:
             st.markdown("Estadísticos de las métricas simuladas:")
-            st.latex(r"\bar{x} = \frac{1}{K}\sum_{k=1}^{K} x_k, \qquad Q_{p}(x) = \text{cuantil de orden } p")
+            st.latex(r"ar{x} = rac{1}{K}\sum_{k=1}^{K} x_k, \qquad Q_{p}(x) = 	ext{cuantil de orden } p")
             st.caption("Q1 = Q₀.₂₅, mediana = Q₀.₅, Q3 = Q₀.₇₅, máximo = máxₖ xₖ, moda = marca de clase del intervalo modal (40 bins). K = número de simulaciones.")
 
     st.markdown("---")
@@ -1032,9 +1037,9 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with b1:
         with st.container(border=True):
             st.markdown("**Factores del árbol y probabilidad neutral al riesgo**")
-            st.latex(r"\Delta t = \frac{T}{N}")
-            st.latex(r"u = e^{\sigma\sqrt{\Delta t}}, \qquad d = \frac{1}{u}")
-            st.latex(r"p = \frac{e^{r\Delta t} - d}{u - d}")
+            st.latex(r"\Delta t = rac{T}{N}")
+            st.latex(r"u = e^{\sigma\sqrt{\Delta t}}, \qquad d = rac{1}{u}")
+            st.latex(r"p = rac{e^{r\Delta t} - d}{u - d}")
     with b2:
         with st.container(border=True):
             st.markdown("**Evolución del subyacente**")
@@ -1047,18 +1052,21 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with c_eu:
         with st.container(border=True):
             st.markdown("**Valuación hacia atrás: opción EUROPEA**")
-            st.latex(r"f_{t,j} = e^{-r\Delta t}\left[\,p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}\right]")
+            st.latex(r"f_{t,j} = e^{-r\Delta t}\left[\,p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}
+ight]")
             st.caption("Aplica igual para Call y Put; solo cambia el pago terminal.")
     with c_am:
         with st.container(border=True):
             st.markdown("**Valuación hacia atrás: opción AMERICANA**")
-            st.latex(r"f_{t,j} = \max\!\left\{\, e^{-r\Delta t}\left[p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}\right],\; g(S_{t,j}) \right\}")
+            st.latex(r"f_{t,j} = \max\!\left\{\, e^{-r\Delta t}\left[p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}
+ight],\; g(S_{t,j}) 
+ight\}")
             st.latex(r"g^{CALL}(S) = \max(S-K,0), \qquad g^{PUT}(S) = \max(K-S,0)")
             st.caption("g = valor de ejercicio inmediato en cada nodo.")
 
     with st.container(border=True):
         st.markdown("**Precio teórico de la opción**")
-        st.latex(r"\text{Prima} = f_{0,0}")
+        st.latex(r"	ext{Prima} = f_{0,0}")
 
 else:
     if "Log-logístico" in modelo_seleccionado:
@@ -1075,7 +1083,10 @@ else:
     df_resumen = generar_df_resumen(df_diario, capital_inicial, tamano_contrato, precio_futuro_inicial)
 
     trayectoria_actual = {
-        "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | Cap=${capital_inicial:,.0f}",
+        "etiqueta": (
+            f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | "
+            f"Cap=${capital_inicial:,.0f} | Margen=${margen_llamada:,.0f}"
+        ),
         "fechas": fechas,
         "precio_futuro": df_diario["Precio_Futuro"].copy(),
         "margen": df_diario["Margen"].copy()
@@ -1083,6 +1094,8 @@ else:
 
     if not st.session_state["historial_trayectorias"] or st.session_state["historial_trayectorias"][-1]["etiqueta"] != trayectoria_actual["etiqueta"]:
         st.session_state["historial_trayectorias"].append(trayectoria_actual)
+    else:
+        st.session_state["historial_trayectorias"][-1] = trayectoria_actual
 
     # Tarjetas KPI (leen el resumen ya calculado; no recalculan nada)
     _resumen = dict(zip(df_resumen["Métrica / Concepto"], df_resumen["Valor"]))
@@ -1105,7 +1118,7 @@ else:
         df_diario_vista,
         {
             "Precio Simulado": _fmt_usd4,
-            "Var. Diaria": _fmt_pct_desde_proporcion,  # proporción decimal -> porcentaje real
+            "Var. Diaria": _fmt_pct_desde_proporcion,
             "Precio Futuro": _fmt_usd4,
             "Valuación Contrato": _fmt_usd,
             "G/P Diaria": _fmt_usd,
@@ -1135,7 +1148,11 @@ else:
     )
 
     mc_actual = {
-        "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | Margen=${margen_llamada:,.0f} | Cap=${capital_inicial:,.0f}",
+        "etiqueta": (
+            f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | "
+            f"Margen=${margen_llamada:,.0f} | Cap=${capital_inicial:,.0f} | "
+            f"Sims={num_simulaciones} | α={alpha_seleccionado:.2f}"
+        ),
         "df_excel": df_excel.copy(),
         "matriz_precios": matriz_precios.copy(),
         "fechas": fechas_mc.copy()
@@ -1143,6 +1160,8 @@ else:
 
     if not st.session_state["historial_mc"] or st.session_state["historial_mc"][-1]["etiqueta"] != mc_actual["etiqueta"]:
         st.session_state["historial_mc"].append(mc_actual)
+    else:
+        st.session_state["historial_mc"][-1] = mc_actual
 
     st.markdown("---")
     col_tit, col_btn = st.columns([3, 1])
@@ -1191,7 +1210,6 @@ else:
         height=_altura_tabla(10),
     )
 
-    # Las tablas se apilan a ancho completo: así ninguna columna queda recortada a la derecha
     st.markdown("### 📊 Tabla de Estadísticos")
     mostrar_tabla(
         df_estadisticos,
@@ -1256,27 +1274,25 @@ else:
             options=[m[0] for m in metricas_nombres],
             format_func=lambda x: dict(metricas_nombres)[x]
         )
-    
-    for i, item in enumerate(st.session_state["historial_mc"]):
-        if i == len(st.session_state["historial_mc"]) - 1:
-            df_sim = item["df_excel"]
-            serie = df_sim[metrica_elegida_key]
-            media_val = serie.mean()
-            mediana_val = serie.median()
-            q1_val = serie.quantile(0.25)
-            q3_val = serie.quantile(0.75)
-            moda_val = _calcular_moda_continua(serie, bins=40)
 
-            with col_sel2:
-                st.markdown(f"**Modelo Activo:** `{item['etiqueta']}`")
-            
-            c1, c2, c3, c4, c5, c6 = st.columns(6)
-            c1.metric("🔴 Media", f"${media_val:,.2f}")
-            c2.metric("🟢 Mediana", f"${mediana_val:,.2f}")
-            c3.metric("🟣 Q1 (25%)", f"${q1_val:,.2f}")
-            c4.metric("🟣 Q3 (75%)", f"${q3_val:,.2f}")
-            c5.metric("🟠 Moda", f"${moda_val:,.2f}")
-            c6.metric("🔵 Máximo", f"${serie.max():,.2f}")
+    # Lee directamente de df_excel recién calculado (nunca queda congelado con corridas previas)
+    serie_actual = df_excel[metrica_elegida_key]
+    media_val = serie_actual.mean()
+    mediana_val = serie_actual.median()
+    q1_val = serie_actual.quantile(0.25)
+    q3_val = serie_actual.quantile(0.75)
+    moda_val = _calcular_moda_continua(serie_actual, bins=40)
+
+    with col_sel2:
+        st.markdown(f"**Modelo Activo:** `{mc_actual['etiqueta']}`")
+
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1.metric("🔴 Media", f"${media_val:,.2f}")
+    c2.metric("🟢 Mediana", f"${mediana_val:,.2f}")
+    c3.metric("🟣 Q1 (25%)", f"${q1_val:,.2f}")
+    c4.metric("🟣 Q3 (75%)", f"${q3_val:,.2f}")
+    c5.metric("🟠 Moda", f"${moda_val:,.2f}")
+    c6.metric("🔵 Máximo", f"${serie_actual.max():,.2f}")
 
     st.markdown("### 📊 Histogramas Dinámicos de Distribución con Líneas de Referencia")
     fig_mc, axs = plt.subplots(2, 2, figsize=(16, 11))
@@ -1300,17 +1316,17 @@ else:
             
             if es_ultimo:
                 serie = df_sim[col_name]
-                media_val = serie.mean()
-                mediana_val = serie.median()
-                q1_val = serie.quantile(0.25)
-                q3_val = serie.quantile(0.75)
-                moda_val = _calcular_moda_continua(serie, bins=40)
+                media_h = serie.mean()
+                mediana_h = serie.median()
+                q1_h = serie.quantile(0.25)
+                q3_h = serie.quantile(0.75)
+                moda_h = _calcular_moda_continua(serie, bins=40)
 
-                ax.axvline(media_val, color='#dc2626', linestyle='-', linewidth=1.4, label='Media')
-                ax.axvline(mediana_val, color='#16a34a', linestyle='--', linewidth=1.4, label='Mediana')
-                ax.axvline(q1_val, color='#9333ea', linestyle=':', linewidth=1.4, label='Q1')
-                ax.axvline(q3_val, color='#7e22ce', linestyle=':', linewidth=1.4, label='Q3')
-                ax.axvline(moda_val, color='#d97706', linestyle='-.', linewidth=1.4, label='Moda')
+                ax.axvline(media_h, color='#dc2626', linestyle='-', linewidth=1.4, label='Media')
+                ax.axvline(mediana_h, color='#16a34a', linestyle='--', linewidth=1.4, label='Mediana')
+                ax.axvline(q1_h, color='#9333ea', linestyle=':', linewidth=1.4, label='Q1')
+                ax.axvline(q3_h, color='#7e22ce', linestyle=':', linewidth=1.4, label='Q3')
+                ax.axvline(moda_h, color='#d97706', linestyle='-.', linewidth=1.4, label='Moda')
 
         ax.set_title(titulo_base, fontweight="bold", fontsize=10.5)
         ax.set_xlabel("Monto ($)", fontsize=8.5)
@@ -1318,8 +1334,6 @@ else:
         ax.grid(True, linestyle="--", alpha=0.3)
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _pos: _fmt_usd(x, 0)))
 
-    # Ajuste seguro de subplots para evitar errores de layout en Matplotlib
-    # Leyenda única fuera de las gráficas (abajo) para que no tape las barras
     handles, labels = axs[0, 0].get_legend_handles_labels()
     fig_mc.legend(
         handles, labels, loc="lower center", ncol=4, fontsize=10,
@@ -1327,3 +1341,4 @@ else:
     )
     fig_mc.subplots_adjust(hspace=0.35, wspace=0.22, bottom=0.12)
     st.pyplot(fig_mc)
+

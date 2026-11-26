@@ -559,8 +559,9 @@ def ejecutar_simulacion_mercado(
   mejores_sharpe = []
   datos_animacion = []
   n_animacion_pasos = min(50, n_corr)
+  # Un color distinto por iteración (paleta multicolor)
   colores_anim = px.colors.sample_colorscale(
-      "Blues", np.linspace(0.35, 0.95, n_animacion_pasos)
+      "Turbo", np.linspace(0.05, 0.95, n_animacion_pasos)
   )
 
   w_cetes = 0.30
@@ -865,13 +866,11 @@ def construir_figura_animada_con_minima(
           y=[],
           mode="markers",
           marker=dict(
-              size=4,
-              color=[],
-              colorscale=COLORSCALE_AZUL,
-              showscale=False,
-              opacity=0.6,
+              size=5,
+              color=datos_anim[0]["color"],
+              opacity=0.65,
           ),
-          name="Portafolios Simulados",
+          name="Portafolios Simulados (color por iteración)",
       )
   )
   for j in range(n_pasos):
@@ -880,7 +879,8 @@ def construir_figura_animada_con_minima(
             x=[],
             y=[],
             mode="lines",
-            line=dict(color="rgba(231, 76, 60, 0.3)", width=1),
+            line=dict(color=datos_anim[j]["color"], width=1.4),
+            opacity=0.75,
             showlegend=False,
         )
     )
@@ -944,12 +944,12 @@ def construir_figura_animada_con_minima(
           y=[min_y],
           mode="markers",
           marker=dict(
-              size=12,
-              color="blue",
+              size=13,
+              color="#111827",
               symbol="circle",
-              line=dict(width=1.5, color="black"),
+              line=dict(width=2, color="white"),
           ),
-          name="🔵 Mínima Varianza",
+          name="Mínima Varianza",
       )
   )
 
@@ -966,12 +966,7 @@ def construir_figura_animada_con_minima(
             x=curr["nube_x"],
             y=curr["nube_y"],
             mode="markers",
-            marker=dict(
-                size=4,
-                color=curr["nube_y"],
-                colorscale=COLORSCALE_AZUL,
-                showscale=False,
-            ),
+            marker=dict(size=5, color=curr["color"], opacity=0.65),
         )
     )
     for j in range(n_pasos):
@@ -982,12 +977,13 @@ def construir_figura_animada_con_minima(
       else:
         f_data.append(go.Scatter(x=[], y=[]))
 
-    stars_x, stars_y = [], []
+    stars_x, stars_y, stars_c = [], [], []
     for j in range(f_idx + 1):
       if j != best_global_idx:
         stars_x.append(datos_anim[j]["star_x"])
         stars_y.append(datos_anim[j]["star_y"])
-    f_data.append(go.Scatter(x=stars_x, y=stars_y))
+        stars_c.append(datos_anim[j]["color"])
+    f_data.append(go.Scatter(x=stars_x, y=stars_y, marker=dict(color=stars_c)))
 
     if f_idx >= best_global_idx:
       f_data.append(
@@ -1003,6 +999,7 @@ def construir_figura_animada_con_minima(
         go.Scatter(
             x=[datos_anim[j]["mix_x"] for j in range(f_idx + 1)],
             y=[datos_anim[j]["mix_y"] for j in range(f_idx + 1)],
+            marker=dict(color=[datos_anim[j]["color"] for j in range(f_idx + 1)]),
         )
     )
     f_data.append(go.Scatter(x=[0], y=[curr["tasa_anual"]]))
@@ -1012,13 +1009,39 @@ def construir_figura_animada_con_minima(
   for idx, t_data in enumerate(frames[0].data):
     fig.data[idx].x = t_data.x
     fig.data[idx].y = t_data.y
+    _c0 = t_data.marker.color if t_data.marker is not None else None
+    if _c0 is not None and len(_c0) > 0:  # no pisar el color base si el frame 0 viene vacío
+      fig.data[idx].marker.color = _c0
+
+  # Escala de ejes ajustada a los datos reales (antes: X fijo 0 a 1.2)
+  _xs = np.concatenate(
+      [np.asarray(d["nube_x"]) for d in datos_anim]
+      + [np.array([d["star_x"], d["mix_x"], 0.0]) for d in datos_anim]
+  )
+  _ys = np.concatenate(
+      [np.asarray(d["nube_y"]) for d in datos_anim]
+      + [np.array([d["star_y"], d["mix_y"], d["tasa_anual"]]) for d in datos_anim]
+  )
+  _x_hi = float(np.nanmax(_xs)) * 1.08
+  _x_lo = -0.02 * _x_hi  # margen para que CETES (x = 0) no quede cortado
+  _y_pad = (float(np.nanmax(_ys)) - float(np.nanmin(_ys))) * 0.08
+  _y_lo = float(np.nanmin(_ys)) - _y_pad
+  _y_hi = float(np.nanmax(_ys)) + _y_pad
 
   fig.update_layout(
       title=f"Simulación Monte Carlo Paso a Paso ({titulo_horizonte})",
       template="fin_clean",
       height=500,
-      xaxis=dict(title="Volatility (Riesgo Anual)", range=[0, 1.2]),
-      yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.1, 0.4]),
+      xaxis=dict(
+          title="Volatilidad (Riesgo Anual)",
+          range=[_x_lo, _x_hi],
+          tickformat=".0%",
+      ),
+      yaxis=dict(
+          title="Rendimiento Anual",
+          range=[_y_lo, _y_hi],
+          tickformat=".0%",
+      ),
       updatemenus=[{
           "type": "buttons",
           "buttons": [
@@ -1526,18 +1549,30 @@ with tab_mx:
         and matriz_limpia.shape[0] > 1
         and matriz_limpia.shape[1] > 1
     ):
-      st.plotly_chart(
-          px.imshow(
-              matriz_limpia,
-              x=cols_activas,
-              y=cols_activas,
-              color_continuous_scale="RdBu",
-              color_continuous_midpoint=0,
-              text_auto=".2f",
-              title="Matriz de Covarianza (Sigma)",
-          ),
-          use_container_width=True,
+      # Escala: si no hay covarianzas negativas se usa azul de 0 a máx. (más
+      # contraste); si las hay, escala divergente centrada en 0.
+      _kw_color = (
+          dict(color_continuous_scale=COLORSCALE_AZUL, zmin=0)
+          if np.nanmin(matriz_limpia) >= 0
+          else dict(color_continuous_scale="RdBu", color_continuous_midpoint=0)
       )
+      fig_cov = px.imshow(
+          matriz_limpia,
+          x=cols_activas,
+          y=cols_activas,
+          aspect="auto",
+          title="Matriz de Covarianza (Sigma) en %",
+          **_kw_color,
+      )
+      fig_cov.update_traces(
+          texttemplate="%{z:.2%}",
+          hovertemplate="%{y} × %{x}: %{z:.3%}<extra></extra>",
+      )
+      fig_cov.update_layout(
+          height=420,
+          coloraxis_colorbar=dict(title="%", tickformat=".0%", thickness=14),
+      )
+      st.plotly_chart(fig_cov, use_container_width=True)
     else:
       st.warning("⚠️ No hay suficientes activos válidos.")
 

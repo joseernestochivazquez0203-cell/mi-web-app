@@ -657,7 +657,7 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
         "Métrica / Indicador": [
             "Prob. de llamada de margen",
             "Llamadas promedio",
-            "Capital inyectado medio",
+            "Llamada máxima promedio",
             "Aportación VaR 95%",
             "Llamada máxima observada",
             "Saldo final medio",
@@ -669,7 +669,7 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
         "Log-logístico": [
             f"{(df_log['Depósitos por llamadas'] > 0).mean() * 100:.1f}%",
             f"{(df_log['Depósitos por llamadas'] > 0).sum() / num_sims:.2f}",
-            f"${df_log['Total de capital inyectado'].mean():,.0f}",
+            f"${df_log['Llamada máxima'].mean():,.0f}",
             f"${df_log['Total de capital inyectado'].quantile(0.95):,.0f}",
             f"${df_log['Llamada máxima'].max():,.0f}",
             f"${df_log['Efectivo total retirable'].mean():,.0f}",
@@ -681,7 +681,7 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
         "Fisher": [
             f"{(df_fish['Depósitos por llamadas'] > 0).mean() * 100:.1f}%",
             f"{(df_fish['Depósitos por llamadas'] > 0).sum() / num_sims:.2f}",
-            f"${df_fish['Total de capital inyectado'].mean():,.0f}",
+            f"${df_fish['Llamada máxima'].mean():,.0f}",
             f"${df_fish['Total de capital inyectado'].quantile(0.95):,.0f}",
             f"${df_fish['Llamada máxima'].max():,.0f}",
             f"${df_fish['Efectivo total retirable'].mean():,.0f}",
@@ -693,7 +693,7 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
         "Binomial": [
             "82.8%",
             "3.12",
-            "$13,705",
+            "—",
             "$34,804",
             "$5,847",
             "$28,486",
@@ -1057,7 +1057,7 @@ else:
             c6.metric("🔵 Máximo", f"${serie.max():,.2f}")
 
     st.markdown("### 📊 Histogramas Dinámicos de Distribución con Líneas de Referencia")
-    fig_mc, axs = plt.subplots(2, 2, figsize=(14, 8.5))
+    fig_mc, axs = plt.subplots(2, 2, figsize=(16, 11))
     paleta_colores = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0d9488", "#334155"]
 
     for idx, (col_name, titulo_base) in enumerate(metricas_nombres):
@@ -1095,8 +1095,13 @@ else:
         ax.set_xlabel("Monto ($)", fontsize=8.5)
         ax.set_ylabel("Frecuencia", fontsize=8.5)
         ax.grid(True, linestyle="--", alpha=0.3)
-        ax.legend(loc="upper right", fontsize=7.5, framealpha=0.9)
 
     # Ajuste seguro de subplots para evitar errores de layout en Matplotlib
-    fig_mc.subplots_adjust(hspace=0.35, wspace=0.25)
+    # Leyenda única fuera de las gráficas (abajo) para que no tape las barras
+    handles, labels = axs[0, 0].get_legend_handles_labels()
+    fig_mc.legend(
+        handles, labels, loc="lower center", ncol=4, fontsize=10,
+        framealpha=0.95, bbox_to_anchor=(0.5, 0.0),
+    )
+    fig_mc.subplots_adjust(hspace=0.35, wspace=0.22, bottom=0.12)
     st.pyplot(fig_mc)

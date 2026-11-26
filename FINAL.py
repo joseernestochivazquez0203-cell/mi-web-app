@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 import streamlit as st
 import yfinance as yf
 
@@ -22,72 +23,128 @@ fecha_hoy_str = datetime.datetime.now(ZoneInfo("America/Mexico_City")).strftime(
     "%d/%m/%Y"
 )
 
-# Estilo CSS personalizado para tarjetas, encabezados y estética general
+# ==============================================================================
+# DISEÑO: PALETA CON SIGNIFICADO, TEMPLATE DE PLOTLY Y CSS
+#   Azul = principal | Verde = ganancia | Rojo = riesgo | Gris = referencia
+#   Ámbar = destacado (moda / mínima varianza)
+# ==============================================================================
+AZUL = "#1F4E79"
+VERDE = "#2E9E6B"
+ROJO = "#D64545"
+GRIS = "#8A94A6"
+GRIS_OSC = "#5B6B82"
+AMBAR = "#F2A900"
+FONDO_SUAVE = "#F6F8FB"
+COLORSCALE_AZUL = [[0.0, "#C9DAEA"], [1.0, AZUL]]  # Sharpe: azul claro -> oscuro
+
+_tpl = go.layout.Template(pio.templates["plotly_white"])
+_tpl.layout.update(
+    colorway=[AZUL, VERDE, AMBAR, ROJO, GRIS, "#4C8FC7", "#8E6BBF", "#2BA3A3"],
+    font=dict(family="Source Sans Pro, Segoe UI, Arial, sans-serif", size=12, color="#1F2937"),
+    title=dict(font=dict(size=15, color="#1F2937"), x=0.0, xanchor="left"),
+    xaxis=dict(gridcolor="#E8ECF2", linecolor="#CBD2DC", zeroline=False),
+    yaxis=dict(gridcolor="#E8ECF2", linecolor="#CBD2DC", zeroline=False),
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+)
+pio.templates["fin_clean"] = _tpl
+pio.templates.default = "fin_clean"
+
 st.markdown(
-    """
+    f"""
     <style>
-    .stock-card {
-        background: linear-gradient(135deg, #f4fbf8 0%, #e6f4ee 100%);
-        border: 1px solid #b7dfd0;
+    /* ---- Tipografía y jerarquía ---- */
+    h1 {{ font-size: 1.9rem !important; font-weight: 700 !important; color: {AZUL}; letter-spacing: -0.01em; }}
+    h2 {{ font-size: 1.45rem !important; font-weight: 650 !important; color: {AZUL};
+          padding-bottom: 0.35rem; border-bottom: 2px solid {AZUL}; }}
+    h3 {{ font-size: 1.15rem !important; font-weight: 600 !important; color: {AZUL}; }}
+    hr {{ margin: 2.2rem 0 !important; border-color: #E3E8EF !important; }}
+    [data-testid="stCaptionContainer"] {{ color: {GRIS_OSC}; margin-top: -0.4rem; }}
+
+    /* ---- Tarjetas ---- */
+    .stock-card {{
+        background: rgba(31, 78, 121, 0.06);
+        border: 1px solid rgba(31, 78, 121, 0.20);
         border-radius: 12px;
         padding: 10px;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 107, 84, 0.08);
         margin-bottom: 5px;
-    }
-    [data-testid="stDataFrame"] {
-        border: 1px solid #d1e7dd;
+    }}
+    [data-testid="stDataFrame"] {{
+        border: 1px solid #DCE3EC;
         border-radius: 10px;
         overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    }
-    [data-testid="stMetric"] {
-        background-color: #f8fcfa;
-        border: 1px solid #d1e7dd;
-        border-left: 4px solid #006B54;
+        box-shadow: 0 2px 8px rgba(31, 78, 121, 0.05);
+    }}
+    [data-testid="stMetric"] {{
+        background-color: rgba(31, 78, 121, 0.05);
+        border: 1px solid rgba(31, 78, 121, 0.18);
+        border-left: 4px solid {AZUL};
         border-radius: 8px;
         padding: 10px 14px;
-    }
+    }}
+    [data-testid="stVerticalBlockBorderWrapper"] {{ border-radius: 12px; }}
+
+    /* ---- Etiquetas de sección ---- */
+    .pais-label {{
+        font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+        text-transform: uppercase; color: {AZUL}; margin-bottom: 0.4rem;
+    }}
+    .sb-label {{
+        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em;
+        text-transform: uppercase; color: {GRIS_OSC};
+        margin: 1.1rem 0 0.2rem 0; padding-bottom: 0.2rem;
+        border-bottom: 1px solid #DCE3EC;
+    }}
+
+    /* ---- Botón discreto (restablecer) ---- */
+    .stButton > button {{
+        font-size: 0.78rem; padding: 0.15rem 0.8rem; min-height: 0;
+        color: {GRIS_OSC}; border: 1px solid #CBD2DC; background: transparent;
+    }}
+    .stButton > button:hover {{ color: {AZUL}; border-color: {AZUL}; }}
     </style>
-""",
+    """,
     unsafe_allow_html=True,
 )
 
 
+def _sb_label(texto):
+  """Título pequeño en mayúsculas para agrupar controles en la barra lateral."""
+  st.sidebar.markdown(f'<div class="sb-label">{texto}</div>', unsafe_allow_html=True)
+
+
 def estilizar_tabla(styler):
-  """Aplica un estilo visual limpio y uniforme sin modificar datos ni formatos."""
-  return styler.set_table_styles([
-      {
-          "selector": "th",
-          "props": [
-              ("background-color", "#006B54"),
-              ("color", "#ffffff"),
-              ("font-weight", "600"),
-              ("border-color", "#005240"),
-          ],
-      },
-      {
-          "selector": "td",
-          "props": [
-              ("border-color", "#e5ece9"),
-          ],
-      },
-  ]).set_properties(**{"font-size": "13px"})
+  """Estilo uniforme: filas alternadas suaves + tipografía compacta.
+  (No modifica datos ni formatos numéricos.)"""
+
+  def _zebra(df):
+    patron = np.where(
+        np.arange(len(df))[:, None] % 2 == 1,
+        "background-color: rgba(31, 78, 121, 0.05)",
+        "",
+    )
+    return pd.DataFrame(patron, index=df.index, columns=df.columns)
+
+  try:
+    styler = styler.apply(_zebra, axis=None)
+  except Exception:
+    pass  # Si el DataFrame no admite el estilo, se muestra sin zebra.
+  return styler.set_properties(**{"font-size": "13px"})
 
 
-st.title(
-    "💼 Simulador Integral de Portafolios, Optimización y Riesgo Estocástico"
-)
-st.markdown(
-    "Modelo cuantitativo multianual con Markowitz, Frontera Eficiente,"
-    " Simulación Monte Carlo, Bootstrapping (10,000 corridas), Stop-Loss"
-    " Individual y Métricas de Riesgo."
+st.title("Simulador Integral de Portafolios, Optimización y Riesgo Estocástico")
+st.caption(
+    "Modelo cuantitativo multianual: Markowitz, Frontera Eficiente, Simulación"
+    " Monte Carlo, Bootstrapping (10,000 corridas), Stop-Loss individual y"
+    " métricas de riesgo."
 )
 
 # ==============================================================================
 # 1. BARRA LATERAL (SIDEBAR): PARÁMETROS GENERALES Y CAPITAL DINÁMICO
 # ==============================================================================
-st.sidebar.header("⚙️ Configuración del Análisis")
+st.sidebar.header("Configuración")
+_sb_label("Capital y renta fija")
 
 capital_total_input = st.sidebar.number_input(
     "Capital Total a Invertir (MXN):",
@@ -104,6 +161,7 @@ pct_renta_fija = (
     / 100.0
 )
 
+_sb_label("Optimización")
 n_simulaciones = st.sidebar.slider(
     "Número de Portafolios (Simulación Markowitz):", 1000, 10000, 5000, 500
 )
@@ -111,7 +169,7 @@ n_corridas = st.sidebar.slider(
     "Corridas de Optimización (Sharpe):", 100, 1000, 500, 100
 )
 
-st.sidebar.subheader("🎯 Parámetros de Riesgo (VaR & Cutoff)")
+_sb_label("Riesgo · VaR & Cutoff")
 alpha_nivel = (
     st.sidebar.slider(
         "Nivel de Significancia (Alpha %):", 1.0, 15.0, 5.0, 0.5
@@ -119,7 +177,7 @@ alpha_nivel = (
     / 100.0
 )
 
-st.sidebar.subheader("🚀 Proyección Estocástica Futura")
+_sb_label("Proyección estocástica")
 _hoy = datetime.date.today()
 
 # Fecha de inicio editable (por defecto: hoy). Se inicializa en session_state
@@ -339,38 +397,44 @@ if "_sel_guardadas" not in st.session_state:
     st.session_state["_sel_guardadas"] = dict(_inicial)
 
 st.markdown("---")
-st.subheader("🏢 Selección Interactiva de Activos (Cajitas de Exposición)")
+st.subheader("Selección de Activos")
+st.caption("Elige 5 activos por país. Tu selección se guarda automáticamente.")
 col_sel_mx, col_sel_usa = st.columns(2)
 
 # Nota: sin `index=` porque el valor lo controla st.session_state[key].
+# Distribución 3 + 2 para que los tickers se lean completos.
 with col_sel_mx:
-  st.markdown("#### 🇲🇽 Selecciona 5 Activos para México (BMV)")
-  c_mx1, c_mx2, c_mx3, c_mx4, c_mx5 = st.columns(5)
-  with c_mx1:
-    t1 = st.selectbox("M1", opciones_mx, key="m1")
-  with c_mx2:
-    t2 = st.selectbox("M2", opciones_mx, key="m2")
-  with c_mx3:
-    t3 = st.selectbox("M3", opciones_mx, key="m3")
-  with c_mx4:
-    t4 = st.selectbox("M4", opciones_mx, key="m4")
-  with c_mx5:
-    t5 = st.selectbox("M5", opciones_mx, key="m5")
+  with st.container(border=True):
+    st.markdown('<div class="pais-label">México · BMV</div>', unsafe_allow_html=True)
+    _f1 = st.columns(3)
+    _f2 = st.columns(3)
+    with _f1[0]:
+      t1 = st.selectbox("M1", opciones_mx, key="m1")
+    with _f1[1]:
+      t2 = st.selectbox("M2", opciones_mx, key="m2")
+    with _f1[2]:
+      t3 = st.selectbox("M3", opciones_mx, key="m3")
+    with _f2[0]:
+      t4 = st.selectbox("M4", opciones_mx, key="m4")
+    with _f2[1]:
+      t5 = st.selectbox("M5", opciones_mx, key="m5")
   tickers_mx_list = [t1, t2, t3, t4, t5]
 
 with col_sel_usa:
-  st.markdown("#### 🇺🇸 Selecciona 5 Activos para EE. UU. (Tech/Global)")
-  c_usa1, c_usa2, c_usa3, c_usa4, c_usa5 = st.columns(5)
-  with c_usa1:
-    u1 = st.selectbox("U1", opciones_usa, key="u1")
-  with c_usa2:
-    u2 = st.selectbox("U2", opciones_usa, key="u2")
-  with c_usa3:
-    u3 = st.selectbox("U3", opciones_usa, key="u3")
-  with c_usa4:
-    u4 = st.selectbox("U4", opciones_usa, key="u4")
-  with c_usa5:
-    u5 = st.selectbox("U5", opciones_usa, key="u5")
+  with st.container(border=True):
+    st.markdown('<div class="pais-label">EE. UU. · NYSE / NASDAQ</div>', unsafe_allow_html=True)
+    _g1 = st.columns(3)
+    _g2 = st.columns(3)
+    with _g1[0]:
+      u1 = st.selectbox("U1", opciones_usa, key="u1")
+    with _g1[1]:
+      u2 = st.selectbox("U2", opciones_usa, key="u2")
+    with _g1[2]:
+      u3 = st.selectbox("U3", opciones_usa, key="u3")
+    with _g2[0]:
+      u4 = st.selectbox("U4", opciones_usa, key="u4")
+    with _g2[1]:
+      u5 = st.selectbox("U5", opciones_usa, key="u5")
   tickers_usa_list = [u1, u2, u3, u4, u5]
 
 # Guardar solo si cambió algo respecto a lo último persistido.
@@ -379,11 +443,14 @@ if _seleccion_actual != st.session_state["_sel_guardadas"]:
     _guardar_selecciones(_seleccion_actual)
     st.session_state["_sel_guardadas"] = dict(_seleccion_actual)
 
-st.button(
-    "↺ Restablecer selecciones por defecto",
-    on_click=_restablecer_selecciones,
-    help="Vuelve a las primeras 5 empresas de cada país y borra lo guardado.",
-)
+_c_espacio, _c_reset = st.columns([5, 2])
+with _c_reset:
+  st.button(
+      "↺ Restablecer selecciones por defecto",
+      on_click=_restablecer_selecciones,
+      help="Vuelve a las primeras 5 empresas de cada país y borra lo guardado.",
+      use_container_width=True,
+  )
 
 tickers_mx = {t.split(".")[0]: t for t in tickers_mx_list}
 empresas_mx = list(tickers_mx.keys())
@@ -494,7 +561,7 @@ def ejecutar_simulacion_mercado(
   datos_animacion = []
   n_animacion_pasos = min(50, n_corr)
   colores_anim = px.colors.sample_colorscale(
-      "turbo", np.linspace(0.1, 0.9, n_animacion_pasos)
+      "Blues", np.linspace(0.35, 0.95, n_animacion_pasos)
   )
 
   w_cetes = 0.30
@@ -801,7 +868,7 @@ def construir_figura_animada_con_minima(
           marker=dict(
               size=4,
               color=[],
-              colorscale="Viridis",
+              colorscale=COLORSCALE_AZUL,
               showscale=False,
               opacity=0.6,
           ),
@@ -825,7 +892,7 @@ def construir_figura_animada_con_minima(
           mode="markers",
           marker=dict(
               size=10,
-              color="gold",
+              color=AMBAR,
               symbol="star",
               line=dict(width=1, color="black"),
           ),
@@ -839,7 +906,7 @@ def construir_figura_animada_con_minima(
           mode="markers",
           marker=dict(
               size=15,
-              color="#e74c3c",
+              color=ROJO,
               symbol="star",
               line=dict(width=1.5, color="black"),
           ),
@@ -853,7 +920,7 @@ def construir_figura_animada_con_minima(
           mode="markers",
           marker=dict(
               size=8,
-              color="#27ae60",
+              color=VERDE,
               symbol="diamond",
               line=dict(width=1, color="black"),
           ),
@@ -903,7 +970,7 @@ def construir_figura_animada_con_minima(
             marker=dict(
                 size=4,
                 color=curr["nube_y"],
-                colorscale="Viridis",
+                colorscale=COLORSCALE_AZUL,
                 showscale=False,
             ),
         )
@@ -949,7 +1016,7 @@ def construir_figura_animada_con_minima(
 
   fig.update_layout(
       title=f"Simulación Monte Carlo Paso a Paso ({titulo_horizonte})",
-      template="plotly_white",
+      template="fin_clean",
       height=500,
       xaxis=dict(title="Volatility (Riesgo Anual)", range=[0, 1.2]),
       yaxis=dict(title="Return (Rendimiento Anual)", range=[-0.1, 0.4]),
@@ -1536,6 +1603,7 @@ with tab_mx:
     st.dataframe(
         estilizar_tabla(df_stats_sharpe.style.format({"Valor": "{:.2f}"})),
         use_container_width=True,
+        hide_index=True,
     )
 
   with sub_mx_1:
@@ -1981,8 +2049,10 @@ with tab_port_enf:
   )
 
   st.markdown("---")
-  st.subheader(
-      f"📈 Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})"
+  st.subheader(f"Gráficas de Distribución y Comportamiento Estocástico ({titulo_enf})")
+  st.caption(
+      "La zona roja marca el peor escenario según el nivel de significancia"
+      " elegido (Cutoff)."
   )
 
   media_val = np.mean(val_enf_sim)
@@ -2003,87 +2073,78 @@ with tab_port_enf:
           "Distribución de Probabilidad del Valor Final (10,000 Corridas"
           " Bootstrap)"
       ),
-      color_discrete_sequence=["#2980b9"],
-      opacity=0.75,
+      color_discrete_sequence=[AZUL],
+      opacity=0.9,
+  )
+  fig_hist.update_traces(marker_line_width=0)
+  fig_hist.data[0].showlegend = False
+
+  # Zona de peor escenario (a la izquierda del Cutoff)
+  fig_hist.add_vrect(
+      x0=float(np.min(val_enf_sim)),
+      x1=float(cutoff_val),
+      fillcolor=ROJO,
+      opacity=0.08,
+      line_width=0,
+      layer="below",
   )
 
-  fig_hist.add_vline(
-      x=media_val,
-      line_dash="solid",
-      line_color="#27ae60",
-      line_width=2,
-      annotation_text=f"Media: ${media_val:,.2f}",
-      annotation_position="top right",
-  )
-  fig_hist.add_vline(
-      x=mediana_val,
-      line_dash="dash",
-      line_color="#f39c12",
-      line_width=2,
-      annotation_text=f"Mediana (Q2): ${mediana_val:,.2f}",
-      annotation_position="top left",
-  )
-  fig_hist.add_vline(
-      x=moda_val,
-      line_dash="dot",
-      line_color="#8e44ad",
-      line_width=2.5,
-      annotation_text=f"Moda: ${moda_val:,.2f}",
-      annotation_position="bottom right",
-  )
-  fig_hist.add_vline(
-      x=q1_val,
-      line_dash="dashdot",
-      line_color="#7f8c8d",
-      line_width=1.5,
-      annotation_text=f"Q1: ${q1_val:,.2f}",
-      annotation_position="bottom left",
-  )
-  fig_hist.add_vline(
-      x=q3_val,
-      line_dash="dashdot",
-      line_color="#7f8c8d",
-      line_width=1.5,
-      annotation_text=f"Q3: ${q3_val:,.2f}",
-      annotation_position="top right",
-  )
-  fig_hist.add_vline(
-      x=cutoff_val,
-      line_dash="dash",
-      line_color="#e74c3c",
-      line_width=2,
-      annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): ${cutoff_val:,.2f}",
-      annotation_position="bottom left",
-  )
+  # Líneas de referencia: se identifican por color/trazo en la leyenda
+  # (sin etiquetas de texto encimadas).
+  _lineas_hist = [
+      ("Media", media_val, VERDE, "solid", 2.5, True),
+      ("Mediana (Q2)", mediana_val, GRIS_OSC, "dash", 2, True),
+      ("Moda", moda_val, AMBAR, "dot", 2.5, True),
+      ("Q1 / Q3", q1_val, GRIS, "dashdot", 1.5, True),
+      ("Q1 / Q3", q3_val, GRIS, "dashdot", 1.5, False),
+      (f"Cutoff ({alpha_nivel*100:.1f}%)", cutoff_val, ROJO, "dash", 2.5, True),
+  ]
+  for _n, _x, _c, _d, _w, _leg in _lineas_hist:
+    fig_hist.add_vline(x=_x, line_dash=_d, line_color=_c, line_width=_w)
+    if _leg:
+      fig_hist.add_trace(
+          go.Scatter(
+              x=[None],
+              y=[None],
+              mode="lines",
+              line=dict(color=_c, dash=_d, width=_w),
+              name=_n,
+          )
+      )
 
   fig_hist.add_annotation(
       xref="paper",
       yref="paper",
-      x=0.98,
-      y=0.95,
+      x=0.99,
+      y=0.97,
+      xanchor="right",
+      yanchor="top",
       text=(
-          "<b>Estadísticos (MXN):</b><br>"
-          f"• Media: ${media_val:,.2f}<br>"
-          f"• Mediana (Q2): ${mediana_val:,.2f}<br>"
-          f"• Moda: ${moda_val:,.2f}<br>"
-          f"• Q1 (25%): ${q1_val:,.2f}<br>"
-          f"• Q3 (75%): ${q3_val:,.2f}<br>"
-          f"• Cutoff ({alpha_nivel*100:.1f}%): ${cutoff_val:,.2f}"
+          "<b>Estadísticos (MXN)</b><br>"
+          f"Media: ${media_val:,.2f}<br>"
+          f"Mediana (Q2): ${mediana_val:,.2f}<br>"
+          f"Moda: ${moda_val:,.2f}<br>"
+          f"Q1 (25%): ${q1_val:,.2f}<br>"
+          f"Q3 (75%): ${q3_val:,.2f}<br>"
+          f"Cutoff ({alpha_nivel*100:.1f}%): ${cutoff_val:,.2f}"
       ),
       showarrow=False,
       align="left",
-      bgcolor="rgba(255, 255, 255, 0.9)",
-      bordercolor="#bdc3c7",
+      bgcolor="rgba(255, 255, 255, 0.95)",
+      bordercolor="#D5DBE5",
       borderwidth=1,
-      borderpad=6,
-      font=dict(size=12, color="#2c3e50"),
+      borderpad=8,
+      font=dict(size=12, color="#1F2937"),
   )
 
   fig_hist.update_layout(
       xaxis_title="Valor Final (MXN)",
       yaxis_title="Frecuencia (Corridas)",
-      template="plotly_white",
-      margin=dict(t=70),
+      template="fin_clean",
+      bargap=0.04,
+      showlegend=True,
+      legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5),
+      margin=dict(t=70, b=90),
   )
   st.plotly_chart(fig_hist, use_container_width=True)
 
@@ -2094,10 +2155,15 @@ with tab_port_enf:
         points="outliers",
         title="Boxplot - Dispersión del Valor Final (Miles MXN)",
         labels={"y": "Valor Final (Miles MXN)"},
-        color_discrete_sequence=["#27ae60"],
+        color_discrete_sequence=[AZUL],
     )
-    fig_box.update_traces(boxmean="sd")
-    fig_box.update_layout(template="plotly_white")
+    fig_box.update_traces(
+        boxmean="sd",
+        fillcolor="rgba(31, 78, 121, 0.25)",
+        line=dict(color=AZUL, width=1.8),
+        marker=dict(size=4, opacity=0.4, color=AZUL),
+    )
+    fig_box.update_layout(template="fin_clean")
     st.plotly_chart(fig_box, use_container_width=True)
 
   with col_g2:
@@ -2120,7 +2186,7 @@ with tab_port_enf:
             x=pasos[::step_plot],
             y=rend_pct[::step_plot],
             mode="markers",
-            marker=dict(size=3, color="#95a5a6", opacity=0.35),
+            marker=dict(size=3, color=GRIS, opacity=0.25),
             name="Rendimiento Individual (%)",
         )
     )
@@ -2141,7 +2207,7 @@ with tab_port_enf:
             mode="lines",
             line=dict(width=0),
             fill="tonexty",
-            fillcolor="rgba(39, 174, 96, 0.15)",
+            fillcolor="rgba(46, 158, 107, 0.15)",
             name="Banda ±1 Desv. Estándar",
         )
     )
@@ -2150,36 +2216,43 @@ with tab_port_enf:
             x=pasos,
             y=media_acum,
             mode="lines",
-            line=dict(color="#27ae60", width=2.5),
+            line=dict(color=VERDE, width=2.5),
             name=f"Media Acumulada ({media_r:.2f}%)",
         )
     )
-    fig_evol_r.add_hline(
+    fig_evol_r.add_hline(y=cutoff_r, line_dash="dash", line_color=ROJO, line_width=1.8)
+    # Etiqueta del Cutoff fuera del área de puntos (a la derecha)
+    fig_evol_r.add_annotation(
+        xref="paper",
+        yref="y",
+        x=1.01,
         y=cutoff_r,
-        line_dash="dash",
-        line_color="#e74c3c",
-        annotation_text=f"Cutoff ({alpha_nivel*100:.1f}%): {cutoff_r:.2f}%",
-        annotation_position="bottom right",
+        xanchor="left",
+        showarrow=False,
+        text=f"Cutoff ({alpha_nivel*100:.1f}%)<br>{cutoff_r:.2f}%",
+        font=dict(size=11, color=ROJO),
     )
     fig_evol_r.update_layout(
         title="Evolución y Convergencia del Rendimiento en las Corridas",
         xaxis_title="Número de Corrida (#1 a #10,000)",
         yaxis_title="Rendimiento (%)",
-        template="plotly_white",
+        template="fin_clean",
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.02,
+            yanchor="top",
+            y=-0.22,
             xanchor="center",
             x=0.5,
         ),
+        margin=dict(t=60, b=90, r=90),
     )
     st.plotly_chart(fig_evol_r, use_container_width=True)
 
   st.markdown("---")
-  st.subheader(
-      "📈 Gráfica de Optimización Ratio de Sharpe (Portafolio Combinado MX +"
-      " USA)"
+  st.subheader("Gráfica de Optimización Ratio de Sharpe (Portafolio Combinado MX + USA)")
+  st.caption(
+      "Cada punto es una mezcla MX / EE. UU.; el color indica su Ratio de"
+      " Sharpe. La línea gris es la Línea de Asignación de Capital (CAL)."
   )
   rp_mx_anual = s_mx["Rp"].values[0]
   desv_mx_anual = s_mx["des_p"].values[0]
@@ -2201,6 +2274,14 @@ with tab_port_enf:
   idx_best_sh = np.argmax(sharpe_comb_grid)
   idx_min_var_g = np.argmin(riesgo_comb_grid)
 
+  # Rango de ejes ajustado a la frontera real (la curva se ve más abierta)
+  _x_pad = max((riesgo_comb_grid.max() - riesgo_comb_grid.min()) * 0.15, 1e-4)
+  _y_pad = max((ret_comb_grid.max() - ret_comb_grid.min()) * 0.15, 1e-4)
+  x_lo = float(riesgo_comb_grid.min() - _x_pad)
+  x_hi = float(riesgo_comb_grid.max() + _x_pad)
+  y_lo = float(ret_comb_grid.min() - _y_pad)
+  y_hi = float(ret_comb_grid.max() + _y_pad)
+
   fig_sh_global = go.Figure()
   fig_sh_global.add_trace(
       go.Scatter(
@@ -2210,51 +2291,58 @@ with tab_port_enf:
           marker=dict(
               size=8,
               color=sharpe_comb_grid,
-              colorscale="Viridis",
+              colorscale=COLORSCALE_AZUL,
               showscale=True,
-              colorbar=dict(title="Sharpe", x=1.02),
+              colorbar=dict(title="Sharpe", thickness=12, x=1.02),
               line=dict(width=0.5, color="white"),
           ),
           name="Portafolios Combinados",
+          showlegend=False,
       )
   )
   fig_sh_global.add_trace(
       go.Scatter(
           x=[riesgo_comb_grid[idx_best_sh]],
           y=[ret_comb_grid[idx_best_sh]],
-          mode="markers",
+          mode="markers+text",
+          text=[f"Sharpe {sharpe_comb_grid[idx_best_sh]:.2f}"],
+          textposition="top left",
+          textfont=dict(color=VERDE, size=12),
           marker=dict(
               size=16,
-              color="#e74c3c",
+              color=VERDE,
               symbol="star",
-              line=dict(width=1.5, color="black"),
+              line=dict(width=1.5, color="white"),
           ),
-          name="★ Máximo Sharpe Global",
+          name="Máximo Sharpe Global",
       )
   )
   fig_sh_global.add_trace(
       go.Scatter(
           x=[riesgo_comb_grid[idx_min_var_g]],
           y=[ret_comb_grid[idx_min_var_g]],
-          mode="markers",
+          mode="markers+text",
+          text=["Mín. varianza"],
+          textposition="middle left",
+          textfont=dict(color="#B07F00", size=12),
           marker=dict(
               size=12,
-              color="blue",
+              color=AMBAR,
               symbol="circle",
-              line=dict(width=1.5, color="black"),
+              line=dict(width=1.5, color="white"),
           ),
-          name="🔵 Mínima Varianza Global",
+          name="Mínima Varianza Global",
       )
   )
 
-  x_cal_g = np.linspace(0, riesgo_comb_grid[idx_best_sh] * 1.25, 30)
+  x_cal_g = np.linspace(x_lo, x_hi, 30)
   y_cal_g = tasa_rf_global + sharpe_comb_grid[idx_best_sh] * x_cal_g
   fig_sh_global.add_trace(
       go.Scatter(
           x=x_cal_g,
           y=y_cal_g,
           mode="lines",
-          line=dict(color="red", width=1.5, dash="dash"),
+          line=dict(color=GRIS, width=1.5, dash="dash"),
           name="Línea de Asignación de Capital (CAL)",
       )
   )
@@ -2262,20 +2350,23 @@ with tab_port_enf:
       title="Frontera Eficiente & Ratio de Sharpe (Combinación MX + EE. UU.)",
       xaxis_title="Volatilidad (Riesgo Anual)",
       yaxis_title="Rendimiento Anual Esperado",
-      template="plotly_white",
+      xaxis=dict(range=[x_lo, x_hi]),
+      yaxis=dict(range=[y_lo, y_hi]),
+      template="fin_clean",
       legend=dict(
           orientation="h",
-          yanchor="bottom",
-          y=1.02,
+          yanchor="top",
+          y=-0.2,
           xanchor="center",
           x=0.5,
       ),
-      margin=dict(t=90, r=80),
+      margin=dict(t=70, b=90, r=80),
   )
   st.plotly_chart(fig_sh_global, use_container_width=True)
 
   st.markdown("---")
-  st.subheader(f"📈 Tabla de Simulación Diaria Estocástica ({titulo_enf})")
+  st.subheader(f"Tabla de Simulación Diaria Estocástica ({titulo_enf})")
+  st.caption("Muestra de los primeros 15 días de la proyección, a partir de la fecha de inicio elegida.")
   dias_muestra = 15
   fechas_m = [
       (fecha_inicio_sim + datetime.timedelta(days=i)).strftime("%d/%m/%Y")

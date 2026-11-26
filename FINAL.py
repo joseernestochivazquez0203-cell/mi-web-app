@@ -40,7 +40,7 @@ COLORSCALE_AZUL = [[0.0, "#C9DAEA"], [1.0, AZUL]]  # Sharpe: azul claro -> oscur
 _tpl = go.layout.Template(pio.templates["plotly_white"])
 _tpl.layout.update(
     colorway=[AZUL, VERDE, AMBAR, ROJO, GRIS, "#4C8FC7", "#8E6BBF", "#2BA3A3"],
-    font=dict(family="Source Sans Pro, Segoe UI, Arial, sans-serif", size=12, color="#1F2937"),
+    font=dict(family="Source Sans Pro, Segoe UI, Arial, sans-serif", size=13, color="#CBE4FD"),
     title=dict(font=dict(size=15, color="#1F2937"), x=0.0, xanchor="left"),
     xaxis=dict(gridcolor="#E8ECF2", linecolor="#CBD2DC", zeroline=False),
     yaxis=dict(gridcolor="#E8ECF2", linecolor="#CBD2DC", zeroline=False),

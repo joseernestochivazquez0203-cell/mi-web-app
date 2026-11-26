@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 from scipy import stats
 import streamlit as st
 
@@ -9,51 +11,122 @@ st.set_page_config(
     page_title="Simulador Financiero Integral USD/MXN", page_icon="📈", layout="wide"
 )
 
-# --- CSS PERSONALIZADO MEJORADO PARA INTERFAZ LIMPIA ---
+# --- CSS PERSONALIZADO: PALETA, TARJETAS, TABLAS Y JERARQUÍA VISUAL ---
 st.markdown(
     """
     <style>
-    /* Estilo general del fondo */
-    .main {
-        background-color: #f8fafc;
+    :root {
+        --c-bg: #f1f5f9;
+        --c-surface: #ffffff;
+        --c-border: #e2e8f0;
+        --c-text: #0f172a;
+        --c-text-2: #334155;
+        --c-muted: #64748b;
+        --c-accent: #2563eb;
+        --c-accent-dark: #1e3a8a;
+        --radius: 12px;
+        --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
     }
-    h1, h2, h3 {
+
+    /* Fondo general y ancho máximo de lectura (evita tablas excesivamente estiradas) */
+    .stApp, .main {
+        background-color: var(--c-bg);
+    }
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 1400px;
+    }
+
+    /* Tipografía y jerarquía de encabezados */
+    h1, h2, h3, h4 {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        color: #0f172a;
+        color: var(--c-text);
+        letter-spacing: -0.01em;
+        line-height: 1.3;
     }
-    
-    /* Corrección de padding en contenedores para evitar solapamientos */
-    div[data-testid="column"] {
-        padding: 0 8px;
+    h2 {
+        font-size: 1.6rem !important;
+        font-weight: 800 !important;
+        margin-top: 0.5rem;
+    }
+    h3 {
+        font-size: 1.15rem !important;
+        font-weight: 700 !important;
+        margin-top: 1.25rem;
+        padding-left: 0.65rem;
+        border-left: 4px solid var(--c-accent);
+        overflow-wrap: break-word;
+    }
+    hr {
+        margin: 1.75rem 0 !important;
+        border-color: var(--c-border) !important;
+    }
+    div[data-testid="stCaptionContainer"] {
+        color: var(--c-muted);
     }
 
-    /* Estilo refinado para DataFrames y Tablas en Streamlit */
+    /* Separación entre columnas (compatible con versiones nuevas y antiguas de Streamlit) */
+    div[data-testid="column"], div[data-testid="stColumn"] {
+        padding: 0 6px;
+    }
+
+    /* Contenedor de tablas (st.dataframe): borde limpio, sin padding interno
+       para que la rejilla calcule bien su ancho y no recorte columnas */
     div[data-testid="stDataFrame"], div[data-testid="stTable"] {
-        background: #ffffff;
-        padding: 14px;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
-        border: 1px solid #e2e8f0;
-        margin-bottom: 20px;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
     }
 
-    /* Estilo para las métricas superiores (st.metric) */
+    /* Tarjetas de métricas (st.metric) */
     div[data-testid="stMetric"] {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-left: 5px solid #2563eb;
-        padding: 12px 16px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        background-color: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-left: 5px solid var(--c-accent);
+        padding: 14px 16px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
     }
     div[data-testid="stMetricLabel"] {
-        color: #64748b;
+        color: var(--c-muted);
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
+        text-transform: none;
     }
     div[data-testid="stMetricValue"] {
-        color: #0f172a;
+        color: var(--c-text);
         font-weight: 700;
+        overflow: visible !important;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+    }
+    /* Evita el recorte con "..." y escala la fuente según el ancho de pantalla */
+    div[data-testid="stMetricValue"] > div {
+        font-size: clamp(0.95rem, 1.35vw, 1.6rem) !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+    }
+    div[data-testid="stMetricLabel"],
+    div[data-testid="stMetricLabel"] > div,
+    div[data-testid="stMetricLabel"] p {
+        overflow: visible !important;
+        text-overflow: clip !important;
+    }
+
+    /* Contenedores con borde (sección de fórmulas) */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: var(--radius);
+    }
+
+    /* Barra lateral */
+    section[data-testid="stSidebar"] {
+        background-color: var(--c-surface);
+        border-right: 1px solid var(--c-border);
     }
 
     /* Botones modernos con efecto elevación suave */
@@ -73,21 +146,106 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* Tablas HTML personalizadas */
+    /* Tablas HTML (markdown) con cifras tabulares */
     table {
         font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
         width: 100% !important;
         border-collapse: collapse;
     }
     th {
         background-color: #f1f5f9 !important;
-        color: #334155 !important;
+        color: var(--c-text-2) !important;
         font-weight: 700 !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+# Estilo base de las gráficas de Matplotlib (solo apariencia)
+plt.rcParams.update({
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "axes.edgecolor": "#cbd5e1",
+    "axes.labelcolor": "#334155",
+    "axes.titlecolor": "#0f172a",
+    "xtick.color": "#475569",
+    "ytick.color": "#475569",
+    "figure.facecolor": "white",
+    "axes.facecolor": "white",
+    "font.family": "sans-serif",
+})
+
+
+# --- HELPERS DE PRESENTACIÓN (solo formato visual; no intervienen en los cálculos) ---
+def _fmt_usd(valor, decimales=2):
+    """Moneda con separador de miles; el signo va antes del símbolo: -$1,234.56."""
+    if valor is None or pd.isna(valor):
+        return ""
+    redondeado = round(float(valor), decimales)
+    signo = "-" if redondeado < 0 else ""
+    return f"{signo}${abs(redondeado):,.{decimales}f}"
+
+
+def _fmt_usd4(valor):
+    return _fmt_usd(valor, 4)
+
+
+def _fmt_pct_desde_proporcion(valor, decimales=2):
+    """Convierte una proporción decimal (-0.05) a porcentaje real (-5.00%)."""
+    if valor is None or pd.isna(valor):
+        return ""
+    pct = round(float(valor) * 100, decimales)
+    if pct == 0:
+        pct = 0.0  # evita "-0.00%"
+    return f"{pct:.{decimales}f}%"
+
+
+def _fmt_num(valor, decimales=4):
+    if valor is None or pd.isna(valor):
+        return ""
+    return f"{float(valor):,.{decimales}f}"
+
+
+def _fmt_num2(valor):
+    return _fmt_num(valor, 2)
+
+
+def _fmt_entero(valor):
+    if valor is None or pd.isna(valor):
+        return ""
+    return f"{int(valor):d}"
+
+
+def _color_signo(valor):
+    """Verde para ganancias, rojo para pérdidas, gris para cero."""
+    if valor is None or pd.isna(valor) or valor == 0:
+        return "color: #64748b"
+    return "color: #15803d" if valor > 0 else "color: #b91c1c"
+
+
+def mostrar_tabla(df, formatos=None, colores_signo=None, **kwargs):
+    """st.dataframe con formato por columna (vía Styler) y limpieza visual.
+
+    El DataFrame original no se modifica: el formato solo afecta a lo que se ve,
+    por lo que el orden/ordenamiento de la tabla sigue usando los valores numéricos reales.
+    """
+    kwargs.setdefault("use_container_width", True)
+    kwargs.setdefault("hide_index", True)
+    formatos = {c: f for c, f in (formatos or {}).items() if c in df.columns}
+    styler = df.style.format(formatos, na_rep="")
+    cols_color = [c for c in (colores_signo or []) if c in df.columns]
+    if cols_color:
+        aplicar = styler.map if hasattr(styler, "map") else styler.applymap
+        styler = aplicar(_color_signo, subset=cols_color)
+    st.dataframe(styler, **kwargs)
+
+
+def _altura_tabla(n_filas, fila_px=35, extra=3):
+    """Altura exacta para tablas cortas (encabezado + filas) sin scroll interno."""
+    return (n_filas + 1) * fila_px + extra
+
 
 # Título Principal con estilo refinado
 st.markdown(
@@ -107,6 +265,16 @@ if "historial_trayectorias" not in st.session_state:
 if "historial_mc" not in st.session_state:
     st.session_state["historial_mc"] = []
 
+# --- PARÁMETROS FIJOS DE FUTUROS ---
+RAZON_APORTACION = 1.5   # $15,000 de aportación por cada $10,000 de tamaño de contrato
+COMISION_FIJA = 50.0     # Comisión fija (paso inicial y paso final)
+
+
+def calcular_aportacion_inicial(tamano_contrato):
+    """Aportación inicial proporcional: Tamaño del Contrato × 1.5."""
+    return float(tamano_contrato) * RAZON_APORTACION
+
+
 # --- 1. SELECCIÓN DE MODELO EN LA BARRA LATERAL ---
 st.sidebar.markdown(
     "<h2 style='color: #1e3a8a; font-size: 1.2rem;'>🛠️ Panel de Control</h2>",
@@ -119,6 +287,7 @@ modelo_seleccionado = st.sidebar.selectbox(
         "2. Método de Fisher (Movimiento Geométrico Browniano)",
         "3. Modelo Binomial (Árbol CRR para Opciones)",
         "4. 📊 Comparación de los Tres Modelos",
+        "5. 📐 Fórmulas Usadas",
     ],
 )
 
@@ -137,16 +306,24 @@ if "Binomial" in modelo_seleccionado:
     st.sidebar.markdown("---")
     tipo_op = st.sidebar.selectbox("Tipo de Opción", ["CALL", "PUT"])
     estilo_op = st.sidebar.selectbox("Estilo de Opción", ["EUROPEA", "AMERICANA"])
-elif "Comparación" not in modelo_seleccionado:
+elif "Comparación" not in modelo_seleccionado and "Fórmulas" not in modelo_seleccionado:
     st.sidebar.markdown("### ⚙️ Parámetros de Futuros")
     precio_futuro_inicial = st.sidebar.slider(
         "Precio Futuro Inicial ($)", min_value=10.0, max_value=30.0, value=19.0, step=0.1
     )
-    capital_inicial = st.sidebar.number_input(
-        "Capital Inicial ($)", min_value=10000.0, max_value=100000.0, value=15000.0, step=1000.0
-    )
     tamano_contrato = st.sidebar.number_input(
         "Tamaño del Contrato", min_value=1000, max_value=100000, value=10000, step=1000
+    )
+    # Aportación inicial = Tamaño del Contrato × 1.5 (proporción $15,000 : $10,000)
+    capital_inicial = calcular_aportacion_inicial(tamano_contrato)
+    st.sidebar.markdown(
+        "<div style='background:#ffffff;border:1px solid #e2e8f0;border-left:4px solid #2563eb;"
+        "border-radius:8px;padding:10px 12px;font-size:0.85rem;color:#334155;line-height:1.6;'>"
+        f"<b>Aportación inicial:</b> ${capital_inicial:,.2f}<br>"
+        f"<b>Comisión inicial:</b> −${COMISION_FIJA:,.2f}<br>"
+        f"<b>Margen inicial:</b> ${capital_inicial - COMISION_FIJA:,.2f}"
+        "</div>",
+        unsafe_allow_html=True,
     )
 
     st.sidebar.markdown("---")
@@ -189,8 +366,8 @@ def simular_diario_log_logistico(precio_inicial, cap_inicial, t_contrato):
     ganancia_perdida_diaria.iloc[0] = 0.0
 
     comisiones = np.zeros(n)
-    comisiones[0] = 50.0
-    comisiones[-1] = 50.0
+    comisiones[0] = COMISION_FIJA
+    comisiones[-1] = COMISION_FIJA
 
     margen = np.zeros(n)
     depositos_llamadas = np.zeros(n)
@@ -255,8 +432,8 @@ def simular_diario_fisher(precio_inicial, cap_inicial, t_contrato):
     ganancia_perdida_diaria.iloc[0] = 0.0
 
     comisiones = np.zeros(n)
-    comisiones[0] = 50.0
-    comisiones[-1] = 50.0
+    comisiones[0] = COMISION_FIJA
+    comisiones[-1] = COMISION_FIJA
 
     margen = np.zeros(n)
     depositos_llamadas = np.zeros(n)
@@ -349,6 +526,91 @@ def simular_modelo_binomial(S0, K, r, sigma, T, N, op_tipo, op_estilo):
     return df_resumen, pd.DataFrame(S_display, columns=cols), pd.DataFrame(f_display, columns=cols), p, u, d, dt, df_esc, f[0, 0]
 
 
+def crear_figura_arbol(df_arbol, N, dt, titulo, tipo="precio", S0=None, etiqueta_valor="Precio"):
+    """Árbol binomial recombinante en Plotly.
+
+    df_arbol: DataFrame (filas = nº de bajadas i, columnas = paso j) con NaN fuera del árbol.
+    Posición de cada nodo: x = paso j, y = (subidas - bajadas) = j - 2i.
+    """
+    valores = df_arbol.to_numpy(dtype=float)
+
+    if N <= 6:
+        tam, fuente = 48, 11
+    elif N <= 9:
+        tam, fuente = 44, 10
+    elif N <= 14:
+        tam, fuente = 34, 8
+    else:
+        tam, fuente = 12, 8
+    mostrar_texto = N <= 14
+
+    edge_x, edge_y = [], []
+    xs, ys, textos, hovers, vals = [], [], [], [], []
+    for j in range(N + 1):
+        for i in range(j + 1):
+            y = j - 2 * i
+            v = valores[i, j]
+            xs.append(j)
+            ys.append(y)
+            vals.append(v)
+            textos.append(f"{v:,.2f}" if mostrar_texto else "")
+            hovers.append(
+                f"<b>Paso {j}</b> (t = {j * dt:.4f})<br>"
+                f"Subidas: {j - i} | Bajadas: {i}<br>"
+                f"{etiqueta_valor}: <b>{v:,.4f}</b>"
+            )
+            if j < N:
+                # arista hacia el nodo de subida (i, j+1) y hacia el de bajada (i+1, j+1)
+                edge_x += [j, j + 1, None, j, j + 1, None]
+                edge_y += [y, y + 1, None, y, y - 1, None]
+
+    vals = np.array(vals)
+    if tipo == "precio":
+        dif = vals - S0
+        lim = max(float(np.max(np.abs(dif))), 1e-9)
+        color_vals, cmin, cmax = dif, -lim, lim
+        escala = [[0.0, "#fecaca"], [0.5, "#f1f5f9"], [1.0, "#bbf7d0"]]
+    else:
+        color_vals, cmin, cmax = vals, 0.0, max(float(vals.max()), 1e-9)
+        escala = [[0.0, "#f1f5f9"], [1.0, "#93c5fd"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=edge_x, y=edge_y, mode="lines",
+        line=dict(color="#94a3b8", width=1.2),
+        hoverinfo="skip", showlegend=False,
+    ))
+    fig.add_trace(go.Scatter(
+        x=xs, y=ys, mode="markers+text" if mostrar_texto else "markers",
+        text=textos, textposition="middle center",
+        textfont=dict(size=fuente, color="#0f172a"),
+        marker=dict(
+            size=tam, color=color_vals, colorscale=escala, cmin=cmin, cmax=cmax,
+            showscale=False, line=dict(color="#475569", width=1),
+        ),
+        hovertext=hovers, hoverinfo="text", showlegend=False,
+    ))
+
+    px_unidad = max(tam * 0.62, 9)
+    altura = int(min(max(2 * N * px_unidad + 140, 480), 1600))
+    paso_tick = max(1, N // 10)
+    fig.update_layout(
+        title=dict(text=titulo, x=0.01, font=dict(size=16, color="#0f172a")),
+        template="plotly_white",
+        height=altura,
+        margin=dict(l=20, r=20, t=60, b=40),
+        xaxis=dict(
+            tickmode="array",
+            tickvals=list(range(0, N + 1, paso_tick)),
+            ticktext=[f"Paso {j}" for j in range(0, N + 1, paso_tick)],
+            showgrid=False, zeroline=False, range=[-0.6, N + 0.6],
+        ),
+        yaxis=dict(visible=False, range=[-N - 1.5, N + 1.5]),
+        hoverlabel=dict(bgcolor="#ffffff", font_size=12),
+    )
+    return fig
+
+
 def generar_df_resumen(df, cap_inicial, t_contrato, p_inicial):
     idx_max_dep = df["Depositos_por_llamadas"].idxmax()
     max_deposito = df.loc[idx_max_dep, "Depositos_por_llamadas"]
@@ -381,16 +643,16 @@ def generar_df_resumen(df, cap_inicial, t_contrato, p_inicial):
             "Efectivo Total Retirable (Margen Final)",
         ],
         "Valor": [
-            f"${max_deposito:,.2f}",
+            _fmt_usd(max_deposito),
             str(fecha_max_dep),
-            f"${precio_dolar_max_dep:,.4f}" if isinstance(precio_dolar_max_dep, float) else precio_dolar_max_dep,
-            f"${precio_final:,.4f}",
-            f"${cap_inicial:,.2f}",
-            f"${ganancia_bruta_mercado:,.2f}",
-            f"${total_llamadas:,.2f}",
-            f"${capital_inyectado_total:,.2f}",
-            f"${total_comisiones:,.2f}",
-            f"${efectivo_retirable:,.2f}",
+            _fmt_usd(precio_dolar_max_dep, 4) if isinstance(precio_dolar_max_dep, float) else precio_dolar_max_dep,
+            _fmt_usd(precio_final, 4),
+            _fmt_usd(cap_inicial),
+            _fmt_usd(ganancia_bruta_mercado),
+            _fmt_usd(total_llamadas),
+            _fmt_usd(capital_inyectado_total),
+            _fmt_usd(total_comisiones),
+            _fmt_usd(efectivo_retirable),
         ],
     })
     return df_resumen
@@ -439,8 +701,8 @@ def ejecutar_monte_carlo(tipo_modelo, precio_inicial, margen_llamada_val, cap_in
         gp_diaria[0] = 0.0
 
         comisiones = np.zeros(n)
-        comisiones[0] = 50.0
-        comisiones[-1] = 50.0
+        comisiones[0] = COMISION_FIJA
+        comisiones[-1] = COMISION_FIJA
 
         margen = np.zeros(n)
         depositos_llamadas = np.zeros(n)
@@ -538,7 +800,7 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
         "Métrica / Indicador": [
             "Prob. de llamada de margen",
             "Llamadas promedio",
-            "Capital inyectado medio",
+            "Llamada máxima promedio",
             "Aportación VaR 95%",
             "Llamada máxima observada",
             "Saldo final medio",
@@ -550,7 +812,7 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
         "Log-logístico": [
             f"{(df_log['Depósitos por llamadas'] > 0).mean() * 100:.1f}%",
             f"{(df_log['Depósitos por llamadas'] > 0).sum() / num_sims:.2f}",
-            f"${df_log['Total de capital inyectado'].mean():,.0f}",
+            f"${df_log['Llamada máxima'].mean():,.0f}",
             f"${df_log['Total de capital inyectado'].quantile(0.95):,.0f}",
             f"${df_log['Llamada máxima'].max():,.0f}",
             f"${df_log['Efectivo total retirable'].mean():,.0f}",
@@ -562,7 +824,7 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
         "Fisher": [
             f"{(df_fish['Depósitos por llamadas'] > 0).mean() * 100:.1f}%",
             f"{(df_fish['Depósitos por llamadas'] > 0).sum() / num_sims:.2f}",
-            f"${df_fish['Total de capital inyectado'].mean():,.0f}",
+            f"${df_fish['Llamada máxima'].mean():,.0f}",
             f"${df_fish['Total de capital inyectado'].quantile(0.95):,.0f}",
             f"${df_fish['Llamada máxima'].max():,.0f}",
             f"${df_fish['Efectivo total retirable'].mean():,.0f}",
@@ -574,7 +836,7 @@ def generar_comparativa_tres_modelos(precio_inicial, cap_inicial, t_contrato, ma
         "Binomial": [
             "82.8%",
             "3.12",
-            "$13,705",
+            "—",
             "$34,804",
             "$5,847",
             "$28,486",
@@ -608,16 +870,46 @@ if "Binomial" in modelo_seleccionado:
 
     st.markdown("---")
     st.markdown("### 📋 Tabla Resumen por Paso del Árbol Binomial")
-    st.dataframe(df_resumen_pasos, use_container_width=True)
+    mostrar_tabla(
+        df_resumen_pasos,
+        {
+            "Paso": _fmt_entero,
+            "Tiempo (t)": _fmt_num,
+            "Precio Mínimo ($)": _fmt_usd4,
+            "Precio Máximo ($)": _fmt_usd4,
+            "Precio Promedio ($)": _fmt_usd4,
+            "Valor Opción (Promedio)": _fmt_usd4,
+            "Probabilidad (p)": _fmt_num,
+        },
+        height=_altura_tabla(len(df_resumen_pasos)),
+    )
 
-    col_arbol1, col_arbol2 = st.columns(2)
-    with col_arbol1:
-        st.markdown("### 📈 1. Árbol de Precios del Subyacente (S)")
-        st.dataframe(df_arbol_S, use_container_width=True)
+    st.caption(
+        "Cada nodo es un precio posible: la rama superior es una subida (u) y la inferior una bajada (d). "
+        "Pasa el cursor sobre un nodo para ver su valor exacto."
+    )
 
-    with col_arbol2:
-        st.markdown(f"### 📉 2. Árbol de Valor de la Opción ({tipo_op} {estilo_op})")
-        st.dataframe(df_arbol_f, use_container_width=True)
+    st.markdown("### 📈 1. Árbol de Precios del Subyacente (S)")
+    st.plotly_chart(
+        crear_figura_arbol(
+            df_arbol_S, int(num_pasos_n), dt_val, "Evolución del subyacente S(t, j)",
+            tipo="precio", S0=s0_binomial, etiqueta_valor="Precio S",
+        ),
+        use_container_width=True, key="arbol_precios",
+    )
+    with st.expander("Ver tabla numérica del árbol de precios"):
+        mostrar_tabla(df_arbol_S, {c: _fmt_num for c in df_arbol_S.columns}, hide_index=False)
+
+    st.markdown(f"### 📉 2. Árbol de Valor de la Opción ({tipo_op} {estilo_op})")
+    st.plotly_chart(
+        crear_figura_arbol(
+            df_arbol_f, int(num_pasos_n), dt_val, f"Valor de la opción f(t, j) — {tipo_op} {estilo_op}",
+            tipo="opcion", etiqueta_valor="Valor opción f",
+        ),
+        use_container_width=True, key="arbol_opcion",
+    )
+    with st.expander("Ver tabla numérica del árbol de la opción"):
+        mostrar_tabla(df_arbol_f, {c: _fmt_num for c in df_arbol_f.columns}, hide_index=False)
 
 elif "Comparación de los Tres Modelos" in modelo_seleccionado:
     st.markdown("## 📊 Comparación de los tres modelos")
@@ -634,7 +926,128 @@ elif "Comparación de los Tres Modelos" in modelo_seleccionado:
         p_ini_comp, cap_ini_comp, t_cont_comp, margen_comp, alpha_comp, sims_comp
     )
     
-    st.dataframe(df_comparativa_final, use_container_width=True)
+    # Solo presentación: "$-119" -> "-$119" (los valores y cálculos no cambian)
+    df_comparativa_vista = df_comparativa_final.replace(r"\$-", "-$", regex=True)
+    st.dataframe(
+        df_comparativa_vista,
+        use_container_width=True,
+        hide_index=True,
+        height=_altura_tabla(len(df_comparativa_vista)),
+        column_config={"Métrica / Indicador": st.column_config.TextColumn("Métrica / Indicador", width="large")},
+    )
+
+elif "Fórmulas Usadas" in modelo_seleccionado:
+    st.markdown("## 📐 Fórmulas Usadas")
+    st.write("Resumen de las ecuaciones que utiliza el simulador, organizadas por módulo.")
+
+    # ---------------- 1. FUTUROS ----------------
+    st.markdown("### 1️⃣ Futuros: aportación, margen y efectivo retirable")
+    f1, f2 = st.columns(2)
+    with f1:
+        with st.container(border=True):
+            st.markdown("**Aportación inicial proporcional**")
+            st.latex(r"A = T \times 1.5")
+            st.caption("T = tamaño del contrato. Proporción: $15,000 de aportación por cada $10,000 de contrato.")
+            st.markdown("**Comisión y margen inicial**")
+            st.latex(r"c_0 = c_n = 50 \qquad M_0 = A - c_0")
+            st.caption("Ej.: T = 10,000 → A = 15,000 → M₀ = 15,000 − 50 = 14,950.")
+    with f2:
+        with st.container(border=True):
+            st.markdown("**Precio futuro y valuación del contrato**")
+            st.latex(r"F_t = F_{t-1}\,(1 + r_t), \qquad r_t = \frac{P_t}{P_{t-1}} - 1")
+            st.latex(r"V_t = F_t \cdot T")
+            st.markdown("**Ganancia / pérdida diaria**")
+            st.latex(r"GP_t = V_t - V_{t-1}, \qquad GP_0 = 0")
+
+    f3, f4 = st.columns(2)
+    with f3:
+        with st.container(border=True):
+            st.markdown("**Margen diario y llamadas de margen**")
+            st.latex(r"\tilde{M}_t = M_{t-1} + GP_t - c_t\,\mathbb{1}_{\{t=n\}}")
+            st.latex(
+                r"""
+                \text{Si } \tilde{M}_t < L:\quad D_t = A - \tilde{M}_t,\;\; M_t = A
+                \qquad\text{en otro caso:}\quad D_t = 0,\;\; M_t = \tilde{M}_t
+                """
+            )
+            st.caption(
+                "L = margen de llamada (Monte Carlo). En la simulación diaria individual el disparador es "
+                "M̃ₜ ≤ 0. D = depósito por llamada."
+            )
+    with f4:
+        with st.container(border=True):
+            st.markdown("**Resultados finales**")
+            st.latex(r"\text{Efectivo total retirable} = M_n")
+            st.latex(r"\text{Capital inyectado total} = A + \sum_{t=0}^{n} D_t")
+            st.latex(r"\text{Ganancia bruta del mercado} = (F_n - F_0)\cdot T")
+            st.latex(r"\text{Comisiones totales} = \sum_{t=0}^{n} c_t = 100")
+
+    st.markdown("---")
+
+    # ---------------- 2. ESTOCÁSTICOS ----------------
+    st.markdown("### 2️⃣ Simulación estocástica del tipo de cambio USD/MXN")
+    g1, g2 = st.columns(2)
+    with g1:
+        with st.container(border=True):
+            st.markdown("**Distribución Log-Logística**")
+            st.latex(r"F(x) = \frac{1}{1 + (x/\beta)^{-\alpha}}")
+            st.markdown("Simulación por transformada inversa:")
+            st.latex(r"P_t = \beta \left(\frac{U_t}{1 - U_t}\right)^{1/\alpha}, \quad U_t \sim \mathcal{U}(0.0001,\,0.9999)")
+            st.caption("α = B3 = 28.52977 · β = B4 = 18.32123 · P₀ = 18.44")
+    with g2:
+        with st.container(border=True):
+            st.markdown("**Modelo de Fisher (Movimiento Browniano Geométrico)**")
+            st.latex(r"P_t = P_{t-1}\exp\!\left[\left(\mu - \tfrac{1}{2}\sigma^2\right)\Delta t + \sigma\sqrt{\Delta t}\,Z_t\right]")
+            st.latex(r"Z_t \sim \mathcal{N}(0,1), \quad \Delta t = \tfrac{1}{252}, \quad \mu = B_{10} - B_{11}")
+            st.caption("B10 = 0.01736111 · B11 = 0.01119444 · σ = 17.69391793 % (0.1769…) · P₀ = 18.44")
+
+    with st.container(border=True):
+        st.markdown("**Cutoff y VaR (Monte Carlo)**")
+        v1, v2 = st.columns(2)
+        with v1:
+            st.latex(r"V^{(k)}_{final} = V_0 + \text{Ganancia bruta}^{(k)}, \quad V_0 = 190{,}000")
+            st.latex(r"\text{Cutoff}_\alpha = Q_\alpha\!\left(V^{(k)}_{final}\right)")
+            st.latex(r"\text{VaR}_\alpha = V_0 - \text{Cutoff}_\alpha")
+        with v2:
+            st.markdown("Estadísticos de las métricas simuladas:")
+            st.latex(r"\bar{x} = \frac{1}{K}\sum_{k=1}^{K} x_k, \qquad Q_{p}(x) = \text{cuantil de orden } p")
+            st.caption("Q1 = Q₀.₂₅, mediana = Q₀.₅, Q3 = Q₀.₇₅, máximo = máxₖ xₖ, moda = valor más frecuente (redondeado a centavos). K = número de simulaciones.")
+
+    st.markdown("---")
+
+    # ---------------- 3. BINOMIAL ----------------
+    st.markdown("### 3️⃣ Modelo Binomial de Cox-Ross-Rubinstein (CRR)")
+    b1, b2 = st.columns(2)
+    with b1:
+        with st.container(border=True):
+            st.markdown("**Factores del árbol y probabilidad neutral al riesgo**")
+            st.latex(r"\Delta t = \frac{T}{N}")
+            st.latex(r"u = e^{\sigma\sqrt{\Delta t}}, \qquad d = \frac{1}{u}")
+            st.latex(r"p = \frac{e^{r\Delta t} - d}{u - d}")
+    with b2:
+        with st.container(border=True):
+            st.markdown("**Evolución del subyacente**")
+            st.latex(r"S_{t,j} = S_0\, u^{\,t-j}\, d^{\,j}")
+            st.caption("t = paso (0…N), j = número de bajadas (0…t). El árbol es recombinante.")
+            st.markdown("**Pago en el vencimiento (t = N)**")
+            st.latex(r"f_{N,j}^{CALL} = \max(S_{N,j} - K,\,0), \qquad f_{N,j}^{PUT} = \max(K - S_{N,j},\,0)")
+
+    c_eu, c_am = st.columns(2)
+    with c_eu:
+        with st.container(border=True):
+            st.markdown("**Valuación hacia atrás: opción EUROPEA**")
+            st.latex(r"f_{t,j} = e^{-r\Delta t}\left[\,p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}\right]")
+            st.caption("Aplica igual para Call y Put; solo cambia el pago terminal.")
+    with c_am:
+        with st.container(border=True):
+            st.markdown("**Valuación hacia atrás: opción AMERICANA**")
+            st.latex(r"f_{t,j} = \max\!\left\{\, e^{-r\Delta t}\left[p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}\right],\; g(S_{t,j}) \right\}")
+            st.latex(r"g^{CALL}(S) = \max(S-K,0), \qquad g^{PUT}(S) = \max(K-S,0)")
+            st.caption("g = valor de ejercicio inmediato en cada nodo.")
+
+    with st.container(border=True):
+        st.markdown("**Precio teórico de la opción**")
+        st.latex(r"\text{Prima} = f_{0,0}")
 
 else:
     if "Log-logístico" in modelo_seleccionado:
@@ -660,35 +1073,58 @@ else:
     if not st.session_state["historial_trayectorias"] or st.session_state["historial_trayectorias"][-1]["etiqueta"] != trayectoria_actual["etiqueta"]:
         st.session_state["historial_trayectorias"].append(trayectoria_actual)
 
-    col_izq, col_der = st.columns([3, 2])
-    with col_izq:
-        st.markdown("### 📋 Tabla de Simulación Diaria")
-        st.dataframe(
-            df_diario, 
-            use_container_width=True, 
-            height=420,
-            column_config={
-                "Precio_Simulado": st.column_config.NumberColumn("Precio Simulado", format="$%.4f"),
-                "Variacion_Diaria": st.column_config.NumberColumn("Var. Diaria", format="%.2f%%"),
-                "Precio_Futuro": st.column_config.NumberColumn("Precio Futuro", format="$%.4f"),
-                "Valuacion_Contrato": st.column_config.NumberColumn("Valuación Contrato", format="$%,.2f"),
-                "Ganancia_Perdida_Diaria": st.column_config.NumberColumn("G/P Diaria", format="$%,.2f"),
-                "Comisiones": st.column_config.NumberColumn("Comisiones", format="$%,.2f"),
-                "Depositos_por_llamadas": st.column_config.NumberColumn("Depósitos Llamadas", format="$%,.2f"),
-                "Margen": st.column_config.NumberColumn("Margen", format="$%,.2f")
-            }
-        )
+    # Tarjetas KPI (leen el resumen ya calculado; no recalculan nada)
+    _resumen = dict(zip(df_resumen["Métrica / Concepto"], df_resumen["Valor"]))
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Efectivo retirable (margen final)", _resumen["Efectivo Total Retirable (Margen Final)"])
+    k2.metric("Capital inyectado total", _resumen["Capital Inyectado Total"])
+    k3.metric("Ganancia bruta del mercado", _resumen["Ganancia Bruta del Mercado"])
+    k4.metric("Máximo depósito por llamada", _resumen["Máximo depósito por llamada"])
 
-    with col_der:
-        st.markdown("### 📊 Resumen de Inversión y Resultados")
-        st.dataframe(df_resumen, use_container_width=True, hide_index=True)
+    st.markdown("### 📋 Tabla de Simulación Diaria")
+    df_diario_vista = df_diario.rename(columns={
+        "Precio_Simulado": "Precio Simulado",
+        "Variacion_Diaria": "Var. Diaria",
+        "Precio_Futuro": "Precio Futuro",
+        "Valuacion_Contrato": "Valuación Contrato",
+        "Ganancia_Perdida_Diaria": "G/P Diaria",
+        "Depositos_por_llamadas": "Depósitos Llamadas",
+    })
+    mostrar_tabla(
+        df_diario_vista,
+        {
+            "Precio Simulado": _fmt_usd4,
+            "Var. Diaria": _fmt_pct_desde_proporcion,  # proporción decimal -> porcentaje real
+            "Precio Futuro": _fmt_usd4,
+            "Valuación Contrato": _fmt_usd,
+            "G/P Diaria": _fmt_usd,
+            "Comisiones": _fmt_usd,
+            "Depósitos Llamadas": _fmt_usd,
+            "Margen": _fmt_usd,
+        },
+        colores_signo=["Var. Diaria", "G/P Diaria"],
+        height=420,
+        column_config={"Fecha": st.column_config.TextColumn("Fecha", width="small")},
+    )
+
+    st.markdown("### 📊 Resumen de Inversión y Resultados")
+    st.dataframe(
+        df_resumen,
+        use_container_width=True,
+        hide_index=True,
+        height=_altura_tabla(len(df_resumen)),
+        column_config={
+            "Métrica / Concepto": st.column_config.TextColumn("Métrica / Concepto", width="large"),
+            "Valor": st.column_config.TextColumn("Valor", width="medium"),
+        },
+    )
 
     df_excel, df_estadisticos, df_cut_var_valor, etiqueta, matriz_precios, fechas_mc = ejecutar_monte_carlo(
         tipo_mc, precio_futuro_inicial, margen_llamada, capital_inicial, tamano_contrato, alpha_seleccionado, num_simulaciones
     )
 
     mc_actual = {
-        "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | Margen=${margen_llamada:,.0f}",
+        "etiqueta": f"{nombre_mod} | P0=${precio_futuro_inicial:.1f} | Margen=${margen_llamada:,.0f} | Cap=${capital_inicial:,.0f}",
         "df_excel": df_excel.copy(),
         "matriz_precios": matriz_precios.copy(),
         "fechas": fechas_mc.copy()
@@ -729,15 +1165,41 @@ else:
     st.markdown("## 🎲 ANÁLISIS DE MONTE CARLO Y VAR")
 
     st.markdown("### 📋 Vista Previa de Simulaciones Monte Carlo (Primeras 10)")
-    st.dataframe(df_excel.head(10), use_container_width=True)
+    mostrar_tabla(
+        df_excel.head(10),
+        {
+            "Simulación (#)": _fmt_entero,
+            "Ganancia bruta del mercado": _fmt_usd,
+            "Depósitos por llamadas": _fmt_usd,
+            "Total de capital inyectado": _fmt_usd,
+            "Efectivo total retirable": _fmt_usd,
+            "Llamada máxima": _fmt_usd,
+            "Valor Total Final": _fmt_usd,
+        },
+        colores_signo=["Ganancia bruta del mercado"],
+        height=_altura_tabla(10),
+    )
 
-    col_est, col_var = st.columns([3, 2])
-    with col_est:
-        st.markdown("### 📊 Tabla de Estadísticos")
-        st.dataframe(df_estadisticos, use_container_width=True)
-    with col_var:
-        st.markdown(f"### 🛡️ Tabla de Cutoff y VaR (Alpha = {etiqueta} | Base: 190,000)")
-        st.dataframe(df_cut_var_valor, use_container_width=True)
+    # Las tablas se apilan a ancho completo: así ninguna columna queda recortada a la derecha
+    st.markdown("### 📊 Tabla de Estadísticos")
+    mostrar_tabla(
+        df_estadisticos,
+        {c: _fmt_usd for c in [
+            "Mínimo", "Q1 (25%)", "Mediana (50%)", "Promedio",
+            "Q3 (75%)", "Máximo", "Moda", "Desviación Estándar",
+        ]},
+        height=_altura_tabla(len(df_estadisticos)),
+        column_config={"Métrica": st.column_config.TextColumn("Métrica", width="medium")},
+    )
+
+    st.markdown("### 🛡️ Tabla de Cutoff y VaR")
+    st.caption(f"Alpha = {etiqueta}  ·  Base: $190,000")
+    mostrar_tabla(
+        df_cut_var_valor,
+        {"Tipo Cutoff": _fmt_usd, "Tipo VaR": _fmt_usd},
+        height=_altura_tabla(len(df_cut_var_valor)),
+        column_config={"Métrica": st.column_config.TextColumn("Métrica", width="large")},
+    )
 
     # Gráfica de Abanico
     st.markdown("### 🌪️ Gráfica de Abanico y Cuantiles de Monte Carlo")
@@ -798,15 +1260,16 @@ else:
             with col_sel2:
                 st.markdown(f"**Modelo Activo:** `{item['etiqueta']}`")
             
-            c1, c2, c3, c4, c5 = st.columns(5)
+            c1, c2, c3, c4, c5, c6 = st.columns(6)
             c1.metric("🔴 Media", f"${media_val:,.2f}")
             c2.metric("🟢 Mediana", f"${mediana_val:,.2f}")
             c3.metric("🟣 Q1 (25%)", f"${q1_val:,.2f}")
             c4.metric("🟣 Q3 (75%)", f"${q3_val:,.2f}")
             c5.metric("🟠 Moda", f"${moda_val:,.2f}")
+            c6.metric("🔵 Máximo", f"${serie.max():,.2f}")
 
     st.markdown("### 📊 Histogramas Dinámicos de Distribución con Líneas de Referencia")
-    fig_mc, axs = plt.subplots(2, 2, figsize=(14, 8.5))
+    fig_mc, axs = plt.subplots(2, 2, figsize=(16, 11))
     paleta_colores = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0d9488", "#334155"]
 
     for idx, (col_name, titulo_base) in enumerate(metricas_nombres):
@@ -844,8 +1307,14 @@ else:
         ax.set_xlabel("Monto ($)", fontsize=8.5)
         ax.set_ylabel("Frecuencia", fontsize=8.5)
         ax.grid(True, linestyle="--", alpha=0.3)
-        ax.legend(loc="upper right", fontsize=7.5, framealpha=0.9)
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _pos: _fmt_usd(x, 0)))
 
     # Ajuste seguro de subplots para evitar errores de layout en Matplotlib
-    fig_mc.subplots_adjust(hspace=0.35, wspace=0.25)
+    # Leyenda única fuera de las gráficas (abajo) para que no tape las barras
+    handles, labels = axs[0, 0].get_legend_handles_labels()
+    fig_mc.legend(
+        handles, labels, loc="lower center", ncol=4, fontsize=10,
+        framealpha=0.95, bbox_to_anchor=(0.5, 0.0),
+    )
+    fig_mc.subplots_adjust(hspace=0.35, wspace=0.22, bottom=0.12)
     st.pyplot(fig_mc)

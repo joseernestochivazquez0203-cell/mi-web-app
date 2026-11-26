@@ -958,7 +958,7 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with f1:
         with st.container(border=True):
             st.markdown("**Aportación inicial proporcional**")
-            st.latex(r"A = T 	imes 1.5")
+            st.latex(r"A = T \times 1.5")
             st.caption("T = tamaño del contrato. Proporción: $15,000 de aportación por cada $10,000 de contrato.")
             st.markdown("**Comisión y margen inicial**")
             st.latex(r"c_0 = c_n = 50 \qquad M_0 = A - c_0")
@@ -966,7 +966,7 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with f2:
         with st.container(border=True):
             st.markdown("**Precio futuro y valuación del contrato**")
-            st.latex(r"F_t = F_{t-1}\,(1 + r_t), \qquad r_t = rac{P_t}{P_{t-1}} - 1")
+            st.latex(r"F_t = F_{t-1}\,(1 + r_t), \qquad r_t = \frac{P_t}{P_{t-1}} - 1")
             st.latex(r"V_t = F_t \cdot T")
             st.markdown("**Ganancia / pérdida diaria**")
             st.latex(r"GP_t = V_t - V_{t-1}, \qquad GP_0 = 0")
@@ -975,11 +975,11 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with f3:
         with st.container(border=True):
             st.markdown("**Margen diario y llamadas de margen**")
-            st.latex(r"	ilde{M}_t = M_{t-1} + GP_t - c_t\,\mathbb{1}_{\{t=n\}}")
+            st.latex(r"\tilde{M}_t = M_{t-1} + GP_t - c_t\,\mathbb{1}_{\{t=n\}}")
             st.latex(
                 r"""
-                	ext{Si } 	ilde{M}_t < L:\quad D_t = A - 	ilde{M}_t,\;\; M_t = A
-                \qquad	ext{en otro caso:}\quad D_t = 0,\;\; M_t = 	ilde{M}_t
+                \text{Si } \tilde{M}_t < L:\quad D_t = A - \tilde{M}_t,\;\; M_t = A
+                \qquad\text{en otro caso:}\quad D_t = 0,\;\; M_t = \tilde{M}_t
                 """
             )
             st.caption(
@@ -989,10 +989,10 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with f4:
         with st.container(border=True):
             st.markdown("**Resultados finales**")
-            st.latex(r"	ext{Efectivo total retirable} = M_n")
-            st.latex(r"	ext{Capital inyectado total} = A + \sum_{t=0}^{n} D_t")
-            st.latex(r"	ext{Ganancia bruta del mercado} = (F_n - F_0)\cdot T")
-            st.latex(r"	ext{Comisiones totales} = \sum_{t=0}^{n} c_t = 100")
+            st.latex(r"\text{Efectivo total retirable} = M_n")
+            st.latex(r"\text{Capital inyectado total} = A + \sum_{t=0}^{n} D_t")
+            st.latex(r"\text{Ganancia bruta del mercado} = (F_n - F_0)\cdot T")
+            st.latex(r"\text{Comisiones totales} = \sum_{t=0}^{n} c_t = 100")
 
     st.markdown("---")
 
@@ -1002,31 +1002,27 @@ elif "Fórmulas Usadas" in modelo_seleccionado:
     with g1:
         with st.container(border=True):
             st.markdown("**Distribución Log-Logística**")
-            st.latex(r"F(x) = rac{1}{1 + (x/eta)^{-lpha}}")
+            st.latex(r"F(x) = \frac{1}{1 + (x/\beta)^{-\alpha}}")
             st.markdown("Simulación por transformada inversa:")
-            st.latex(r"P_t = eta \left(rac{U_t}{1 - U_t}
-ight)^{1/lpha}, \quad U_t \sim \mathcal{U}(0.0001,\,0.9999)")
+            st.latex(r"P_t = \beta \left(\frac{U_t}{1 - U_t}\right)^{1/\alpha}, \quad U_t \sim \mathcal{U}(0.0001,\,0.9999)")
             st.caption("α = B3 = 28.52977 · β = B4 = 18.32123 · P₀ = 18.44")
     with g2:
         with st.container(border=True):
             st.markdown("**Modelo de Fisher (Movimiento Browniano Geométrico)**")
-            st.latex(r"P_t = P_{t-1}\exp\!\left[\left(\mu - 	frac{1}{2}\sigma^2
-ight)\Delta t + \sigma\sqrt{\Delta t}\,Z_t
-ight]")
-            st.latex(r"Z_t \sim \mathcal{N}(0,1), \quad \Delta t = 	frac{1}{252}, \quad \mu = B_{10} - B_{11}")
+            st.latex(r"P_t = P_{t-1}\exp\!\left[\left(\mu - \tfrac{1}{2}\sigma^2\right)\Delta t + \sigma\sqrt{\Delta t}\,Z_t\right]")
+            st.latex(r"Z_t \sim \mathcal{N}(0,1), \quad \Delta t = \tfrac{1}{252}, \quad \mu = B_{10} - B_{11}")
             st.caption("B10 = 0.01736111 · B11 = 0.01119444 · σ = 17.69391793 % (0.1769…) · P₀ = 18.44")
 
     with st.container(border=True):
         st.markdown("**Cutoff y VaR (Monte Carlo)**")
         v1, v2 = st.columns(2)
         with v1:
-            st.latex(r"V^{(k)}_{final} = V_0 + 	ext{Ganancia bruta}^{(k)}, \quad V_0 = F_0 \cdot T")
-            st.latex(r"	ext{Cutoff}_lpha = Q_lpha\!\left(V^{(k)}_{final}
-ight)")
-            st.latex(r"	ext{VaR}_lpha = V_0 - 	ext{Cutoff}_lpha")
+            st.latex(r"V^{(k)}_{final} = V_0 + \text{Ganancia bruta}^{(k)}, \quad V_0 = F_0 \cdot T")
+            st.latex(r"\text{Cutoff}_\alpha = Q_\alpha\!\left(V^{(k)}_{final}\right)")
+            st.latex(r"\text{VaR}_\alpha = V_0 - \text{Cutoff}_\alpha")
         with v2:
             st.markdown("Estadísticos de las métricas simuladas:")
-            st.latex(r"ar{x} = rac{1}{K}\sum_{k=1}^{K} x_k, \qquad Q_{p}(x) = 	ext{cuantil de orden } p")
+            st.latex(r"\bar{x} = \frac{1}{K}\sum_{k=1}^{K} x_k, \qquad Q_{p}(x) = \text{cuantil de orden } p")
             st.caption("Q1 = Q₀.₂₅, mediana = Q₀.₅, Q3 = Q₀.₇₅, máximo = máxₖ xₖ, moda = marca de clase del intervalo modal (40 bins). K = número de simulaciones.")
 
     st.markdown("---")
@@ -1037,9 +1033,9 @@ ight)")
     with b1:
         with st.container(border=True):
             st.markdown("**Factores del árbol y probabilidad neutral al riesgo**")
-            st.latex(r"\Delta t = rac{T}{N}")
-            st.latex(r"u = e^{\sigma\sqrt{\Delta t}}, \qquad d = rac{1}{u}")
-            st.latex(r"p = rac{e^{r\Delta t} - d}{u - d}")
+            st.latex(r"\Delta t = \frac{T}{N}")
+            st.latex(r"u = e^{\sigma\sqrt{\Delta t}}, \qquad d = \frac{1}{u}")
+            st.latex(r"p = \frac{e^{r\Delta t} - d}{u - d}")
     with b2:
         with st.container(border=True):
             st.markdown("**Evolución del subyacente**")
@@ -1052,21 +1048,18 @@ ight)")
     with c_eu:
         with st.container(border=True):
             st.markdown("**Valuación hacia atrás: opción EUROPEA**")
-            st.latex(r"f_{t,j} = e^{-r\Delta t}\left[\,p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}
-ight]")
+            st.latex(r"f_{t,j} = e^{-r\Delta t}\left[\,p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}\right]")
             st.caption("Aplica igual para Call y Put; solo cambia el pago terminal.")
     with c_am:
         with st.container(border=True):
             st.markdown("**Valuación hacia atrás: opción AMERICANA**")
-            st.latex(r"f_{t,j} = \max\!\left\{\, e^{-r\Delta t}\left[p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}
-ight],\; g(S_{t,j}) 
-ight\}")
+            st.latex(r"f_{t,j} = \max\!\left\{\, e^{-r\Delta t}\left[p\, f_{t+1,j} + (1-p)\, f_{t+1,j+1}\right],\; g(S_{t,j}) \right\}")
             st.latex(r"g^{CALL}(S) = \max(S-K,0), \qquad g^{PUT}(S) = \max(K-S,0)")
             st.caption("g = valor de ejercicio inmediato en cada nodo.")
 
     with st.container(border=True):
         st.markdown("**Precio teórico de la opción**")
-        st.latex(r"	ext{Prima} = f_{0,0}")
+        st.latex(r"\text{Prima} = f_{0,0}")
 
 else:
     if "Log-logístico" in modelo_seleccionado:
